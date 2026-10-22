@@ -17,6 +17,11 @@ test('local GUI rejects cross-origin mutations and exposes only approved source 
   assert.equal(video.status,200);assert.equal(video.headers.get('content-type'),'video/mp4');
   assert.equal((await video.arrayBuffer()).byteLength,Number(video.headers.get('content-length')));
   assert.equal((await fetch(s.url+'/src/endcard-video.mjs')).status,200);
+  assert.equal((await fetch(s.url+'/src/editor-selection.mjs')).status,200);
+  for(const name of ['blank-book-duet.json','book-duet.example.json','fireside.example.json','page-tour.example.json','astronaut.example.json']){
+   const template=await fetch(s.url+'/templates/'+name);assert.equal(template.status,200);assert.equal((await template.json()).version,1);
+  }
+  assert.equal((await fetch(s.url+'/templates/README.md')).status,404);
   let r=await fetch(s.url+'/api/select',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({template:'book-duet'})});assert.equal(r.status,403);
   const {token}=await (await fetch(s.url+'/api/session')).json();
   r=await fetch(s.url+'/api/select',{method:'POST',headers:{'Content-Type':'application/json','X-Theatre-Token':token},body:JSON.stringify({template:'book-duet',seed:4})});assert.equal(r.status,200);assert.equal((await r.json()).script.comics.length,1);

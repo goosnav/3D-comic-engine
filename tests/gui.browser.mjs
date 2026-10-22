@@ -37,12 +37,12 @@ before(async () => {
 });
 after(async () => { await browser?.close(); });
 
-async function fixture(t, { clock = false } = {}) {
+async function fixture(t, { clock = false, extraComics = [] } = {}) {
   if (!browser) {
     t.skip(`Installed Playwright/Chromium unavailable. Run npm run setup:browser or set THEATRE_TEST_CHROMIUM. ${launchError?.message}`);
     return;
   }
-  const state = { requests: [], assets: [], jobs: [], polls: 0, draft: 'unconfigured', draftDelay: 0, selectDelay: 0, validationError: '', sessionError: false, jobsError: false, resolved: false };
+  const state = { requests: [], assets: [], jobs: [], polls: 0, draft: 'unconfigured', draftDelay: 0, validationError: '', sessionError: false, jobsError: false, resolved: false, example: script(['page-b']) };
   const held = new Map();
   state.hold = path => {
     let release;
@@ -67,10 +67,6 @@ async function fixture(t, { clock = false } = {}) {
         state.requests.push({ path, body, token: req.headers['x-theatre-token'], origin: req.headers.origin });
         if (req.headers['x-theatre-token'] !== token) return json(res, 403, { error: 'Missing session token' });
         if (held.has(path)) await held.get(path).promise;
-        if (path === '/api/select') {
-          await new Promise(resolve => setTimeout(resolve, state.selectDelay));
-          return json(res, 200, { script: resolve({ ...script(['page-b']), template: body.template, ...(body.seed === undefined ? {} : { seed: body.seed }) }) });
-        }
         if (path === '/api/validate') {
           const resolved = resolvedScript(body.script);
           if (body.script.sourceLock !== undefined && JSON.stringify(body.script.sourceLock) !== JSON.stringify(resolved.sourceLock)) return json(res, 400, { error: 'Source lock changed. Re-select and review the source before creating a new script.' });
@@ -89,10 +85,18 @@ async function fixture(t, { clock = false } = {}) {
         }
       }
       if (path === '/api/session') return state.sessionError ? json(res, 500, { error: 'Session unavailable' }) : json(res, 200, { token });
-      if (path === '/api/catalog') return json(res, 200, catalog);
+      if (path === '/api/catalog') return json(res, 200, { ...catalog, comics: [...catalog.comics, ...extraComics] });
       if (path === '/api/jobs') {
         state.polls++;
         return state.jobsError ? json(res, 500, { error: 'Jobs temporarily unavailable' }) : json(res, 200, { jobs: state.jobs });
+      }
+      if (path === '/templates/book-duet.example.json') {
+        if (held.has(path)) await held.get(path).promise;
+        return json(res, 200, state.example);
+      }
+      if (['/templates/blank-book-duet.json', '/templates/fireside.example.json', '/templates/page-tour.example.json', '/templates/astronaut.example.json'].includes(path)) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(await readFile(new URL(path.slice(1), root)));
       }
       if (path.startsWith('/assets/')) {
         state.assets.push(path);
@@ -100,7 +104,7 @@ async function fixture(t, { clock = false } = {}) {
         return res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfRcAAAAASUVORK5CYII=', 'base64'));
       }
       const files = { '/': 'web/index.html', '/app.mjs': 'web/app.mjs', '/style.css': 'web/style.css', '/web/app.mjs': 'web/app.mjs', '/web/style.css': 'web/style.css' };
-      if (['/src/contracts.mjs', '/src/book-pages.mjs', '/src/editor-defaults.mjs', '/src/gesture-performance.mjs', '/src/facial-performance.mjs'].includes(path)) {
+      if (['/src/contracts.mjs', '/src/book-pages.mjs', '/src/editor-defaults.mjs', '/src/editor-selection.mjs', '/src/gesture-performance.mjs', '/src/facial-performance.mjs'].includes(path)) {
         res.writeHead(200, { 'Content-Type': 'text/javascript' }); return res.end(await readFile(new URL(path.slice(1), root)));
       }
       if (files[path]) {
@@ -166,6 +170,7 @@ test('selected pages show actual previews with literal transcripts; template cha
 test('manual dialogue edits synchronize JSON; advanced fields and action rows survive form edits, upload and download', async t => {
   const f = await fixture(t); if (!f) return;
   const { page } = f; await ready(page);
+  await loadScript(page, { ...script(), comics: [], lines: [] });
   await page.getByLabel('Page 1', { exact: true }).selectOption('page-a');
   await page.getByRole('button', { name: '+ Add dialogue', exact: true }).click();
   await page.getByLabel('Line 1 text', { exact: true }).fill(hostile);
@@ -194,6 +199,7 @@ test('manual dialogue edits synchronize JSON; advanced fields and action rows su
   const stream = await download.createReadStream();
   const chunks = []; for await (const chunk of stream) chunks.push(chunk);
   assert.deepEqual(JSON.parse(Buffer.concat(chunks)), current);
+  page.once('dialog', dialog => dialog.accept());
   await page.locator('#upload-json').setInputFiles({ name: 'reading.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(script(['page-b']))) });
   await page.waitForFunction(() => document.querySelector('#title').value === 'My reading');
   assert.deepEqual(JSON.parse(await page.locator('#script-json').inputValue()).comics, ['page-b']);
@@ -227,19 +233,22 @@ test('unapplied or invalid JSON cannot be overwritten by form controls, jobs, up
   assert.deepEqual(JSON.parse(await page.locator('#script-json').inputValue()).comics, ['page-a']);
 });
 
-test('random selection sends template, seed and token; validation and rendering use authored pages with local voice only', async t => {
+test('per-page random selection keeps the render seed; validation and rendering use authored pages with session authentication', async t => {
   const f = await fixture(t); if (!f) return;
   const { page, state, origin } = f; await ready(page);
-  await page.locator('#template').selectOption('page-tour');
-  await page.locator('#seed').fill('123');
-  await page.getByRole('button', { name: 'Random sample', exact: true }).click();
-  await page.waitForFunction(() => document.querySelector('#selected-pages').textContent.includes('page-b'));
-  assert.deepEqual(state.requests[0].body, { template: 'page-tour', seed: 123 });
+  await loadScript(page, { ...script(), template: 'page-tour', seed: 123 });
+  await page.getByRole('button', { name: 'Random comic for page 1', exact: true }).click();
+  const selected = JSON.parse(await page.locator('#script-json').inputValue());
+  assert.notEqual(selected.comics[0], 'page-a');
+  assert.equal(selected.seed, 123);
+  assert.equal(selected.lines[0].text, 'Reading page-a');
+  assert.equal(selected.lines[0].comic, selected.comics[0]);
+  assert.equal(state.requests.length, 0, 'Choosing a page needs no destructive server-generated sample');
   await page.getByRole('button', { name: 'Validate', exact: true }).click();
   await status(page, 'validation passed');
   const authored = JSON.parse(await page.locator('#script-json').inputValue());
-  assert.equal(authored.sourceLock[0].id, 'page-b', 'Validation retains the source lock for rendering');
-  assert.match(await page.locator('#source-lock').textContent(), /page-b/);
+  assert.equal(authored.sourceLock[0].id, selected.comics[0], 'Validation retains the source lock for rendering');
+  assert.ok((await page.locator('#source-lock').textContent()).includes(selected.comics[0]));
   await page.getByRole('button', { name: 'Generate video', exact: true }).click();
   await status(page, 'job-1');
   const render = state.requests.find(r => r.path === '/api/render');
@@ -256,6 +265,150 @@ test('random selection sends template, seed and token; validation and rendering 
   await page.locator('#jobs a').waitFor();
   assert.equal(await page.locator('#jobs a').getAttribute('href'), '/output/job-1/video.mp4');
   assert.equal(JSON.parse(await page.locator('#script-json').inputValue()).lines[0].text, 'Keep my edit');
+});
+
+test('repeated row shuffles change only that comic, exclude other rows/frontmatter, and preserve authored fields', async t => {
+  const f = await fixture(t, { extraComics: [
+    { id: 'frontmatter', title: 'Title page', verified: true, kind: 'frontmatter', pdfPage: 2 },
+    { id: 'unverified', title: 'Unverified page', verified: false, kind: 'comic', pdfPage: 14 },
+  ] }); if (!f) return;
+  const { page, state } = f; await ready(page);
+  const value = {
+    ...script(['page-a', 'page-b']), seed: 123, scene: 'library',
+    characters: { reader: 'olive', friend: 'rust' }, endCard: { enabled: false, text: 'Keep this ending.' },
+    output: { width: 432, height: 540, fps: 12 }, sourceLock: [{ id: 'page-a' }, { id: 'page-b' }],
+    lines: [
+      { action: 'open', comic: 'page-a', seconds: 1.3 },
+      { speaker: 'reader', text: 'Keep my first line.', comic: 'page-a', face: { eye_open: .7 }, audio: 'first.wav' },
+      { speaker: 'friend', text: 'Keep this implicit reference.', pause: .7 },
+      { speaker: 'reader', text: 'Keep the other comic.', comic: 'page-b' },
+    ],
+  };
+  await loadScript(page, value);
+  let previous = 'page-a';
+  for (let i = 0; i < 8; i++) {
+    await page.locator('#random-page-0').click();
+    const result = JSON.parse(await page.locator('#script-json').inputValue());
+    assert.notEqual(result.comics[0], previous);
+    assert.ok(['page-a', 'page-c'].includes(result.comics[0]));
+    assert.equal(result.comics[1], 'page-b');
+    assert.equal(new Set(result.comics).size, 2);
+    assert.equal(result.sourceLock, undefined);
+    for (const key of ['title', 'template', 'seed', 'scene', 'characters', 'endCard', 'output']) assert.deepEqual(result[key], value[key]);
+    assert.deepEqual(result.lines, value.lines.map(line => line.comic === 'page-a' ? { ...line, comic: result.comics[0] } : line));
+    previous = result.comics[0];
+  }
+  assert.equal(state.requests.length, 0);
+});
+
+for (const input of ['upload-json-top', 'upload-json']) test(`${input} validates before replacement, respects cancellation, and preserves unapplied JSON`, async t => {
+  const f = await fixture(t); if (!f) return;
+  const { page, state } = f; await ready(page); await loadScript(page);
+  const before = await page.locator('#script-json').inputValue();
+  const file = { name: 'reading.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(script(['page-b']))) };
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.locator(`#${input}`).setInputFiles(file); await status(page, 'Upload cancelled');
+  assert.equal(await page.locator('#script-json').inputValue(), before);
+  for (const bytes of ['{broken', 'null', JSON.stringify({ ...script(), comics: ['missing'] })]) {
+    await page.locator(`#${input}`).setInputFiles({ ...file, buffer: Buffer.from(bytes) });
+    await status(page, 'Upload not applied');
+    assert.equal(await page.locator('#script-json').inputValue(), before);
+  }
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator(`#${input}`).setInputFiles({ ...file, buffer: Buffer.from('\uFEFF' + JSON.stringify(script(['page-b']))) });
+  await status(page, 'JSON uploaded');
+  assert.deepEqual(JSON.parse(await page.locator('#script-json').inputValue()), script(['page-b']));
+  assert.equal(await page.locator(`#${input}`).evaluate(node => node.files.length), 0);
+  const dirty = '{ "my unfinished draft":';
+  await page.locator('#script-json').fill(dirty);
+  await page.locator(`#${input}`).setInputFiles(file); await status(page, 'Apply JSON');
+  assert.equal(await page.locator('#script-json').inputValue(), dirty);
+  assert.equal(state.requests.length, 0);
+});
+
+test('example loading is explicit, preserves malformed/current drafts, and respects replacement cancellation', async t => {
+  const f = await fixture(t); if (!f) return;
+  const { page, state } = f; await ready(page);
+  await page.locator('#load-example').click(); await status(page, 'Example loaded');
+  assert.deepEqual(JSON.parse(await page.locator('#script-json').inputValue()), state.example);
+  await page.locator('#title').fill('Keep my own title');
+  const before = await page.locator('#script-json').inputValue();
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.locator('#load-example').click(); await status(page, 'Example not loaded');
+  assert.equal(await page.locator('#script-json').inputValue(), before);
+  state.example = { ...script(), comics: ['missing'] };
+  await page.locator('#load-example').click(); await status(page, 'Unknown catalog page');
+  assert.equal(await page.locator('#script-json').inputValue(), before);
+  assert.equal(state.requests.length, 0, 'Loading an example must not generate, validate remotely, or request AI');
+});
+
+test('a slowly read uploaded file cannot overwrite a newer form edit', async t => {
+  const f = await fixture(t); if (!f) return;
+  const { page } = f; await ready(page); await loadScript(page);
+  await page.evaluate(() => {
+    const read = File.prototype.text;
+    File.prototype.text = async function () {
+      const text = await read.call(this);
+      if (this.name === 'slow.json') await new Promise(resolve => { window.releaseImport = resolve; });
+      return text;
+    };
+  });
+  await page.locator('#upload-json-top').setInputFiles({ name: 'slow.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(script(['page-b']))) });
+  await page.waitForFunction(() => typeof window.releaseImport === 'function');
+  await page.locator('#title').fill('Keep the newer edit');
+  const edited = await page.locator('#script-json').inputValue();
+  await page.evaluate(() => window.releaseImport()); await status(page, 'editor changed');
+  assert.equal(await page.locator('#script-json').inputValue(), edited);
+});
+
+test('page controls refuse replacements that break a physical turn and disable exhausted random choices', async t => {
+  const f = await fixture(t); if (!f) return;
+  const { page } = f; await ready(page);
+  const value = {
+    ...script(['page-a', 'page-c']), template: 'page-tour',
+    lines: [
+      { speaker: 'reader', text: 'First spread.', comic: 'page-a' },
+      { action: 'turn', comic: 'page-c', seconds: 1.2 },
+      { speaker: 'reader', text: 'Next spread.', comic: 'page-c' },
+    ],
+  };
+  await loadScript(page, value);
+  assert.equal(await page.locator('#random-page-1').isDisabled(), true, 'The only unused comic shares the first spread');
+  await page.getByLabel('Page 2', { exact: true }).selectOption('page-b'); await status(page, 'physical page turn');
+  assert.deepEqual(JSON.parse(await page.locator('#script-json').inputValue()), value);
+  assert.equal(await page.getByLabel('Page 2', { exact: true }).inputValue(), 'page-c');
+  await loadScript(page, { ...script(['page-a', 'page-b', 'page-c']), template: 'page-tour' });
+  for (const index of [0, 1, 2]) assert.equal(await page.locator(`#random-page-${index}`).isDisabled(), true);
+});
+
+test('removing a physical turn immediately enables newly compatible per-page random choices', async t => {
+  const f = await fixture(t, { extraComics: [
+    { id: 'page-d', title: 'Third spread', verified: true, pdfPage: 14 },
+    { id: 'page-e', title: 'Later spread left', verified: true, pdfPage: 16 },
+    { id: 'page-f', title: 'Later spread right', verified: true, pdfPage: 17 },
+  ] }); if (!f) return;
+  const { page } = f; await ready(page);
+  const value = {
+    ...script(['page-a', 'page-c', 'page-d']), template: 'page-tour',
+    lines: [
+      { speaker: 'reader', text: 'First spread.', comic: 'page-a' },
+      { action: 'turn', comic: 'page-c', seconds: 1.2 },
+      { speaker: 'reader', text: 'Middle spread.', comic: 'page-c' },
+      { action: 'turn', comic: 'page-d', seconds: 1.2 },
+      { speaker: 'reader', text: 'Third spread.', comic: 'page-d' },
+    ],
+  };
+  await loadScript(page, value);
+  assert.equal(await page.locator('#random-page-1').isDisabled(), true, 'The middle page is constrained by a turn on each side');
+  await page.getByRole('button', { name: 'Remove line 2', exact: true }).click();
+  assert.deepEqual(JSON.parse(await page.locator('#script-json').inputValue()).comics, value.comics);
+  assert.equal(await page.locator('#random-page-1').isEnabled(), true, 'Removing a turn must refresh eligibility without a page change or reload');
+  await page.locator('#random-page-1').click();
+  const replaced = JSON.parse(await page.locator('#script-json').inputValue());
+  assert.ok(['page-e', 'page-f'].includes(replaced.comics[1]));
+  assert.deepEqual([replaced.comics[0], replaced.comics[2]], ['page-a', 'page-d']);
+  assert.equal(replaced.lines[1].text, 'Middle spread.');
+  assert.equal(replaced.lines[1].comic, replaced.comics[1]);
 });
 
 test('optional AI is explicit, handles missing configuration and rejects source swaps', async t => {
@@ -278,7 +431,7 @@ test('optional AI is explicit, handles missing configuration and rejects source 
   for (const request of state.requests) assert.equal(request.token, token);
 });
 
-test('late AI and random responses never replace edits made while a request is pending', async t => {
+test('late AI and validation responses never replace edits made while a request is pending', async t => {
   const f = await fixture(t); if (!f) return;
   const { page, state } = f; await ready(page); await loadScript(page);
   state.draft = 'success'; state.draftDelay = 450;
@@ -287,10 +440,11 @@ test('late AI and random responses never replace edits made while a request is p
   await status(page, 'changed|newer|edited');
   assert.equal(JSON.parse(await page.locator('#script-json').inputValue()).title, 'Edited while drafting');
   assert.equal(await page.getByLabel('Line 1 text', { exact: true }).inputValue(), 'Reading page-a');
-  state.selectDelay = 450;
-  page.on('dialog', dialog => dialog.accept());
-  await page.getByRole('button', { name: 'Random sample', exact: true }).click();
+  state.hold('/api/validate');
+  const sent = page.waitForRequest('**/api/validate');
+  await page.getByRole('button', { name: 'Validate', exact: true }).click(); await sent;
   await page.locator('#script-json').fill('{ "new draft":');
+  state.release('/api/validate');
   await status(page, 'changed|newer|edited');
   assert.equal(await page.locator('#script-json').inputValue(), '{ "new draft":');
 });
@@ -346,11 +500,12 @@ test('resolved drafts retain locks through dialogue edits and clear them only on
   assert.equal(drafted.lines[0].bookState, undefined);
   await page.getByLabel('Line 1 text', { exact: true }).fill('Edited with the same source');
   assert.deepEqual(JSON.parse(await page.locator('#script-json').inputValue()).sourceLock, drafted.sourceLock);
-  page.on('dialog', dialog => dialog.accept());
-  await page.getByRole('button', { name: 'Random sample', exact: true }).click();
-  await page.waitForFunction(() => document.querySelector('#selected-pages').textContent.includes('page-b'));
+  await page.getByRole('button', { name: 'Random comic for page 1', exact: true }).click();
   const sampled = JSON.parse(await page.locator('#script-json').inputValue());
-  assert.equal(sampled.sourceLock[0].id, 'page-b');
+  assert.notEqual(sampled.comics[0], 'page-a');
+  assert.equal(sampled.sourceLock, undefined);
+  assert.equal(sampled.lines[0].text, 'Edited with the same source');
+  assert.equal(sampled.lines[0].comic, sampled.comics[0]);
   assert.equal(sampled.lines[0].id, undefined);
   await page.getByLabel('Page 1', { exact: true }).selectOption('page-a');
   assert.equal(JSON.parse(await page.locator('#script-json').inputValue()).sourceLock, undefined);
@@ -458,7 +613,7 @@ test('AI draft allows the writer repair window, aborts at its own deadline, and 
   state.release('/api/validate');
 });
 
-test('real server integration: source images, authenticated sample and validation, preserved and renewed locks', { skip: !process.env.THEATRE_GUI_REAL_SERVER }, async t => {
+test('real server integration: source images, per-page random and authenticated validation, preserved and renewed locks', { skip: !process.env.THEATRE_GUI_REAL_SERVER }, async t => {
   if (!browser) { t.skip('Playwright browser unavailable'); return; }
   const { startServer } = await import('../src/server.mjs');
   const server = await startServer();
@@ -467,15 +622,18 @@ test('real server integration: source images, authenticated sample and validatio
   const page = await context.newPage(); page.setDefaultTimeout(7000);
   await page.goto(server.url); await ready(page);
   await page.locator('#seed').fill('7');
-  await page.getByRole('button', { name: 'Random sample', exact: true }).click();
-  await status(page, 'sample ready');
+  await page.getByRole('button', { name: 'Random comic for page 1', exact: true }).click();
   const sampled = JSON.parse(await page.locator('#script-json').inputValue());
   assert.equal(sampled.comics.length, 1);
-  assert.equal(sampled.sourceLock[0].id, sampled.comics[0]);
+  assert.equal(sampled.sourceLock, undefined);
   await page.getByLabel('Line 1 text', { exact: true }).fill('A short manually authored reading.');
+  await page.getByLabel('Line 2 text', { exact: true }).fill('A short manually authored reply.');
   await page.getByRole('button', { name: 'Validate', exact: true }).click();
   await status(page, 'validation passed');
-  assert.deepEqual(JSON.parse(await page.locator('#script-json').inputValue()).sourceLock, sampled.sourceLock);
+  const originalLock = JSON.parse(await page.locator('#script-json').inputValue()).sourceLock;
+  assert.equal(originalLock[0].id, sampled.comics[0]);
+  await page.getByLabel('Line 1 text', { exact: true }).fill('Edited words, same source.');
+  assert.deepEqual(JSON.parse(await page.locator('#script-json').inputValue()).sourceLock, originalLock);
   await page.waitForFunction(() => { const images = [...document.querySelectorAll('#page-previews img')]; return images.length > 0 && images.every(img => img.complete && img.naturalWidth > 0); });
   const nextId = await page.locator('#page-selectors select option').evaluateAll((options, selected) => options.find(option => option.value && option.value !== selected && !option.disabled).value, sampled.comics[0]);
   await page.getByLabel('Page 1', { exact: true }).selectOption(nextId);
@@ -485,12 +643,13 @@ test('real server integration: source images, authenticated sample and validatio
   await status(page, 'validation passed');
   const validated = JSON.parse(await page.locator('#script-json').inputValue());
   assert.equal(validated.sourceLock[0].id, nextId);
-  assert.notDeepEqual(validated.sourceLock, sampled.sourceLock);
+  assert.notDeepEqual(validated.sourceLock, originalLock);
   assert.ok((await page.locator('#source-lock').textContent()).includes(nextId));
   // A saved stale lock must reach the real validator unchanged, even when the
   // imported selection differs from a freshly loaded, empty editor.
   await page.reload(); await ready(page);
   const stale = structuredClone(validated); stale.sourceLock[0].sha256 = '0'.repeat(64);
+  page.once('dialog', dialog => dialog.accept());
   await page.locator('#upload-json').setInputFiles({ name: 'stale.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(stale)) });
   await status(page, 'JSON uploaded');
   const validationResponse = page.waitForResponse(response => response.url().endsWith('/api/validate'));

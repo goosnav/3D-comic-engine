@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Untitled reading",
+  "seed": 42,
+  "scene": "library",
+  "comics": ["book2-036"],
+  "characters": {
+    "reader": "blue-beady",
+    "friend": "rust"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "reader",
+      "comic": "book2-036",
+      "text": "",
+      "emotion": "neutral",
+      "gesture": "none",
+      "shot": "source",
+      "pause": 0.4
+    },
+    {
+      "speaker": "friend",
+      "text": "",
+      "emotion": "neutral",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 0.8
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1350,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": true,
+    "title": "Goosnav Book Two",
+    "text": "A book of comics.",
+    "url": "www.goosnav.shop",
+    "seconds": 3
+  }
+}

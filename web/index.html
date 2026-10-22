@@ -21,13 +21,36 @@
         <li>Generate and download your video.</li>
       </ol>
     </section>
+    <section class="panel starter" aria-labelledby="start-heading">
+      <div class="starter-heading">
+        <div><h2 id="start-heading">Start here</h2><p class="hint">Open your JSON, try a worked example, or choose comic pages below and write your own.</p></div>
+        <button id="new-video" type="button" disabled>Start blank</button>
+      </div>
+      <div class="starter-actions">
+        <div>
+          <label class="file-label primary" for="upload-json-top">Upload JSON<input id="upload-json-top" type="file" accept=".json,application/json" aria-describedby="upload-help"></label>
+          <p id="upload-help" class="hint">Open a script from this device. Your current draft is kept until the file is checked.</p>
+          <a class="template-link" href="./templates/blank-book-duet.json" download>Download blank JSON template</a>
+        </div>
+        <div>
+          <label for="example-script">Example script</label>
+          <div class="example-controls">
+            <select id="example-script" disabled>
+              <option value="book-duet.example.json">Book duet · two voices</option>
+              <option value="fireside.example.json">Fireside · solo reader</option>
+              <option value="page-tour.example.json">Page tour · several comics</option>
+              <option value="astronaut.example.json">Moon base · astronauts</option>
+            </select>
+            <button id="load-example" type="button" disabled>Load example</button>
+          </div>
+          <p class="hint">Complete scripts with dialogue and stage directions. Edit them before generating.</p>
+        </div>
+      </div>
+      <p id="start-status" class="status">Loading the editor…</p>
+    </section>
     <div class="workspace">
       <section class="panel sources" aria-labelledby="sources-heading">
         <div class="section-heading"><span class="step">01</span><h2 id="sources-heading">Choose your pages</h2></div>
-        <div class="toolbar">
-          <button id="random" type="button" data-post>Random sample</button>
-          <button id="new-video" type="button" disabled>+ New video</button>
-        </div>
         <fieldset id="source-fields" disabled>
           <label for="template">Template</label><select id="template"></select>
           <p id="template-help" class="hint"></p>
@@ -37,6 +60,7 @@
           </div>
           <p id="edition" class="edition"></p>
           <div id="page-selectors"><p class="muted">Loading the local catalog…</p></div>
+          <p class="hint">Random comic changes one page at a time. Your other pages, dialogue and settings stay in place.</p>
           <button id="add-page" type="button" hidden>+ Add page</button>
           <div id="page-previews" class="page-previews" aria-label="Selected page previews"></div>
         </fieldset>

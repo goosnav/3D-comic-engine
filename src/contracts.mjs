@@ -60,7 +60,7 @@ export function resolveScript(raw,catalog){
  const seed=raw.seed??randomInt(0,2147483647);number(seed,0,4294967295,'seed');if(!Number.isInteger(seed))fail('seed must be an integer');
  const scene=selectScene(raw.scene,t,characters,catalog,seed);
  const sourceLock=selected.map(c=>({id:c.id,sha256:c.sha256,pdfPage:c.pdfPage,pdfSha256:catalog.edition.pdfSha256}));
- if(raw.sourceLock&&JSON.stringify(raw.sourceLock)!==JSON.stringify(sourceLock))fail('Source lock changed. Re-select and review the source before creating a new script.');
+ if(raw.sourceLock!==undefined&&(!Array.isArray(raw.sourceLock)||raw.sourceLock.length!==sourceLock.length||raw.sourceLock.some((lock,i)=>!lock||typeof lock!=='object'||Array.isArray(lock)||Object.keys(lock).length!==Object.keys(sourceLock[i]).length||Object.entries(sourceLock[i]).some(([key,value])=>lock[key]!==value))))fail('Source lock changed. Re-select and review the source before creating a new script.');
  if(!Array.isArray(raw.lines)||!raw.lines.length||raw.lines.length>200)fail('lines must contain 1–200 entries');
  let state=raw.lines[0]?.action==='open'?'table-closed':'table-open',current=selected[0].id;
  const used=new Set();

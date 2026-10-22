@@ -9,7 +9,8 @@ const out=path.resolve(args[1]??path.join(ROOT,'dist'));
 await fs.mkdir(out,{recursive:true});
 const catalog=await loadCatalog();await verifyCatalog(catalog);
 const assetFiles=new Set(['assets/catalog.json',...Object.values(catalog.assets).map(e=>e.path),...catalog.comics.map(e=>e.path),'assets/fonts/NOTICE.txt']);
-const publicFiles=new Set([...assetFiles,'index.html','style.css','app.mjs','browser/backend.mjs','browser/export.mjs','browser/voice-worker.mjs','vendor/flite.wasm','vendor/FLITE-COPYING.txt','vendor/WASI-LICENSE.txt','vendor/THREE-LICENSE.txt','NOTICES.md']);
+const templateFiles=['blank-book-duet.json','book-duet.example.json','fireside.example.json','page-tour.example.json','astronaut.example.json'].map(name=>'templates/'+name);
+const publicFiles=new Set([...assetFiles,...templateFiles,'index.html','style.css','app.mjs','browser/backend.mjs','browser/export.mjs','browser/voice-worker.mjs','vendor/flite.wasm','vendor/FLITE-COPYING.txt','vendor/WASI-LICENSE.txt','vendor/THREE-LICENSE.txt','NOTICES.md']);
 const publicDirs=new Set([...publicFiles].flatMap(p=>{const a=p.split('/');return a.slice(0,-1).map((_,i)=>a.slice(0,i+1).join('/'));}));
 async function verifyDestination(dir,relative=''){
  if((await fs.lstat(dir)).isSymbolicLink())throw Error('Static output must not contain symlinks');
@@ -20,7 +21,7 @@ async function verifyDestination(dir,relative=''){
  }
 }
 await verifyDestination(out);
-for(const file of assetFiles){
+for(const file of [...assetFiles,...templateFiles]){
  const dest=path.join(out,file);await fs.mkdir(path.dirname(dest),{recursive:true});await fs.copyFile(path.join(ROOT,file),dest);
 }
 const html=(await fs.readFile(path.join(ROOT,'web/index.html'),'utf8')).replace('name="theatre-runtime" content="desktop"','name="theatre-runtime" content="browser"');

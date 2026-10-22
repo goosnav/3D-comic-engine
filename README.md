@@ -85,6 +85,9 @@ free dependency downloads; rendering does not contact external services.
 
 **[Step-by-step JSON and GUI tutorial](TUTORIAL.md)**
 
+- Start at the top of the editor: upload your JSON, load a worked example, or start a blank script with dialogue fields ready to fill in. JSON upload is also available beside the JSON editor.
+- Each selected page has its own **Random comic** button. It picks a different verified comic, keeps your words and settings, and updates that page's script references. Physical page turns limit the choices to compatible spreads.
+- **[JSON templates and complete field reference](templates/README.md)**: an editable blank duet plus four runnable examples covering a duet, a solo reading, a multi-page tour, and astronauts on the moon.
 - Three templates: book duet, solo fireside reader, and multi-page tour.
 - All 141 numbered Book Two pages, plus title/copyright/blank interiors, in book order.
 - Native page selectors and previews only for selected pages; random selection uses comics, not frontmatter.
@@ -97,6 +100,15 @@ free dependency downloads; rendering does not contact external services.
 - Optional local image-capable writer; remote providers are rejected.
 - Named loading stages and real stage progress bars; unknown-duration work stays indeterminate.
 - Browser-only optional background music from your device, quietly mixed from the track's beginning.
+
+Start with `templates/book-duet.example.json` for a fully worked input, or
+`templates/blank-book-duet.json` to write your own dialogue. The blank file is an
+authoring draft: fill its empty spoken lines before validation or rendering.
+
+```sh
+node bin/theatre.mjs validate templates/book-duet.example.json --json
+node bin/theatre.mjs render templates/book-duet.example.json --preview --json
+```
 
 MP4 requires the browser to expose an H.264/AAC encoder. A generic MP4 container
 with unusual codecs is not substituted. Where compatible encoding is unavailable,

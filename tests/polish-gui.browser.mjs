@@ -13,7 +13,7 @@ const catalog = {
   scenes: [{ id: 'library', label: 'Library' }],
   variants: ['blue', 'rust', 'olive', 'blue-beady', 'rust-beady', 'olive-beady'].map(id => ({ id, label: `${id} clothes`, asset: `actor-${id}` })),
   edition: { title: 'Fixture edition' },
-  comics: [{ id: 'page-a', title: 'Fixture page', verified: true, sha256: 'a'.repeat(64), pdfPage: 10 }],
+  comics: ['page-a', 'page-b', 'page-c'].map((id, i) => ({ id, title: `Fixture page ${i + 1}`, verified: true, sha256: String(i + 1).repeat(64), pdfPage: 10 + i })),
 };
 const script = () => ({ template: 'book-duet', title: 'My reading', comics: ['page-a'], lines: [{ speaker: 'reader', text: 'A reading.', comic: 'page-a' }] });
 const authored = () => ({
@@ -29,7 +29,7 @@ before(async () => { browser = await chromium.launch({ headless: true, ...(proce
 after(async () => { await browser?.close(); });
 
 async function fixture(t, { legacy = false, expansion = false } = {}) {
-  const state = { requests: [], writer: false, rewrite: false, resolve: false, error: '' };
+  const state = { requests: [], writer: false, rewrite: false, resolve: false, error: '', example: script() };
   const held = new Map();
   state.hold = path => { let release; const promise = new Promise(resolve => { release = resolve; }); held.set(path, { promise, release }); };
   state.release = path => { held.get(path)?.release(); held.delete(path); };
@@ -44,7 +44,6 @@ async function fixture(t, { legacy = false, expansion = false } = {}) {
         if (held.has(path)) await held.get(path).promise;
         if (state.error) return json(res, 400, { error: state.error });
         if (path === '/api/render') return json(res, 200, { id: 'manual-render', status: 'queued' });
-        if (path === '/api/select') return json(res, 200, { script: {...script(),scene:'library'} });
         let value = structuredClone(body.script);
         if (path === '/api/draft') {
           if (!state.writer) return json(res, 409, { error: 'Optional writer is not configured' });
@@ -69,8 +68,16 @@ async function fixture(t, { legacy = false, expansion = false } = {}) {
         return json(res, 200, value);
       }
       if (path === '/api/jobs') return json(res, 200, { jobs: [] });
+      if (path === '/templates/book-duet.example.json') {
+        if (held.has(path)) await held.get(path).promise;
+        return json(res, 200, state.example);
+      }
+      if (['/templates/blank-book-duet.json', '/templates/fireside.example.json', '/templates/page-tour.example.json', '/templates/astronaut.example.json'].includes(path)) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(await readFile(new URL(path.slice(1), root)));
+      }
       const files = { '/': ['index.html', 'text/html'], '/app.mjs': ['app.mjs', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
-      if (['/src/contracts.mjs', '/src/book-pages.mjs', '/src/editor-defaults.mjs', '/src/gesture-performance.mjs', '/src/facial-performance.mjs'].includes(path)) { res.writeHead(200, { 'Content-Type': 'text/javascript' }); return res.end(await readFile(new URL(path.slice(1), root))); }
+      if (['/src/contracts.mjs', '/src/book-pages.mjs', '/src/editor-defaults.mjs', '/src/editor-selection.mjs', '/src/gesture-performance.mjs', '/src/facial-performance.mjs'].includes(path)) { res.writeHead(200, { 'Content-Type': 'text/javascript' }); return res.end(await readFile(new URL(path.slice(1), root))); }
       if (files[path]) { const [file, type] = files[path]; res.writeHead(200, { 'Content-Type': type }); return res.end(await readFile(new URL(`web/${file}`, root))); }
       res.writeHead(404); res.end('Not found');
     } catch (error) { json(res, 500, { error: error.message }); }
@@ -86,32 +93,33 @@ async function fixture(t, { legacy = false, expansion = false } = {}) {
   return { page, state };
 }
 const current = async page => JSON.parse(await page.locator('#script-json').inputValue());
-test('New video clears authored and unapplied inputs and persists the blank draft', async t => {
+test('Start blank clears authored and unapplied inputs and persists editable blank dialogue', async t => {
   const { page } = await fixture(t);
   await load(page, authored());
   await page.locator('#voice').selectOption('recorded');
   await page.locator('#script-json').fill('{broken');
   await page.locator('#new-video').click();
-  const blank = {version:1,template:'book-duet',title:'Untitled reading',comics:[],lines:[]};
+  const blank = {version:1,template:'book-duet',title:'Untitled reading',comics:[],lines:[{speaker:'reader',text:''},{speaker:'friend',text:''}]};
   assert.deepEqual(await current(page), blank);
   assert.equal(await page.locator('#voice').inputValue(), 'flite');
   assert.equal(await page.locator('#source-fields').isDisabled(), false);
   await page.reload(); await status(page, 'Restored');
   assert.deepEqual(await current(page), blank);
 });
-test('New video rejects a late random response without overwriting its status', async t => {
+test('Start blank rejects a late example response without overwriting its status', async t => {
   const {page,state} = await fixture(t);
-  state.hold('/api/select');
-  const sent = page.waitForRequest('**/api/select');
-  await page.locator('#random').click(); await sent;
+  const path = '/templates/book-duet.example.json';
+  state.hold(path);
+  const sent = page.waitForRequest(`**${path}`);
+  await page.locator('#load-example').click(); await sent;
   await page.locator('#new-video').click();
   const blank = await current(page);
-  const done = page.waitForResponse('**/api/select'); state.release('/api/select'); await done;
-  await page.waitForTimeout(100);
+  const done = page.waitForResponse(`**${path}`); state.release(path); await done;
+  await page.waitForTimeout(50);
   assert.deepEqual(await current(page), blank);
-  assert.match(await page.locator('#editor-status').textContent(), /New video/);
+  assert.match(await page.locator('#editor-status').textContent(), /Blank script ready/);
 });
-test('New video removes an old saved draft and warns if persisting the blank draft fails', async t => {
+test('Start blank removes an old saved draft and warns if persisting the blank draft fails', async t => {
   const {page} = await fixture(t);
   await load(page, authored());
   await page.evaluate(() => {Storage.prototype.setItem = () => {throw new DOMException('full','QuotaExceededError');};});
@@ -136,12 +144,15 @@ test('astronaut choices follow explicit scene and never silently replace importe
   assert.equal(await page.locator('#reader-clothing option[value="astronaut"]').isDisabled(),false);
   await page.locator('#validate').click(); await status(page,'validation passed');
 });
-test('Random sample preserves explicit scene or automatic astronaut-compatible selection', async t => {
+test('per-page random preserves explicit scene or automatic astronaut-compatible selection', async t => {
   const {page} = await fixture(t,{expansion:true});
   for(const scene of ['moon-base',undefined]){
     await load(page,{...script(),characters:{reader:'astronaut'},...(scene?{scene}:{})});
-    await page.locator('#random').click(); await status(page,'sample ready');
+    await page.locator('#random-page-0').click();
     const result=await current(page);
+    assert.notEqual(result.comics[0], 'page-a');
+    assert.equal(result.lines[0].text, 'A reading.');
+    assert.equal(result.lines[0].comic, result.comics[0]);
     assert.equal(result.characters.reader,'astronaut');
     assert.equal(result.scene,scene);
     await page.locator('#validate').click(); await status(page,'validation passed');
@@ -255,28 +266,30 @@ test('invalid input blocks POSTs and unapplied JSON pauses every new control', a
   assert.equal(state.requests.length, 0);
 });
 
-for (const endpoint of ['draft', 'validate', 'select']) test(`${endpoint} cannot overwrite clothing, end-card or shot edits made while pending`, async t => {
+for (const endpoint of ['draft', 'validate', 'example']) test(`${endpoint} cannot overwrite clothing, end-card or shot edits made while pending`, async t => {
   const { page, state } = await fixture(t); await load(page, authored()); state.writer = true;
-  const path = `/api/${endpoint}`; state.hold(path);
+  const path = endpoint === 'example' ? '/templates/book-duet.example.json' : `/api/${endpoint}`; state.hold(path);
   const sent = page.waitForRequest(request => request.url().endsWith(path));
-  await page.locator(endpoint === 'select' ? '#random' : `#${endpoint}`).click(); await sent;
+  await page.locator(endpoint === 'example' ? '#load-example' : `#${endpoint}`).click(); await sent;
   await page.locator('#reader-clothing').selectOption('rust');
   await page.locator('#end-card-text').fill('Keep this newer ending.');
   await page.getByLabel('Line 1 shot', { exact: true }).selectOption('over-shoulder');
   const edited = await current(page);
   state.release(path); await status(page, 'editor changed');
   assert.deepEqual(await current(page), edited);
-  assert.equal(state.requests.length, 1);
+  assert.equal(state.requests.length, endpoint === 'example' ? 0 : 1);
 });
 
-test('source reselection and random samples keep authored presentation settings', async t => {
+test('source reselection and per-page random keep authored presentation settings and dialogue', async t => {
   const { page, state } = await fixture(t); const value = authored(); await load(page, value);
   await page.getByLabel('Page 1', { exact: true }).selectOption('');
   await page.getByLabel('Page 1', { exact: true }).selectOption('page-a');
   assert.equal((await current(page)).sourceLock, undefined);
-  await page.locator('#random').click(); await status(page, 'sample ready');
+  await page.locator('#random-page-0').click();
   const sampled = await current(page);
   for (const key of ['characters', 'product', 'endCard']) assert.deepEqual(sampled[key], value[key]);
+  assert.notEqual(sampled.comics[0], 'page-a');
+  assert.deepEqual(sampled.lines, value.lines.map(line => ({ ...line, comic: sampled.comics[0] })));
   assert.equal(sampled.sourceLock, undefined);
   state.error = 'Source lock changed. Re-select and review the source.';
   await load(page, value); await page.locator('#validate').click(); await status(page, 'Source lock changed');
@@ -289,7 +302,10 @@ test('real server integration: new controls validate with the public contract an
   t.after(async () => { await context.close(); await server.close(); });
   const page = await context.newPage(); page.setDefaultTimeout(7000);
   await page.goto(server.url); await status(page, 'Ready');
-  await page.locator('#random').click(); await status(page, 'sample ready');
+  await page.locator('#random-page-0').click();
+  await page.getByLabel('Line 1 text', { exact: true }).fill('A short reading.');
+  await page.getByLabel('Line 2 text', { exact: true }).fill('A short reply.');
+  await page.locator('#validate').click(); await status(page, 'validation passed');
   const lock = (await current(page)).sourceLock;
   await page.locator('#reader-clothing').selectOption('olive');
   await page.locator('#friend-clothing').selectOption('blue');

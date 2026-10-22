@@ -19,6 +19,7 @@ test('static build contains exact assets and runtime, excluding private/server f
   await run(process.execPath,['tools/build-web.mjs','--out-dir',dir],{timeout:60000});
   const html=await fs.readFile(path.join(dir,'index.html'),'utf8');assert.match(html,/content="browser"/);
   const c=await loadCatalog();
+  for(const name of ['blank-book-duet.json','book-duet.example.json','fireside.example.json','page-tour.example.json','astronaut.example.json'])assert.equal(await fs.readFile(path.join(dir,'templates',name),'utf8'),await fs.readFile(path.join(ROOT,'templates',name),'utf8'));
   for(const e of [...Object.values(c.assets),...c.comics])assert.equal(digest(await fs.readFile(path.join(dir,e.path))),e.sha256);
   assert.equal((await fs.stat(path.join(dir,'vendor/flite.wasm'))).size,(await fs.stat(path.join(ROOT,'node_modules/@echogarden/flite-wasi/flite.wasm'))).size);
   for(const forbidden of ['writer.local.json','src/server.mjs','output','DEV','node_modules'])await assert.rejects(fs.access(path.join(dir,forbidden)));

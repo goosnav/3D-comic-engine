@@ -61,18 +61,33 @@ The launcher opens the browser. If it cannot, open the printed loopback address,
 `http://127.0.0.1:8777`. Keep the terminal open while jobs run. This is a local app,
 not a public web service: do not expose its port to the internet. No account needed.
 
-Choose a template, then open the **Page** dropdown and scroll through book order,
-or use **Random sample**. Only selected pages show a preview, with printed/PDF
-page numbers and a stable ID. Clicking the artwork does not leave the editor.
-The page-tour template supports two or three pages: use **+ Add page** to add a row.
-Write dialogue with **+ Add dialogue**; speaker, emotion, gesture and shot are dropdowns.
+The **Start here** panel offers **Upload JSON**, a worked-example chooser, and
+**Start blank**. Use an example to see a complete script in the form; use the blank
+JSON download if you prefer writing in your own editor. Imports and examples are
+checked before replacing your draft, and replacing authored work asks for confirmation.
+The lower JSON section also has an upload control with the same behavior.
+
+Choose a template, then open a **Page** dropdown and scroll through book order,
+or use **Random comic** beside that row. Each click picks a different verified
+comic without duplicating another selected page. It keeps your dialogue, title,
+cast, scene, render seed and output settings, and updates references to the old
+page. Review the retained dialogue against the new artwork before rendering.
+If the script contains a physical page turn, only adjacent-spread replacements
+are allowed. No alternative means the row's random button is unavailable.
+
+Only selected pages show a preview, with printed/PDF page numbers and a stable ID.
+Clicking the artwork does not leave the editor. The page-tour template supports
+two or three pages: a blank tour starts with two empty page slots, and **+ Add page**
+adds a third. New drafts include an empty dialogue row for each speaker. Fill them
+in, then use **+ Add dialogue** as needed; speaker, emotion, gesture and shot are dropdowns.
 You can still edit JSON directly. Validate, download a copy of your script, and
 generate the video. The jobs area shows named loading stages and progress bars.
 Percentages describe the current stage; an indeterminate bar means the stage's
 remaining work cannot yet be measured. Browser downloads prefer compatible MP4,
 with clearly labeled WebM fallback. Desktop downloads are MP4.
-Use **+ New video**, next to Random sample, to start from scratch. It clears pages,
-dialogue, JSON edits, cast, scene/seed, voice, music and end-card customization.
+Use **Start blank** to begin another script in the currently selected template.
+It clears selected pages, dialogue, JSON edits, cast, scene/seed, voice, music and
+end-card customization, then provides empty dialogue rows for that template's cast.
 Confirm discarding authored inputs, or Cancel to keep them. Finished downloads
 and submitted jobs stay. If browser storage is unavailable, the editor warns you;
 download JSON to preserve new work.
@@ -99,7 +114,7 @@ to specify models, rigs, camera coordinates, lighting or frame numbers.
 Book Two comic IDs run from `book2-001` through `book2-141`, corresponding to
 printed pages 1 through 141. PDF pages are separate (printed page + 4).
 The title, copyright and final blank pages are also available manually, but never
-selected by Random sample. Examples with reviewed transcripts:
+selected by the per-page random buttons. Examples with reviewed transcripts:
 
 | ID | Printed page | Subject |
 | --- | --- | --- |
@@ -124,6 +139,13 @@ the file nor its machine-specific path is stored in script JSON. Desktop music
 attachment is not implemented; this control is only shown in website mode.
 
 ## 4. The smallest useful script
+
+For complete editable inputs, start with **[templates/README.md](templates/README.md)**.
+It explains every supported field and includes a blank duet, a worked duet with
+reactions and facial controls, a solo reading with book actions, a three-page tour,
+and a moon scene with compatible astronaut characters. All worked examples pass
+the same production validation used by the GUI and CLI; the blank draft requires
+your dialogue before it can render.
 
 Save this as `my-script.json` in this folder:
 

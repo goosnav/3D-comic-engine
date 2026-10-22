@@ -10,6 +10,14 @@ test('simple script locks exact pages and deterministic defaults',()=>{
 test('cannot substitute a different source under a saved lock',()=>{
  const a=resolveScript(input(),catalog); a.comics=['p2'];a.lines[0].comic='p2';assert.throws(()=>resolveScript(a,catalog),/lock|changed/i);
 });
+test('JSON source locks compare values independently of object key order',()=>{
+ const script=resolveScript(input(),catalog);
+ script.sourceLock=script.sourceLock.map(lock=>Object.fromEntries(Object.entries(lock).reverse()));
+ assert.deepEqual(resolveScript(script,catalog).sourceLock,resolveScript(input(),catalog).sourceLock);
+ for(const value of [null,false,{},[],[{...script.sourceLock[0],sha256:'changed'}],[{...script.sourceLock[0],pdfPage:99}],[{...script.sourceLock[0],extra:true}]]){
+  assert.throws(()=>resolveScript({...script,sourceLock:value},catalog),/Source lock changed/);
+ }
+});
 test('typos and unsupported facial fields fail with helpful options',()=>{
  assert.throws(()=>resolveScript({...input(),lines:[{speaker:'reader',text:'Hi',emotion:'smuggg'}]},catalog),/emotion.*neutral/i);
  assert.throws(()=>resolveScript({...input(),lines:[{speaker:'reader',text:'Hi',face:{jaw:9}}]},catalog),/face/i);

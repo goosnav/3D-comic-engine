@@ -25,7 +25,7 @@ test('static GUI exports speech, music and spinning endcard even when video play
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  t.after(()=>new Promise(r=>{server.closeAllConnections();server.close(r);}));
  const origin=`http://127.0.0.1:${server.address().port}/studio`;
- const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required']});
+ const browser=await chromium.launch({headless:true,...(process.env.THEATRE_TEST_CHROMIUM?{executablePath:process.env.THEATRE_TEST_CHROMIUM}:{}),args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required']});
  t.after(()=>browser.close());
  const page=await browser.newPage({acceptDownloads:true});const unexpected=[],errors=[];
  // Reproduce the reported Safari policy rejection while leaving canvas capture,
@@ -38,6 +38,21 @@ test('static GUI exports speech, music and spinning endcard even when video play
  page.on('request',r=>{if(r.url().startsWith('http')&&(!r.url().startsWith(origin+'/')||r.url().includes('/api/')))unexpected.push(r.url());});
  await page.goto(origin+'/');await page.waitForFunction(()=>document.querySelector('#template').options.length>0);
  assert.equal(await page.locator('#page-previews img').count(),0,'no source images load before selection');
+ // Exercise packaged authoring inputs under a subdirectory before the real export.
+ await page.locator('#load-example').click();
+ await page.waitForFunction(()=>document.querySelector('#editor-status').textContent.startsWith('Example loaded.'));
+ const example=JSON.parse(await page.locator('#script-json').inputValue());
+ assert.deepEqual(example,JSON.parse(await fs.readFile(path.join(ROOT,'templates/book-duet.example.json'),'utf8')));
+ await page.locator('#random-page-0').click();
+ const rerolled=JSON.parse(await page.locator('#script-json').inputValue());
+ assert.notEqual(rerolled.comics[0],example.comics[0]);
+ assert.deepEqual(rerolled.lines.map(line=>line.text),example.lines.map(line=>line.text));
+ assert.equal(rerolled.seed,example.seed);
+ const blankDownload=page.waitForEvent('download');
+ await page.getByRole('link',{name:'Download blank JSON template'}).click();
+ const blank=await blankDownload;
+ assert.equal(blank.suggestedFilename(),'blank-book-duet.json');
+ assert.deepEqual(JSON.parse(await fs.readFile(await blank.path(),'utf8')),JSON.parse(await fs.readFile(path.join(ROOT,'templates/blank-book-duet.json'),'utf8')));
  const script=JSON.parse(await fs.readFile(path.join(ROOT,'examples/parasite.json'),'utf8'));
  script.title='Static export proof';script.lines=[{speaker:'reader',text:'An inside source.',comic:script.comics[0],shot:'two-shot'},{speaker:'friend',text:'I have my doubts.',comic:script.comics[0],emotion:'skeptical',shot:'speaker'}];script.endCard={enabled:true,seconds:1};
  await page.locator('#script-json').fill(JSON.stringify(script));await page.locator('#apply-json').click();

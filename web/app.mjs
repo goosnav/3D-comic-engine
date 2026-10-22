@@ -1,5 +1,6 @@
 import { EMOTIONS, GESTURES } from '../src/contracts.mjs';
 import { editorDefaults } from '../src/editor-defaults.mjs';
+import { comicReplacements, replaceComic, randomComic } from '../src/editor-selection.mjs';
 
 const $ = id => document.getElementById(id);
 const browserMode=document.querySelector('meta[name="theatre-runtime"]')?.content==='browser';
@@ -28,8 +29,10 @@ const shots = [
   { id: 'two-shot', label: 'Two-shot' }, { id: 'over-shoulder', label: 'Over-shoulder' },
   { id: 'book', label: 'Book' }, { id: 'source', label: 'Source' },
 ];
+const exampleFiles = new Set(['book-duet.example.json', 'fireside.example.json', 'page-tour.example.json', 'astronaut.example.json']);
+const uploadInputs = ['upload-json-top', 'upload-json'];
 
-// A new sample or writer changes pages/dialogue, not the author's presentation.
+// The writer changes dialogue, not the author's presentation.
 // Keep server-resolved defaults for omitted fields and preserve advanced keys.
 function keepPresentation(result, original) {
   const next = clone(result);
@@ -41,8 +44,10 @@ function keepPresentation(result, original) {
 }
 
 function message(text, error = false) {
-  $('editor-status').textContent = text;
-  $('editor-status').classList.toggle('error', error);
+  for (const id of ['editor-status', 'start-status']) {
+    $(id).textContent = text;
+    $(id).classList.toggle('error', error);
+  }
 }
 function controls() {
   const paused = !state.script || state.dirtyJSON;
@@ -51,8 +56,10 @@ function controls() {
   $('script-json').disabled = !state.script;
   $('json-state').textContent = state.dirtyJSON ? 'Unapplied edits · form paused' : 'In sync';
   for (const button of document.querySelectorAll('[data-post]')) button.disabled = state.busy;
-  $('random').disabled = paused || state.busy;
   $('new-video').disabled = !state.catalog;
+  $('example-script').disabled = paused || state.busy;
+  $('load-example').disabled = paused || state.busy;
+  for (const id of uploadInputs) $(id).disabled = !state.catalog;
 }
 function requireReady() {
   if (!state.token || !state.catalog || !state.script) throw new Error('Connect to the local theatre first. Use Retry connection.');
@@ -215,6 +222,24 @@ function updatePages(focusIndex = 0) {
   renderPages(); renderLines();
   $(`page-${focusIndex}`)?.focus();
 }
+function applyPageChoice(result, index, random = false) {
+  state.script = result.script; state.pageRows = result.pageRows;
+  changed(); renderPages(); renderLines();
+  $(random ? `random-page-${index}` : `page-${index}`)?.focus();
+  const id = state.pageRows[index];
+  message(id ? `Page ${index + 1}: ${comicFor(id)?.title ?? id}. Dialogue and settings kept. Review the wording against the new comic, then validate.` : `Page ${index + 1} cleared. Existing dialogue references are kept for you to review.`);
+}
+function refreshPageChoices() {
+  // Source cuts and book-action order affect physical-turn compatibility. Only
+  // refresh buttons so editing a line never reloads previews or moves focus.
+  state.pageRows.forEach((id, index) => {
+    const button = $(`random-page-${index}`);
+    if (!button) return;
+    const available = comicReplacements(state.script, state.catalog, state.pageRows, index).length > 0;
+    button.disabled = !available;
+    button.title = available ? 'Choose a different comic for this page. Other pages and dialogue stay.' : 'No different comic fits this selection and its book actions.';
+  });
+}
 function renderPages() {
   $('edition').textContent = state.catalog.edition?.title ?? 'Local source catalog';
   const selectors = $('page-selectors'); selectors.replaceChildren();
@@ -224,7 +249,17 @@ function renderPages() {
     const select = el('select'); select.id = `page-${index}`;
     choose(select, sorted.map(comic => ({ id: comic.id, label: `PDF ${comic.pdfPage ?? '?'} · ${comic.title} · ${comic.id}${comic.verified === true ? '' : ' (unverified)'}` })), id, 'Choose a page…');
     for (const entry of select.options) if (entry.value) entry.disabled = comicFor(entry.value)?.verified !== true || state.pageRows.some((value, i) => i !== index && value === entry.value);
-    select.addEventListener('change', () => { state.pageRows[index] = select.value; updatePages(index); });
+    select.addEventListener('change', () => {
+      try {
+        applyPageChoice(replaceComic(state.script, state.catalog, state.pageRows, index, select.value), index);
+      } catch (error) { renderPages(); $(`page-${index}`)?.focus(); message(`Page unchanged: ${error.message}`, true); }
+    });
+    const random = el('button', 'Random comic', 'random-page'); random.type = 'button'; random.id = `random-page-${index}`;
+    random.setAttribute('aria-label', `Random comic for page ${index + 1}`);
+    random.addEventListener('click', () => {
+      try { applyPageChoice(randomComic(state.script, state.catalog, state.pageRows, index), index, true); }
+      catch (error) { message(`Page unchanged: ${error.message}`, true); }
+    });
     const remove = el('button', 'Remove'); remove.type = 'button'; remove.setAttribute('aria-label', `Remove page ${index + 1}`);
     remove.disabled = state.pageRows.length === 1 && !id;
     remove.addEventListener('click', () => {
@@ -232,8 +267,10 @@ function renderPages() {
       if (!state.pageRows.length) state.pageRows.push('');
       updatePages(Math.min(index, state.pageRows.length - 1));
     });
-    row.append(field(`Page ${index + 1}`, select), remove); selectors.append(row);
+    const actions = el('div', undefined, 'page-row-actions'); actions.append(random, remove);
+    row.append(field(`Page ${index + 1}`, select), actions); selectors.append(row);
   });
+  refreshPageChoices();
   const max = templateFor(state.script)?.maxComics ?? 1;
   $('add-page').hidden = max <= 1;
   $('add-page').disabled = state.pageRows.length >= max || state.pageRows.includes('') || !sorted.some(comic => comic.verified === true && !state.pageRows.includes(comic.id));
@@ -264,7 +301,7 @@ function renderPages() {
 function renderSelection() {
   if (!state.script) return;
   const selected = $('selected-pages'); selected.replaceChildren();
-  if (!state.script.comics.length) selected.textContent = 'No pages selected. Choose a page from the dropdown or request a random sample.';
+  if (!state.script.comics.length) selected.textContent = 'Choose a page from the dropdown or use its Random comic button.';
   else {
     const list = el('ol');
     for (const id of state.script.comics) {
@@ -290,6 +327,7 @@ function lineInput(index, key, multiline = false) {
   const input = el(multiline ? 'textarea' : 'input'); input.id = `line-${index}-${key}`;
   input.setAttribute('aria-label', `Line ${index + 1} ${key}`);
   if (multiline) input.rows = 3;
+  if (key === 'text') input.placeholder = `Write what the ${state.script.lines[index].speaker ?? 'character'} says…`;
   input.value = state.script.lines[index][key] ?? '';
   input.addEventListener('input', () => {
     if (input.value || key === 'text') state.script.lines[index][key] = input.value;
@@ -311,7 +349,7 @@ function renderLines() {
       button.addEventListener('click', () => {
         if (!delta) state.script.lines.splice(index, 1);
         else [state.script.lines[index], state.script.lines[index + delta]] = [state.script.lines[index + delta], state.script.lines[index]];
-        changed(); renderLines();
+        changed(); renderLines(); refreshPageChoices();
       }); actions.append(button);
     }
     heading.append(actions); card.append(heading);
@@ -324,7 +362,7 @@ function renderLines() {
       speaker.addEventListener('change', () => { line.speaker = speaker.value; changed(); });
       const source = el('select'); source.id = `line-${index}-comic`; source.setAttribute('aria-label', `Line ${index + 1} comic`);
       choose(source, state.script.comics.map(id => ({ id, label: `${id} · printed ${comicFor(id)?.printedPage ?? '?'}` })), line.comic, 'Continue current page');
-      source.addEventListener('change', () => { if (source.value) line.comic = source.value; else delete line.comic; changed(); });
+      source.addEventListener('change', () => { if (source.value) line.comic = source.value; else delete line.comic; changed(); refreshPageChoices(); });
       pair.append(field('Speaker', speaker), field('Source page', source)); card.append(pair, lineInput(index, 'text', true));
       const performance = el('div', undefined, 'field-pair');
       for (const [key, choices, fallback] of [['emotion', EMOTIONS, 'neutral'], ['gesture', GESTURES, 'none']]) {
@@ -379,7 +417,9 @@ function install(script) {
   // An incoming lock belongs to the imported script, not the current selection.
   // Preserve even stale locks for backend rejection. Only explicit selection
   // controls (or an author's removal in JSON) may discard a previous source lock.
-  state.script = next; state.pageRows = next.comics.length ? [...next.comics] : ['']; state.revision++; syncJSON(); renderForm();
+  state.script = next;
+  state.pageRows = next.comics.length ? [...next.comics] : Array(Math.max(1, templateFor(next)?.minComics ?? 1)).fill('');
+  state.revision++; syncJSON(); renderForm();
 }
 function unchanged(revision) {
   if (revision !== state.revision) throw new Error('The editor changed while the request was running. The response was not applied. Your newer edits are safe; retry when ready.');
@@ -395,25 +435,57 @@ async function operate(kind, work) {
   finally { if (operation === state.operation) { state.busy = false; controls(); } }
 }
 
+function hasAuthoredInput() {
+  const defaults = editorDefaults(state.catalog, state.script?.template);
+  return state.dirtyJSON || stringify(state.script) !== stringify(defaults.script) || $('voice').value !== defaults.voice || $('background-music').files.length > 0;
+}
+function confirmReplacement(action) {
+  return !hasAuthoredInput() || window.confirm(`${action}? This replaces the current script. Download JSON first if you want to keep it. Existing videos and jobs stay.`);
+}
 $('new-video').addEventListener('click', () => {
   if (!state.catalog) return;
-  const defaults = editorDefaults(state.catalog);
-  const authored = state.dirtyJSON || stringify(state.script) !== stringify(defaults.script) || $('voice').value !== defaults.voice || $('background-music').files.length || $('upload-json').files.length;
-  if (authored && !window.confirm('Start a new video? Current inputs will be cleared. Existing videos and jobs stay.')) return;
+  const defaults = editorDefaults(state.catalog, state.script?.template);
+  if (!confirmReplacement('Start blank')) return;
   state.operation++; state.busy = false;
   $('voice').value = defaults.voice;
-  $('background-music').value = ''; $('upload-json').value = '';
+  $('background-music').value = '';
+  for (const id of uploadInputs) $(id).value = '';
   install(defaults.script);
-  if (draftSaved) message('New video. Choose a page to begin.');
+  if (draftSaved) message('Blank script ready. Choose comic pages and write dialogue.');
   else {
     let removed = false;
     try { localStorage.removeItem(draftKey); removed = true; } catch {}
-    message(`New video. Browser storage failed; the blank draft could not be saved. ${removed ? 'The old saved draft was removed.' : 'The old saved draft may return after reload.'} Download JSON to keep new edits.`, true);
+    message(`Blank script ready. Browser storage failed; the blank draft could not be saved. ${removed ? 'The old saved draft was removed.' : 'The old saved draft may return after reload.'} Download JSON to keep new edits.`, true);
   }
   $('page-0')?.focus();
 });
+$('load-example').addEventListener('click', () => operate('Load example', async () => {
+  const filename = $('example-script').value;
+  if (!exampleFiles.has(filename)) throw new Error('Choose one of the supplied example scripts.');
+  const revision = state.revision;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  let script;
+  try {
+    const response = await fetch(new URL(`./templates/${filename}`, document.baseURI), { credentials: 'same-origin', cache: 'no-store', signal: controller.signal });
+    if (!response.ok) throw new Error(`Example could not be loaded (${response.status}). Check that the templates folder is included in this installation.`);
+    script = await response.json();
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error('Example load timed out. Your current draft is unchanged; try again.');
+    throw error;
+  } finally { clearTimeout(timer); }
+  unchanged(revision); check(completeErrors(script));
+  if (!confirmReplacement('Load this example')) { message('Example not loaded. Your script is unchanged.'); return; }
+  install(script); message('Example loaded. Review the pages and dialogue, then validate or generate.');
+}));
 
-$('template').addEventListener('change', () => { state.script.template = $('template').value; delete state.script.sourceLock; changed(); renderForm(); });
+$('template').addEventListener('change', () => {
+  const blankLines = stringify(state.script.lines) === stringify(editorDefaults(state.catalog, state.script.template).script.lines);
+  state.script.template = $('template').value;
+  if (blankLines) state.script.lines = editorDefaults(state.catalog, state.script.template).script.lines;
+  if (!state.script.comics.length) state.pageRows = Array(Math.max(1, templateFor(state.script)?.minComics ?? 1)).fill('');
+  delete state.script.sourceLock; changed(); renderForm();
+});
 $('add-page').addEventListener('click', () => {
   if ($('add-page').disabled || $('add-page').hidden) return;
   state.pageRows.push(''); renderPages(); $(`page-${state.pageRows.length - 1}`).focus();
@@ -438,7 +510,7 @@ for (const key of ['title', 'text', 'url', 'seconds']) $(`end-card-${key}`).addE
 $('add-line').addEventListener('click', () => {
   const comic = state.script.comics.find(id => !state.script.lines.some(line => line.comic === id)) ?? state.script.comics[0];
   state.script.lines.push({ speaker: templateFor(state.script)?.speakers[0] ?? 'reader', text: '', ...(comic ? { comic } : {}) });
-  changed(); renderLines(); $(`line-${state.script.lines.length - 1}-text`).focus();
+  changed(); renderLines(); refreshPageChoices(); $(`line-${state.script.lines.length - 1}-text`).focus();
 });
 $('script-json').addEventListener('input', () => { state.revision++; state.dirtyJSON = true; saveDraft($('script-json').value); controls(); });
 $('apply-json').addEventListener('click', () => {
@@ -454,34 +526,23 @@ $('download-json').addEventListener('click', () => {
     setTimeout(() => URL.revokeObjectURL(url), 1000); message('Script downloaded.');
   } catch (error) { message(error.message, true); }
 });
-$('upload-json').addEventListener('change', async () => {
-  const file = $('upload-json').files[0]; if (!file) return;
+async function uploadJSON(event) {
+  const input = event.currentTarget;
+  const file = input.files[0]; if (!file) return;
   const operation = state.operation;
   try {
     requireReady();
     if (file.size > 2 * 1024 * 1024) throw new Error('Choose a script JSON file smaller than 2 MB.');
-    const revision = state.revision; const script = JSON.parse(await file.text()); unchanged(revision); install(script);
+    const revision = state.revision;
+    const script = JSON.parse((await file.text()).replace(/^\uFEFF/, ''));
+    unchanged(revision); check(structureErrors(script));
+    if (!confirmReplacement('Upload this JSON')) { message('Upload cancelled. Your script is unchanged.'); return; }
+    install(script);
     message('JSON uploaded. Review selected pages, then validate the script.');
   } catch (error) { if (operation === state.operation) message(`Upload not applied: ${error.message}`, true); }
-  finally { if (operation === state.operation) $('upload-json').value = ''; }
-});
-$('random').addEventListener('click', () => operate('Random sample', async () => {
-  if (state.script.lines.length && !window.confirm('Replace the current selected pages and dialogue with a random sample? Download JSON first if you want to keep this script.')) { message('Random sample cancelled. Your script is unchanged.'); return; }
-  check(structureErrors(state.script));
-  const revision = state.revision;
-  const original = clone(state.script);
-  const request = { template: state.script.template, ...(state.script.seed === undefined ? {} : { seed: state.script.seed }) };
-  const result = await api('/api/select', request); unchanged(revision);
-  check(structureErrors(result.script)); check(selectionErrors(result.script));
-  if (result.script.template !== request.template) throw new Error('Server returned a different template. Sample not applied; retry or check the server.');
-  const sample = keepPresentation(result.script, original);
-  // The sampled default cast may have resolved a different scene. Preserve the
-  // author's explicit staging, or let the preserved cast resolve its own default.
-  if (original.scene !== undefined) sample.scene = original.scene;
-  else delete sample.scene;
-  check(structureErrors(sample)); check(selectionErrors(sample));
-  install(sample); message('Random sample ready. Review the selected pages and edit its dialogue before generating.');
-}));
+  finally { if (operation === state.operation) input.value = ''; }
+}
+for (const id of uploadInputs) $(id).addEventListener('change', uploadJSON);
 $('validate').addEventListener('click', () => operate('Validate', async () => {
   const script = clone(state.script); const revision = state.revision;
   check(completeErrors(script)); const result = await api('/api/validate', { script }); unchanged(revision);

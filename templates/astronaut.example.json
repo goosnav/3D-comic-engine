@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Carry-on Reading",
+  "seed": 91,
+  "scene": "moon-base",
+  "comics": ["book2-020"],
+  "characters": {
+    "reader": "astronaut",
+    "friend": "astronaut-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "reader",
+      "comic": "book2-020",
+      "text": "I will be one of the great men of history! My life will define an era!!",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 0.4
+    },
+    {
+      "speaker": "friend",
+      "text": "I came to the moon to get away from this.",
+      "emotion": "exasperated",
+      "gesture": "head_tilt",
+      "shot": "two-shot",
+      "pause": 0.6
+    },
+    {
+      "speaker": "reader",
+      "text": "You packed the book.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 0.5
+    },
+    {
+      "speaker": "friend",
+      "text": "I panicked.",
+      "emotion": "concerned",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 1.2,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "dry",
+        "gesture": "page_glance",
+        "at": "line_end",
+        "duration": 1
+      }
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1350,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": true,
+    "title": "Goosnav Book Two",
+    "text": "A book of comics.",
+    "url": "www.goosnav.shop",
+    "seconds": 3
+  }
+}

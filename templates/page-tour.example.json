@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "template": "page-tour",
+  "title": "Three Approaches",
+  "seed": 42,
+  "scene": "diner",
+  "comics": ["book2-020", "book2-095", "book2-036"],
+  "characters": {
+    "reader": "olive",
+    "friend": "cowboy-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "reader",
+      "comic": "book2-020",
+      "text": "I will be one of the great men of history! My life will define an era!!",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 0.4
+    },
+    {
+      "speaker": "friend",
+      "text": "How's that going?",
+      "emotion": "curious",
+      "gesture": "head_tilt",
+      "shot": "speaker",
+      "pause": 0.4
+    },
+    {
+      "speaker": "reader",
+      "text": "He moved the deadline to thirty-five.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 0.8
+    },
+    {
+      "speaker": "reader",
+      "comic": "book2-095",
+      "text": "You painted all the walls from white to white?",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 0.4
+    },
+    {
+      "speaker": "friend",
+      "text": "That one finished something.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "speaker",
+      "pause": 0.9
+    },
+    {
+      "speaker": "reader",
+      "comic": "book2-036",
+      "text": "My brain parasite says you're toxic",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 0.4
+    },
+    {
+      "speaker": "friend",
+      "text": "That one hired help.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 1.2,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "skeptical",
+        "gesture": "head_tilt",
+        "at": "line_end",
+        "duration": 1
+      }
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1350,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": true,
+    "title": "Goosnav Book Two",
+    "text": "A book of comics.",
+    "url": "www.goosnav.shop",
+    "seconds": 3
+  }
+}
