@@ -262,9 +262,14 @@ test('Generate brings phone progress into view before the live canvas', async t 
   await page.waitForFunction(() => document.querySelector('#editor-status').textContent.startsWith('Submitted'));
   const position = await page.evaluate(() => ({
     heading: document.querySelector('#jobs-heading').getBoundingClientRect().top,
+    headingBottom: document.querySelector('#jobs-heading').getBoundingClientRect().bottom,
     progress: document.querySelector('#jobs').getBoundingClientRect().top,
+    progressBottom: document.querySelector('#jobs').getBoundingClientRect().bottom,
     canvas: document.querySelector('#device-canvas').getBoundingClientRect().top,
+    viewport: innerHeight,
   }));
-  assert.ok(position.heading >= 0 && position.heading < 400 && position.progress < 744, JSON.stringify(position));
+  // Shorter copy can leave too little content below to align the section at the
+  // top. What matters is that the heading and progress are fully visible.
+  assert.ok(position.heading >= 0 && position.headingBottom <= position.viewport && position.progress >= 0 && position.progressBottom <= position.viewport, JSON.stringify(position));
   assert.ok(position.progress < position.canvas, 'progress must not sit below a tall live canvas');
 });

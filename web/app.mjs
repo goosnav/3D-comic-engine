@@ -266,7 +266,7 @@ function renderSelection() {
     selected.append(list);
   }
   const errors = selectionErrors(state.script);
-  $('selection-help').textContent = errors.length ? errors.join(' ') : 'Selection ready. These IDs will be sent to drafting and rendering.';
+  $('selection-help').textContent = errors.length ? errors.join(' ') : '';
   const lockBox = $('source-lock'); lockBox.replaceChildren();
   if (state.script.sourceLock?.length) {
     const details = el('details'); details.append(el('summary', `Recorded source lock · ${state.script.sourceLock.length} page(s)`));
@@ -348,7 +348,7 @@ function renderForm() {
   $('end-card-enabled').checked = endCard.enabled;
   for (const key of ['title', 'text', 'url', 'seconds']) $(`end-card-${key}`).value = endCard[key];
   const template = templateFor(state.script);
-  $('template-help').textContent = template ? `${template.minComics === template.maxComics ? template.minComics : `${template.minComics}–${template.maxComics}`} page(s) · cast: ${template.speakers.join(', ')}. Changing templates keeps your pages and dialogue; adjust any incompatibilities explicitly.` : 'Choose a catalog template.';
+  $('template-help').textContent = template ? `${template.minComics === template.maxComics ? template.minComics : `${template.minComics}–${template.maxComics}`} page(s) · cast: ${template.speakers.join(', ')}` : 'Choose a template.';
   renderPages(); renderSelection(); renderLines(); controls();
 }
 function install(script) {

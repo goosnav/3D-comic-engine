@@ -10,7 +10,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; }
-.masthead, main, footer { max-width: 1440px; margin: auto; padding: 28px 40px; }
+.masthead, main { max-width: 1440px; margin: auto; padding: 28px 40px; }
 .masthead { display: flex; justify-content: space-between; gap: 24px; align-items: center; border-bottom: var(--rule); position: relative; }
 .masthead::after { content: ''; position: absolute; bottom: -1px; left: 40px; width: 96px; height: 4px; background: linear-gradient(to right, var(--red) 0 25%, var(--blue) 25% 50%, var(--green) 50% 75%, var(--yellow) 75%); }
 h1, h2, h3, h4, p { margin: 0; }
@@ -19,11 +19,8 @@ h1, h2, h3 { text-transform: uppercase; letter-spacing: .02em; }
 h1 { font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.035em; }
 h2 { font-size: 1.15rem; }
 h3 { font-size: .95rem; }
-.eyebrow { font: 700 .7rem/1.4 var(--display); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
-.local-badge { border: var(--rule); padding: 8px 12px; font-size: .85rem; }
 .intro { max-width: 720px; margin-bottom: 30px; }
-.intro > p + p { margin-top: 8px; }
-.lede { font-size: 1.8rem; }
+.intro ol { margin: 0; padding-left: 1.5em; }
 .workspace { display: grid; grid-template-columns: minmax(300px, .85fr) minmax(0, 1.3fr); gap: 24px; align-items: start; }
 .panel { padding: 26px; border: var(--rule); background: var(--paper); min-width: 0; }
 .section-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
@@ -97,11 +94,10 @@ summary { font-size: .9rem; cursor: pointer; min-height: 44px; padding: 10px 0; 
 .job a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px; color: var(--ink); text-underline-offset: .18em; }
 .job-stage { font-family: var(--display); }
 progress { width: 100%; accent-color: var(--blue); }
-footer { color: var(--muted); font-size: .85rem; padding-top: 0; }
 noscript { display: block; padding: 24px; }
 @media (max-width: 900px) { .workspace { grid-template-columns: 1fr; } }
 @media (max-width: 540px) {
-  .masthead, main, footer { padding: 20px 16px; }
+  .masthead, main { padding: 20px 16px; }
   .masthead { align-items: flex-start; flex-direction: column; gap: 12px; }
   .masthead::after { left: 16px; }
   .panel { padding: 17px; }
