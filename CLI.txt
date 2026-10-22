@@ -1,0 +1,74 @@
+3D COMIC ENGINE — LOCAL CLI
+==========================
+Run from the repository, or pass the absolute path to bin/theatre.mjs.
+No paid provider, writing agent or cloud service is used to render.
+
+SETUP
+  Install Node >=22.12 and FFmpeg + ffprobe on PATH.
+  node tools/setup.mjs
+  node bin/theatre.mjs doctor
+  npm start
+OS launchers in launchers/ set up packages/browser and open the GUI.
+Setup downloads dependencies once. Flite needs no Python or model downloads.
+Optional Kokoro: Python 3.10–3.12, then python tools/setup_voice.py.
+
+AUTHOR
+  node bin/theatre.mjs select book-duet --seed 42 --out script.json
+  node bin/theatre.mjs validate script.json --json
+Templates: book-duet (1 comic), fireside-reader (1), page-tour (2–3).
+Selected scripts contain placeholders: replace the dialogue before publishing.
+--out refuses to overwrite an existing file. The GUI also edits/downloads JSON.
+
+RENDER
+  node bin/theatre.mjs render script.json --preview --json
+  node bin/theatre.mjs render script.json --voice flite --output-dir ./films --json
+Voices: flite (default, free on-device WASM), kokoro (optional local installation),
+recorded (every spoken line must have an audio filename).
+Recorded paths are relative to the input JSON, never machine-global paths.
+--preview preserves the entire film at 432x540/12fps.
+Normal defaults: 1080x1350/24fps. JSON output fields may override these defaults.
+Duration follows actual measured audio/reactions. Safety bound: 600 seconds.
+
+BATCH
+  node bin/theatre.mjs batch examples/batch.json --preview --json
+  node bin/theatre.mjs batch batch.json --output-dir ./films --json
+Manifest is an array of 1–100 jobs:
+  [
+    {"input":"episode-001.json"},
+    {"input":"episode-002.json","voice":"recorded"}
+  ]
+Paths resolve beneath the manifest's directory. Each entry runs sequentially;
+a failed entry is reported and later entries continue. Successful videos remain.
+Batch output reports each result. Check exit code AND individual results.
+Jobs sharing one output directory use a production lock. Separate output roots
+can run concurrently, but you must budget your CPU/GPU/RAM accordingly.
+
+STATUS / RECOVERY
+  node bin/theatre.mjs status --json
+  node bin/theatre.mjs status RUN_ID --output-dir ./films --json
+  node bin/theatre.mjs resume RUN_ID --output-dir ./films --json
+Use the same output directory as render/batch. Default is this repo's output/.
+Interrupted jobs retain stage checkpoints. Resume rechecks dependencies/hashes;
+it does not label a missing/damaged final video as completed.
+
+MACHINE INTERFACE
+All commands accept --json: one JSON value on stdout. Progress/errors use stderr.
+Exit 0: success. Exit 1: runtime/production failure, including any failed batch job.
+Exit 2: command, input JSON/contract or manifest error. Ctrl+C normally exits 130.
+Use --help for syntax; invalid commands/options return actionable help.
+GUI --json prints its startup result and keeps serving until stopped.
+
+OPTIONAL LOCAL WRITER
+  node bin/theatre.mjs draft --template book-duet --seed 42 --out episode.json
+Copy writer.example.json to ignored writer.local.json and set your installed,
+image-capable local model. Only loopback endpoints are allowed. No model is
+required when you write JSON or use the GUI. Review generated dialogue yourself.
+
+ASSETS / WEB
+  node bin/theatre.mjs assets --json
+  npm run build
+dist/ is the static on-device website. It has no rendering server/Worker compute.
+Browser export is real-time, lower resolution, and requires a visible awake tab.
+It downloads actual WebM or MP4 according to browser support; no disguised format.
+Use desktop CLI for large automation batches and verified frame-exact MP4.
+See README.md, TUTORIAL.md and DEV/ for architecture and platform limitations.

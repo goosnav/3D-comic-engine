@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theatre-runtime" content="desktop">
+  <title>Comic Theatre · Local studio</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <header class="masthead">
+    <div><p class="eyebrow">A small local studio</p><h1>Comic Theatre</h1></div>
+    <span class="local-badge">Local render · your pages, your words</span>
+  </header>
+  <main>
+    <section class="intro" aria-label="How it works">
+      <p class="lede">Pick a page. Give it a voice.</p>
+      <p>Choose real comic pages, write a reading, then generate a film. Manual authoring needs no writing agent. AI drafting is optional and runs only when you request it.</p>
+    </section>
+    <div class="workspace">
+      <section class="panel sources" aria-labelledby="sources-heading">
+        <div class="section-heading"><span class="step">01</span><h2 id="sources-heading">Choose your pages</h2></div>
+        <fieldset id="source-fields" disabled>
+          <label for="template">Template</label><select id="template"></select>
+          <p id="template-help" class="hint"></p>
+          <div class="field-pair">
+            <div><label for="scene">Scene</label><select id="scene"></select></div>
+            <div><label for="seed">Seed <span class="optional">optional</span></label><input id="seed" type="number" step="1" placeholder="Automatic"></div>
+          </div>
+          <button id="random" type="button" data-post>Random sample</button>
+          <p class="hint">Samples reviewed pages and creates an editable skeleton. Replaces the current selection and dialogue.</p>
+          <p id="edition" class="edition"></p>
+          <div id="gallery" class="gallery"><p class="muted">Loading the local catalog…</p></div>
+        </fieldset>
+      </section>
+      <section class="panel editor" aria-labelledby="editor-heading">
+        <div class="section-heading"><span class="step">02</span><h2 id="editor-heading">Write the reading</h2></div>
+        <div class="selection-box">
+          <h3>Selected pages</h3><div id="selected-pages" aria-live="polite">No pages selected.</div>
+          <p id="selection-help" class="hint"></p>
+          <p class="hint">Source locking: the server records the exact page IDs and hashes. Drafting must keep this selection. No silent swaps; only your explicit selection or JSON edits change pages.</p>
+          <div id="source-lock" class="source-lock">Validate to record a source lock.</div>
+        </div>
+        <fieldset id="author-fields" disabled>
+          <label for="title">Film title</label><input id="title" type="text" maxlength="500" autocomplete="off">
+          <div class="subheading"><h3>Clothing colors</h3></div>
+          <div class="field-pair">
+            <div><label for="reader-clothing">Reader clothing</label><select id="reader-clothing"></select></div>
+            <div><label for="friend-clothing">Friend clothing</label><select id="friend-clothing"></select></div>
+          </div>
+          <p class="hint">Choose clothes and either white or beady eyes. The friend appears in two-person templates.</p>
+          <div class="end-card-fields">
+            <h3>End card</h3>
+            <label class="check-label" for="end-card-enabled"><input id="end-card-enabled" type="checkbox">Show end card</label>
+            <label for="product">Product</label><select id="product"><option value="book2">Goosnav Book Two</option></select>
+            <div class="field-pair">
+              <div><label for="end-card-title">End-card title</label><input id="end-card-title" type="text" autocomplete="off"></div>
+              <div><label for="end-card-seconds">End-card seconds</label><input id="end-card-seconds" type="number" step="any" inputmode="decimal"></div>
+            </div>
+            <label for="end-card-text">End-card text</label><textarea id="end-card-text" rows="2"></textarea>
+            <label for="end-card-url">End-card URL</label><input id="end-card-url" type="text" autocomplete="off" spellcheck="false">
+            <p class="hint">Plain text shown after the reading. Turning the card off keeps your wording for later.</p>
+          </div>
+          <div class="subheading"><h3>Dialogue</h3><button id="add-line" type="button">Add dialogue</button></div>
+          <div id="dialogue"></div>
+          <p class="hint">Each selected page needs dialogue. A line without a page reference continues the current page. Auto chooses a shot; Source shows the exact page artwork. Use JSON for book actions, recorded audio paths, pauses, and advanced <code>face</code> / <code>reaction</code> objects. Those fields survive form edits.</p>
+        </fieldset>
+        <div class="json-heading"><h3><label for="script-json">Public script JSON</label></h3><span id="json-state" class="muted">In sync</span></div>
+        <p id="json-help" class="hint">Form edits update JSON immediately. While JSON has unapplied edits, form controls pause. Apply or revert to continue; job updates never touch your script. Validate records server defaults and a sourceLock. Imported and pasted locks are preserved. To intentionally select new sources, use the page/template controls or explicitly remove sourceLock in JSON, then validate.</p>
+        <textarea id="script-json" class="code-editor" spellcheck="false" aria-describedby="json-help" rows="15" disabled></textarea>
+        <div class="toolbar">
+          <button id="apply-json" type="button">Apply JSON</button>
+          <button id="revert-json" type="button">Revert JSON</button>
+          <button id="download-json" type="button">Download JSON</button>
+          <label class="file-label" for="upload-json">Upload JSON<input id="upload-json" type="file" accept=".json,application/json"></label>
+        </div>
+        <p class="hint">Upload replaces the editor after checking the file and preserves its source lock. Validate checks that saved sources still match; a stale lock is rejected. Download saves the current applied script. Save a copy before requesting a new draft.</p>
+        <div class="production">
+          <div><label for="voice">Voice</label><select id="voice"><option value="flite">On-device Flite (no model needed)</option><option value="kokoro">Local Kokoro (optional install)</option><option value="recorded">Recorded audio paths in JSON</option></select></div>
+          <p class="hint">Generate uses local voices and rendering, with no writing agent or paid calls. Desktop offers optional Kokoro or recorded files; browser mode uses built-in Flite.</p>
+          <div class="toolbar">
+            <button id="validate" type="button" data-post>Validate</button>
+            <button id="draft" type="button" data-post>AI Draft</button>
+            <button id="generate" class="primary" type="button" data-post>Generate video</button>
+          </div>
+          <p class="hint">Desktop AI Draft explicitly requests your optional local model and replaces dialogue for the selected pages. Manual writing and rendering need no model.</p>
+        </div>
+        <p id="editor-status" class="status" role="status" aria-live="polite">Connecting to the local theatre…</p>
+        <button id="retry" type="button" hidden>Retry connection</button>
+      </section>
+    </div>
+    <section class="panel jobs-panel" aria-labelledby="jobs-heading">
+      <div class="subheading"><div class="section-heading"><span class="step">03</span><h2 id="jobs-heading">Screening room</h2></div><button id="refresh-jobs" type="button">Refresh jobs</button></div>
+      <p class="hint">Render jobs update automatically. You can keep editing while a submitted script renders.</p>
+      <p id="jobs-status" class="status" role="status" aria-live="polite"></p>
+      <p id="device-note" class="hint" hidden>Everything runs on this device. Keep this tab visible and the screen unlocked while exporting. Browser export uses a 432×540 / 12 fps preset and may drop frames on slow devices. Download finished videos before closing the page. Your JSON draft is saved in this browser when storage is available.</p>
+      <canvas id="device-canvas" hidden aria-label="Current on-device export" style="width:min(100%,432px);height:auto"></canvas>
+      <div id="jobs" class="jobs"><p class="muted">No jobs loaded yet.</p></div>
+    </section>
+  </main>
+  <footer>Original source art stays unchanged. Review the selected pages and your script before generating.</footer>
+  <noscript>This on-device editor needs JavaScript enabled to load the catalog and render your script.</noscript>
+</body>
+</html>

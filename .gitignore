@@ -1,0 +1,26 @@
+node_modules/
+dist/
+.superpowers/
+.wrangler/
+.venv/
+.cache/
+output/
+.local/
+*.local.json
+__pycache__/
+
+# Portable reviewed snapshots must override the parent studio's media ignores.
+!/assets/actor.glb
+!/assets/actor-blue.glb
+!/assets/actor-rust.glb
+!/assets/actor-olive.glb
+!/assets/actor-blue-beady.glb
+!/assets/actor-rust-beady.glb
+!/assets/actor-olive-beady.glb
+!/assets/book.glb
+!/assets/library.glb
+!/assets/book-front.jpg
+!/assets/book2-item.mp4
+!/assets/comics/book2-020.jpg
+!/assets/comics/book2-036.jpg
+!/assets/comics/book2-095.jpg

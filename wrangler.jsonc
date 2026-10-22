@@ -1,0 +1,6 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "goosnav-3d-comic-engine",
+  "compatibility_date": "2026-10-21",
+  "assets": { "directory": "./dist" }
+}
