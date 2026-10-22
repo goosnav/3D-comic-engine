@@ -125,7 +125,7 @@ test('real MP4 endcard: decoded absolute seeks, full resolution, authored copy, 
     const results = [];
     for (const url of ['/missing.mp4', '/stalled.mp4', '/stalled-body.mp4']) {
       const start = performance.now();
-      try { (await loadEndcardVideo(url)).dispose(); results.push({ rejected: false }); }
+      try { (await loadEndcardVideo(url, { timeoutMs: 250 })).dispose(); results.push({ rejected: false }); }
       catch (error) { results.push({ rejected: true, elapsed: performance.now() - start, message: error.message }); }
     }
     try { createEndcard({ width: 1080, height: 1350, card: {} }); results.push({ rejected: false }); }

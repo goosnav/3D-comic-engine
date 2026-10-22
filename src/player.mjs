@@ -183,11 +183,12 @@ function validate(timeline, catalog) {
   return comics;
 }
 
-export async function createPlayer(canvas, { timeline: input, catalog, assetBase = '' }) {
+export async function createPlayer(canvas, { timeline: input, catalog, assetBase = '', onProgress = () => {}, signal }) {
   // Own a stable snapshot: host edits must create a new player, never alter a capture.
   const timeline = structuredClone(input);
   timeline.events?.sort((a, b) => a.start - b.start);
   const comics = validate(timeline, catalog);
+  const loading = message => { signal?.throwIfAborted(); onProgress(message, { phase: 'loading', progress: null, message }); };
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0x192929);
   const insertScene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(38, timeline.width / timeline.height, .04, 30);
@@ -208,13 +209,16 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
     const loader = new GLTFLoader(manager), actorModels = new Map();
     const selections = timeline.cast.map(id => actorAsset(catalog, timeline, id));
     for (const { asset } of selections) if (!actorModels.has(asset.path)) {
+      loading('Loading actor model');
       const gltf = await loader.loadAsync(assetURL(assetBase, asset.path));
       actorModels.set(asset.path, gltf.scene); loadedRoots.push(gltf.scene);
     }
+    loading('Loading book');
     const bookGLTF = await loader.loadAsync(assetURL(assetBase, catalog.assets.book.path));
     loadedRoots.push(bookGLTF.scene);
     const textureLoader = new THREE.TextureLoader(manager);
     for (const id of timeline.sources || []) {
+      loading(`Loading comic page ${id}`);
       const texture = await textureLoader.loadAsync(assetURL(assetBase, comics.get(id).path));
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.generateMipmaps = false; texture.minFilter = THREE.LinearFilter;
@@ -223,11 +227,13 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
     if (timeline.events.some(e => e.type === 'endcard' && endCardFields(timeline, e).enabled)) {
       for (const [key, family, weight] of [['serifFont', 'ComicTheatreTimes', '400'], ['sansFont', 'ComicTheatreSans', '700']]) {
         if (!catalog.assets[key]?.path) continue; // Old catalogs retain system Times-compatible fallback.
+        loading(`Loading endcard font ${family}`);
         const font = new FontFace(family, `url(${JSON.stringify(assetURL(assetBase, catalog.assets[key].path))})`, { weight });
         await font.load(); document.fonts.add(font); fonts.push(font);
       }
       if (!catalog.assets.endCardVideo?.path) throw new Error('Endcard needs the catalog spinning-product video');
-      endcardVideo = await loadEndcardVideo(assetURL(assetBase, catalog.assets.endCardVideo.path));
+      loading('Loading endcard video');
+      endcardVideo = await loadEndcardVideo(assetURL(assetBase, catalog.assets.endCardVideo.path), { signal });
     }
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, preserveDrawingBuffer: true });
     renderer.setPixelRatio(1); renderer.setSize(timeline.width, timeline.height, false);

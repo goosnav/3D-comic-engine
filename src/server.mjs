@@ -42,7 +42,7 @@ export async function startServer({port=0,outputRoot=OUTPUT,renderCatalog}={}){
    if(assets.has(p)){res.writeHead(200,{'Content-Type':types[path.extname(p)]??'application/octet-stream','Content-Length':assets.get(p).length,'X-Content-Type-Options':'nosniff'});res.end(assets.get(p));return;}
    const web={'/':'web/index.html','/app.mjs':'web/app.mjs','/style.css':'web/style.css'};
    if(web[p])return file(req,res,await safePath(ROOT,web[p]));
-   if(['/src/player.mjs','/src/actor.mjs','/src/facial-performance.mjs','/src/endcard.mjs','/src/endcard-video.mjs','/src/book.mjs','/src/book-pages.mjs'].includes(p)||p.startsWith('/node_modules/three/')&&p.endsWith('.js'))return file(req,res,await safePath(ROOT,p.slice(1)));
+   if(['/src/contracts.mjs','/src/player.mjs','/src/actor.mjs','/src/facial-performance.mjs','/src/endcard.mjs','/src/endcard-video.mjs','/src/book.mjs','/src/book-pages.mjs'].includes(p)||p.startsWith('/node_modules/three/')&&p.endsWith('.js'))return file(req,res,await safePath(ROOT,p.slice(1)));
    json(res,404,{error:'Not found'});
   }catch(e){if(!res.headersSent)json(res,e.code==='ENOENT'?404:400,{error:e.message});else res.destroy();}
  });

@@ -2,22 +2,43 @@ import { resolveScript } from '../src/contracts.mjs';
 import { compileTimeline } from '../src/timeline.mjs';
 import { createPlayer } from '../src/player.mjs';
 import { prepareSpeech } from './voice.mjs';
-
-const MIME_TYPES = ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus',
-  'video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm'];
+import { createRecorder, supportedRecordingTypes } from './recording.mjs';
+import { prepareMusic } from './music.mjs';
 
 /** Catalog bytes must already be verified by the browser asset adapter.
  * The caller owns catalog blob URLs and any supplied AudioContext.
  * onProgress receives (message, {phase, progress: 0..1, message}).
  */
-export async function exportFilm({ canvas, script: input, catalog: inputCatalog, assetBase = '',
-  onProgress = () => {}, signal, audioContext } = {}) {
+class RecorderStartupError extends Error {}
+
+export async function exportFilm(options = {}) {
+  options.signal?.throwIfAborted();
+  const types = supportedRecordingTypes();
+  // Snapshot once across fallback attempts; never consume later editor edits.
+  const frozen = { ...options, script: structuredClone(options.script), catalog: structuredClone(options.catalog) };
+  if (!types.length) return recordFilm(frozen);
+  let lastError;
+  for (const [index, mimeType] of types.entries()) {
+    try { return await recordFilm(frozen, mimeType); }
+    catch (error) {
+      if (!(error instanceof RecorderStartupError) || options.signal?.aborted) throw error;
+      lastError = error;
+      if (index + 1 < types.length) {
+        const message = 'Video encoder could not start; trying the next supported format from the beginning';
+        options.onProgress?.(message, { phase: 'encoder', progress: null, message });
+      }
+    }
+  }
+  throw new Error(`No supported video encoder could start: ${lastError.message}`);
+}
+
+async function recordFilm({ canvas, script: input, catalog: inputCatalog, assetBase = '',
+  onProgress = () => {}, signal, audioContext, music } = {}, requestedMime) {
   signal?.throwIfAborted();
   if (document.hidden) throw new Error('Keep the export tab visible; background recording is unsupported');
   if (!canvas?.captureStream || !globalThis.MediaRecorder || !globalThis.AudioContext) {
     throw new Error('This browser does not support canvas/audio recording');
   }
-  const requestedMime = MIME_TYPES.find(type => MediaRecorder.isTypeSupported(type));
   if (!requestedMime) throw new Error('No supported audio/video recording codec is available');
   // Freeze host edits before the first asynchronous boundary.
   const catalog = structuredClone(inputCatalog), script = resolveScript(structuredClone(input), catalog);
@@ -57,11 +78,17 @@ export async function exportFilm({ canvas, script: input, catalog: inputCatalog,
     await guard(context.resume(), 10000);
     if (context.state !== 'running') throw new Error('Audio is suspended; start export from a user gesture');
     audioRunning = true;
+    report('speech', 0, 'Starting on-device voices');
     const takes = await guard(prepareSpeech(script, { signal: controller.signal, onProgress }), 600000);
     const timeline = compileTimeline(script, takes);
     if (timeline.duration > 600) throw new Error('Episode exceeds the 600-second resource safety bound; split into episodes');
-    report('loading', 0, 'Loading the scene');
-    player = await guard(createPlayer(canvas, { timeline, catalog, assetBase }).then(value => {
+    let musicBuffer;
+    if (music) {
+      report('music', null, 'Preparing quiet background music');
+      musicBuffer = await guard(prepareMusic(context, music, { signal: controller.signal, maxSeconds: timeline.frames / timeline.fps }));
+    }
+    report('loading', null, 'Loading the scene');
+    player = await guard(createPlayer(canvas, { timeline, catalog, assetBase, onProgress, signal: controller.signal }).then(value => {
       if (failure || finished) { value.dispose(); throw failure ?? new Error('Export already ended'); }
       return value;
     }));
@@ -74,6 +101,7 @@ export async function exportFilm({ canvas, script: input, catalog: inputCatalog,
     };
     // Warm each scene/shot/speaker combination, including source inserts and
     // the end card's text/video materials, before starting either media clock.
+    report('warming', null, 'Preparing cameras and graphics');
     const warmed = new Set();
     for (const event of timeline.events) {
       const kind = event.type === 'endcard' ? 'endcard' : event.type === 'source' ? 'source' : 'scene';
@@ -100,9 +128,14 @@ export async function exportFilm({ canvas, script: input, catalog: inputCatalog,
     let bytes = 0, resolveStart, resolveStop;
     const started = new Promise(resolve => { resolveStart = resolve; });
     stopped = new Promise(resolve => { resolveStop = resolve; });
-    recorder = new MediaRecorder(stream, { mimeType: requestedMime, videoBitsPerSecond: 2500000, audioBitsPerSecond: 128000 });
-    listen(recorder, 'start', resolveStart);
-    listen(recorder, 'error', event => fail(event.error ?? new Error('MediaRecorder failed')));
+    try { recorder = createRecorder(stream, MediaRecorder, [requestedMime]); }
+    catch (error) { throw new RecorderStartupError(error.message, { cause: error }); }
+    let recorderStarted = false;
+    listen(recorder, 'start', () => { recorderStarted = true; resolveStart(); });
+    listen(recorder, 'error', event => {
+      const error = event.error ?? new Error('MediaRecorder failed');
+      fail(recorderStarted ? error : new RecorderStartupError(error.message, { cause: error }));
+    });
     listen(recorder, 'dataavailable', event => {
       if (event.data.size) { chunks.push(event.data); bytes += event.data.size; }
       if (bytes > 256 * 1024 * 1024) fail(new Error('Browser export exceeded its 256 MiB recording memory bound'));
@@ -120,7 +153,13 @@ export async function exportFilm({ canvas, script: input, catalog: inputCatalog,
       source.onended = () => { ended++; };
       sources.push({ source, start: event.start });
     }
-    recorder.start(250);
+    if (musicBuffer) {
+      const source = context.createBufferSource(); source.buffer = musicBuffer; source.connect(destination);
+      source.onended = () => { ended++; };
+      sources.push({ source, start: 0 });
+    }
+    try { recorder.start(250); }
+    catch (error) { throw new RecorderStartupError(error.message, { cause: error }); }
     // start() begins native collection immediately. Its event can be delayed
     // by GPU work; using that callback as the origin records avoidable silence.
     const origin = context.currentTime + .1, duration = timeline.frames / timeline.fps;
@@ -170,6 +209,7 @@ export async function exportFilm({ canvas, script: input, catalog: inputCatalog,
     await guard(new Promise(resolve => {
       raf = requestAnimationFrame(() => { raf = requestAnimationFrame(resolve); });
     }));
+    report('encoding', null, 'Finishing the video file');
     stopping = true;
     recorder.stop();
     await guard(stopped, 10000);

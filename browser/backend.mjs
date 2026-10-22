@@ -1,5 +1,6 @@
 import {resolveScript,selectScript} from '../src/contracts.mjs';
 import {verifyAssetCatalog} from './assets.mjs';
+import {progressReporter} from './progress.mjs';
 
 async function waitForAudio(promise,signal){
  let timer,abort;
@@ -36,20 +37,22 @@ export function createBrowserBackend({catalog,canvas,onChange=()=>{}}){
    // Called directly from the Generate click before the first awaited operation.
    const audioContext=new Audio();const resumed=audioContext.resume();
    const controller=new AbortController(),id=`device-${Date.now()}-${crypto.randomUUID().slice(0,8)}`;
-   const job={id,status:'running',progress:'Checking source assets',script};jobs.unshift(job);controllers.set(id,controller);onChange();
+   const job={id,status:'running',startedAt:Date.now(),script};jobs.unshift(job);controllers.set(id,controller);
+   const report=progressReporter(job,onChange);report('Starting audio',{phase:'audio',progress:null});
    void(async()=>{
     let snapshot;
     try{
      await waitForAudio(resumed,controller.signal);controller.signal.throwIfAborted();
-     snapshot=await verifyAssetCatalog(catalog,{signal:controller.signal});
+     report('Checking selected source assets',{phase:'assets',progress:0});
+     snapshot=await verifyAssetCatalog(catalog,{script,signal:controller.signal,onProgress:report});
      const {exportFilm}=await import('./export.mjs');
-     const result=await exportFilm({canvas,script,catalog:snapshot.catalog,assetBase:'',audioContext,signal:controller.signal,onProgress:value=>{job.progress=typeof value==='object'?`${value.message} · ${Math.round(value.progress*100)}%`:value;onChange();}});
+     const result=await exportFilm({canvas,script,catalog:snapshot.catalog,assetBase:'',audioContext,music:data.music,signal:controller.signal,onProgress:report});
      controller.signal.throwIfAborted();
      job.video=URL.createObjectURL(result.blob);urls.add(job.video);
      job.filename=`${script.title.normalize('NFKD').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'').slice(0,70)||'comic'}-${id}.${result.extension}`;
-     job.status='complete';job.progress='Ready — download before closing this page.';
+     job.status='complete';report(`Ready — ${result.extension.toUpperCase()}. Download before closing this page.${result.extension==='webm'?' This browser cannot start MP4 recording; desktop export always produces MP4.':''}`,{phase:'complete',progress:1});
     }catch(e){job.status=controller.signal.aborted?'cancelled':'failed';job.error=e.message;}
-    finally{snapshot?.dispose();if(audioContext.state!=='closed')await audioContext.close().catch(()=>{});controllers.delete(id);onChange();}
+    finally{snapshot?.dispose();if(audioContext.state!=='closed')await audioContext.close().catch(()=>{});controllers.delete(id);job.finishedAt=Date.now();onChange();}
    })();
    return {id,status:job.status};
   }

@@ -12,6 +12,9 @@ import { compileTimeline } from '../src/timeline.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 async function fixture(t) {
   const catalog = JSON.parse(await readFile(resolve(root, 'assets/catalog.json'), 'utf8'));
+  // This composition fixture deliberately frames PDF pages 24, 40 and 99.
+  // Catalog order now includes the entire book, so select by stable identity.
+  catalog.comics = ['book2-020', 'book2-036', 'book2-095'].map(id => catalog.comics.find(c => c.id === id));
   const server = createServer(async (req, res) => {
     try {
       const pathname = new URL(req.url, 'http://localhost').pathname;

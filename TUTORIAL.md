@@ -1,6 +1,6 @@
 # From a comic to a conversation
 
-Comic Theatre is an experimental local cutscene engine. You write a small JSON
+3D Comic Engine is an on-device cutscene engine. You write a small JSON
 script (or use the editor), select real comics, and let reusable code perform it.
 The renderer never asks Codex, Claude or a paid API to animate. Local voice synthesis
 is automatic after setup. Optional AI writing is a separate button/command.
@@ -16,7 +16,7 @@ portable but has not yet been exercised on those operating systems.
 Clone `goosnav/3D-comic-engine`, then enter its root directory. Its `assets/` contains the character,
 book, environment export and verified comic excerpts; there are no runtime links
 to another checkout, a home directory, or archived models. The directory is about
-38 MB before dependencies. Node packages, browser binaries and optional voice weights are
+46 MB before dependencies. Node packages, browser binaries and optional voice weights are
 installed once, not checked in.
 
 ```sh
@@ -61,11 +61,16 @@ The launcher opens the browser. If it cannot, open the printed loopback address,
 `http://127.0.0.1:8777`. Keep the terminal open while jobs run. This is a local app,
 not a public web service: do not expose its port to the internet. No account needed.
 
-Choose a template, then select comic thumbnails or use **Random selection**. The
-gallery shows the actual image, printed/PDF page numbers, stable ID and transcript.
-Write dialogue rows, choose speaker/emotion/gesture, or edit the JSON directly.
-Validate, download a copy of your script, and generate the video. The jobs area
-shows progress/errors and the completed MP4. UI labels may be shortened to fit.
+Choose a template, then open the **Page** dropdown and scroll through book order,
+or use **Random sample**. Only selected pages show a preview, with printed/PDF
+page numbers and a stable ID. Clicking the artwork does not leave the editor.
+The page-tour template supports two or three pages: use **+ Add page** to add a row.
+Write dialogue with **+ Add dialogue**; speaker, emotion, gesture and shot are dropdowns.
+You can still edit JSON directly. Validate, download a copy of your script, and
+generate the video. The jobs area shows named loading stages and progress bars.
+Percentages describe the current stage; an indeterminate bar means the stage's
+remaining work cannot yet be measured. Browser downloads prefer compatible MP4,
+with clearly labeled WebM fallback. Desktop downloads are MP4.
 The clothing selectors distinguish the readers without changing their familiar
 silhouette. The end-card fields edit the closing title, supporting text, URL and
 duration; disabling the card never removes dialogue.
@@ -85,7 +90,10 @@ It does not silently replace manual work or activate while rendering.
 The template provides cast, voice defaults and compatible staging. You do not need
 to specify models, rigs, camera coordinates, lighting or frame numbers.
 
-Current comic IDs:
+Book Two comic IDs run from `book2-001` through `book2-141`, corresponding to
+printed pages 1 through 141. PDF pages are separate (printed page + 4).
+The title, copyright and final blank pages are also available manually, but never
+selected by Random sample. Examples with reviewed transcripts:
 
 | ID | Printed page | Subject |
 | --- | --- | --- |
@@ -93,10 +101,21 @@ Current comic IDs:
 | `book2-036` | 36 | The brain parasite's advice |
 | `book2-095` | 95 | Repainting white walls eggshell versus ivory |
 
-These are the deliberately small **reviewed selection**, not a claim that the book
-contains only three comics. See `assets/catalog.json` for exact PDF locators and
-hashes. Additional pages need the review procedure in section 9 before random
-selection can use them.
+All 144 interior images are exact source JPEGs checked against the matching
+embedded book pages. Only the three examples above have reviewed transcripts;
+other pages say **not transcribed**, not an invented description. Look at the
+selected image and write the reading yourself. See `assets/catalog.json` for
+exact locators, hashes and provenance.
+
+### Optional background music (website)
+
+Choose an audio file under **Background music** before Generate. The engine uses
+the beginning of the track, ends it with the film (or earlier if the file is short),
+and keeps it quiet beneath the voices. No upload or paid service is involved.
+Use a browser-supported MP3, WAV, M4A or Ogg file, at most 15 MiB and three minutes.
+Clear the attachment to render without it. Reattach it after reloading: neither
+the file nor its machine-specific path is stored in script JSON. Desktop music
+attachment is not implemented; this control is only shown in website mode.
 
 ## 4. The smallest useful script
 
@@ -335,14 +354,27 @@ verification to get around an asset mismatch.
 
 ## 9. How source consistency works—and how to add a comic
 
-One stable comic ID connects: GUI thumbnail → transcript/source packet → selected
+One stable comic ID connects: selected-page preview → source packet → selected
 JSON → writer image → book page → source insert → final receipt. PDF hash, PDF page,
 printed page and image hash are recorded separately so similarly named editions
 cannot be silently mixed. Rendering verifies actual bytes, not filenames alone,
 including the JPEG embedded in the physical book GLB. A render serves a frozen
 snapshot of verified assets so a mid-render file edit cannot swap its source.
 
-To extend the reviewed catalog, this is a one-time development/content-curation
+The full supplied Book Two interior is already included. To reimport its exact
+bytes from an explicit canonical asset checkout, run:
+
+```sh
+node tools/import-book-pages.mjs /path/to/goosnav-3D-assets
+npm run verify:assets
+```
+
+That path is a development-time input, never a runtime dependency. The importer
+checks the edition PDF hash, manifest order, existing image hashes and embedded
+book mapping before writing. It preserves reviewed annotations; it does not OCR
+or invent transcripts. `verified` means source/page identity, not transcript review.
+
+To extend the reviewed annotations or add a different edition, this is a development/content-curation
 step, not something an AI writer can do during a run:
 
 1. Locate the exact supplied edition and its provenance. Never infer membership

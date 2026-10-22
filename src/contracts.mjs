@@ -68,7 +68,7 @@ export function resolveScript(raw,catalog){
 }
 export function selectScript(template,seed=randomInt(0,2147483647),catalog){
  const t=catalog.templates.find(t=>t.id===template);if(!t)fail('Unknown template');number(seed,0,4294967295,'seed');const rand=seeded(seed);
- const pool=catalog.comics.filter(c=>c.verified);for(let i=pool.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+ const pool=catalog.comics.filter(c=>c.verified&&(!c.kind||c.kind==='comic'));for(let i=pool.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
  if(pool.length<t.minComics)fail('Not enough verified comics for this template');
  const comics=pool.slice(0,t.minComics).map(c=>c.id);
  return resolveScript({template,title:'New comic conversation',comics,seed,lines:comics.map(comic=>({speaker:'reader',comic,text:'Write your commentary here.'}))},catalog);

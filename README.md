@@ -12,7 +12,7 @@ shots and timing. The desktop and browser share the same animation engine.
 | Mode | Requirements | Speech and export |
 | --- | --- | --- |
 | Desktop GUI / CLI | Node 22.12+, FFmpeg + ffprobe, installed Chromium | Free Flite by default; optional Kokoro or recordings; verified MP4 |
-| Static website | Modern browser with WebGL2, WASM, Web Audio and MediaRecorder | Free Flite on device; negotiated WebM/MP4; lower-resolution real-time capture |
+| Static website | Modern browser with WebGL2, WASM, Web Audio and MediaRecorder | Free Flite on device; H.264/AAC MP4 preferred, WebM fallback; lower-resolution real-time capture |
 
 Browser mode needs **no local server installation**. Hosting only serves static
 files. Keep the tab visible and phone unlocked during recording; interruptions
@@ -82,13 +82,24 @@ free dependency downloads; rendering does not contact external services.
 **[Step-by-step JSON and GUI tutorial](TUTORIAL.md)**
 
 - Three templates: book duet, solo fireside reader, and multi-page tour.
-- Three verified Book Two excerpts with visible thumbnails, transcripts and hashes.
+- All 141 numbered Book Two pages, plus title/copyright/blank interiors, in book order.
+- Native page selectors and previews only for selected pages; random selection uses comics, not frontmatter.
+- Exact page hashes throughout. Three reviewed transcripts; other pages are explicitly not transcribed.
 - Six clothing/eye variants (blue/rust/olive; white or beady eyes).
 - Emotions, mouth motion, listening reactions and reusable book-animation rails.
 - Seeded camera compositions, including both readers and physical page close-ups.
 - Editable retro end card using the actual spinning-book video.
 - Exact source hashes and embedded-book page checks; no silent page substitutions.
 - Optional local image-capable writer; remote providers are rejected.
+- Named loading stages and real stage progress bars; unknown-duration work stays indeterminate.
+- Browser-only optional background music from your device, quietly mixed from the track's beginning.
+
+MP4 requires the browser to expose an H.264/AAC encoder. A generic MP4 container
+with unusual codecs is not substituted. Where compatible encoding is unavailable,
+the download is clearly labeled WebM; desktop always exports MP4. Browser background
+music accepts supported audio files up to 15 MiB and three minutes, uses only the
+part that fits the film, and never uploads the file. Attachments are session-only
+and are not embedded in portable JSON.
 
 Creative snapshots live in assets/, with editable originals already published in
 Goosnav-3D-assets. No archived model paths or sibling checkout is required.

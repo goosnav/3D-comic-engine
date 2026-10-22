@@ -27,13 +27,21 @@ page. These are portable snapshots, not runtime links to the source checkouts.
 - Reviewed pages: printed 20, 36 and 95; PDF pages 24, 40 and 99 respectively.
   Source PDF SHA-256 is recorded in the catalog. Verification establishes supplied
   file/page identity, not that a particular live store offer uses that edition.
+- Full interior inventory: all 144 unchanged JPEGs from `textures/book2_openable_v2/pages.json`,
+  checked against the edition hash and embedded book images. Includes numbered
+  pages 1–141 plus title, copyright and final blank. Only the three pages above
+  have reviewed transcripts; the rest are explicitly not transcribed.
 - Spinning-book end card: unchanged `videos/end-cards/book2-item.mp4` from
   Goosnav-3D-assets at `65f9ae1f791b86b5e2ce2b235ee0d2f00908557a`, bundled as
   `assets/book2-item.mp4` with its exact hash in the catalog. Runtime resolves
   the catalog entry; it does not require a source checkout or archived folder.
+- `assets/book2-item-browser.mp4` is a 432×540 baseline-H.264 derivative of that
+  same spinning-book video, preserving its full duration and imagery for the
+  browser's 432×540 preset. The original remains unchanged for desktop. Both
+  hashes and the derivative's source identity are recorded in the catalog.
 
-New source additions require manual image/transcript review and an exact embedded
-book-page match. See the tutorial. Changing a file without reviewing its catalog
+New source additions require an exact edition and embedded book-page match.
+Transcripts require separate manual review. See the tutorial. Changing a file without reviewing its catalog
 entry causes a deliberate validation error.
 
 ## Software and voice dependencies

@@ -100,6 +100,9 @@ async function fixture(t, { clock = false } = {}) {
         return res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfRcAAAAASUVORK5CYII=', 'base64'));
       }
       const files = { '/': 'web/index.html', '/app.mjs': 'web/app.mjs', '/style.css': 'web/style.css', '/web/app.mjs': 'web/app.mjs', '/web/style.css': 'web/style.css' };
+      if (path === '/src/contracts.mjs' || path === '/src/book-pages.mjs') {
+        res.writeHead(200, { 'Content-Type': 'text/javascript' }); return res.end(await readFile(new URL(path.slice(1), root)));
+      }
       if (files[path]) {
         const bytes = await readFile(new URL(files[path], root));
         res.writeHead(200, { 'Content-Type': path.endsWith('.mjs') ? 'text/javascript' : path.endsWith('.css') ? 'text/css' : 'text/html' });
@@ -126,7 +129,7 @@ async function fixture(t, { clock = false } = {}) {
   return { page, state, origin };
 }
 async function ready(page) {
-  await page.getByRole('heading', { name: 'Comic Theatre', exact: true }).waitFor();
+  await page.getByRole('heading', { name: '3D Comic Engine', exact: true }).waitFor();
   await page.locator('#template option[value="book-duet"]').waitFor({ state: 'attached' });
 }
 async function loadScript(page, value = script()) {
@@ -138,17 +141,19 @@ async function status(page, pattern) {
   await page.waitForFunction(source => new RegExp(source, 'i').test(document.querySelector('#editor-status').textContent), pattern);
 }
 
-test('catalog pages are actual asset thumbnails with literal transcripts; template changes preserve selected IDs', async t => {
+test('selected pages show actual previews with literal transcripts; template changes preserve selected IDs', async t => {
   const f = await fixture(t); if (!f) return;
   const { page, state } = f; await ready(page);
-  await page.locator('#gallery img').first().waitFor();
-  assert.equal(await page.locator('#gallery img').count(), 3);
+  assert.equal(await page.locator('#page-previews img').count(), 0);
+  await page.getByLabel('Page 1', { exact: true }).selectOption('page-a');
+  await page.waitForFunction(() => document.querySelector('#page-previews img')?.naturalWidth > 0);
+  assert.equal(await page.locator('#page-previews img').count(), 1);
   assert.ok(state.assets.includes('/assets/comics/page-a.png'));
-  assert.match(await page.locator('#gallery').textContent(), /PDF page 10/);
-  assert.match(await page.locator('#gallery').textContent(), /Printed page 8/);
-  assert.ok((await page.locator('#gallery').textContent()).includes(hostile));
-  await page.getByRole('checkbox', { name: 'Select page-a', exact: true }).check();
-  await page.getByRole('checkbox', { name: 'Select page-b', exact: true }).check();
+  assert.match(await page.locator('#page-previews').textContent(), /PDF page 10/);
+  assert.match(await page.locator('#page-previews').textContent(), /Printed page 8/);
+  assert.ok((await page.locator('#page-previews').textContent()).includes(hostile));
+  await page.getByRole('button', { name: '+ Add page', exact: true }).click();
+  await page.getByLabel('Page 2', { exact: true }).selectOption('page-b');
   await page.locator('#template').selectOption('fireside-reader');
   assert.deepEqual(JSON.parse(await page.locator('#script-json').inputValue()).comics, ['page-a', 'page-b']);
   assert.match(await page.locator('#selected-pages').textContent(), /page-a[\s\S]*page-b/);
@@ -161,12 +166,12 @@ test('catalog pages are actual asset thumbnails with literal transcripts; templa
 test('manual dialogue edits synchronize JSON; advanced fields and action rows survive form edits, upload and download', async t => {
   const f = await fixture(t); if (!f) return;
   const { page } = f; await ready(page);
-  await page.getByRole('checkbox', { name: 'Select page-a', exact: true }).check();
-  await page.getByRole('button', { name: 'Add dialogue', exact: true }).click();
+  await page.getByLabel('Page 1', { exact: true }).selectOption('page-a');
+  await page.getByRole('button', { name: '+ Add dialogue', exact: true }).click();
   await page.getByLabel('Line 1 text', { exact: true }).fill(hostile);
   await page.getByLabel('Line 1 speaker', { exact: true }).selectOption('friend');
-  await page.getByLabel('Line 1 emotion', { exact: true }).fill('dry');
-  await page.getByLabel('Line 1 gesture', { exact: true }).fill('shrug');
+  await page.getByLabel('Line 1 emotion', { exact: true }).selectOption('dry');
+  await page.getByLabel('Line 1 gesture', { exact: true }).selectOption('shrug');
   const authored = JSON.parse(await page.locator('#script-json').inputValue());
   assert.deepEqual(authored.lines[0], { speaker: 'friend', text: hostile, comic: 'page-a', emotion: 'dry', gesture: 'shrug' });
   authored.title = 'Advanced reading';
@@ -347,8 +352,7 @@ test('resolved drafts retain locks through dialogue edits and clear them only on
   const sampled = JSON.parse(await page.locator('#script-json').inputValue());
   assert.equal(sampled.sourceLock[0].id, 'page-b');
   assert.equal(sampled.lines[0].id, undefined);
-  await page.getByRole('checkbox', { name: 'Select page-b', exact: true }).uncheck();
-  await page.getByRole('checkbox', { name: 'Select page-a', exact: true }).check();
+  await page.getByLabel('Page 1', { exact: true }).selectOption('page-a');
   assert.equal(JSON.parse(await page.locator('#script-json').inputValue()).sourceLock, undefined);
   await page.getByLabel('Line 1 comic', { exact: true }).selectOption('page-a');
   await page.getByRole('button', { name: 'Validate', exact: true }).click();
@@ -418,8 +422,7 @@ for (const method of ['upload', 'paste']) {
     assert.deepEqual(JSON.parse(await page.locator('#script-json').inputValue()).sourceLock, saved.sourceLock, 'Failed validation must not rebind a stale saved script');
     await page.getByLabel('Line 1 text', { exact: true }).fill('Edited words, same source');
     assert.deepEqual(JSON.parse(await page.locator('#script-json').inputValue()).sourceLock, saved.sourceLock);
-    await page.getByRole('checkbox', { name: 'Select page-b', exact: true }).uncheck();
-    await page.getByRole('checkbox', { name: 'Select page-a', exact: true }).check();
+    await page.getByLabel('Page 1', { exact: true }).selectOption('page-a');
     await page.getByLabel('Line 1 comic', { exact: true }).selectOption('page-a');
     assert.equal(JSON.parse(await page.locator('#script-json').inputValue()).sourceLock, undefined, 'Explicit form reselection may clear the old lock');
     await page.getByRole('button', { name: 'Validate', exact: true }).click();
@@ -463,7 +466,6 @@ test('real server integration: source images, authenticated sample and validatio
   t.after(async () => { await context.close(); await server.close(); });
   const page = await context.newPage(); page.setDefaultTimeout(7000);
   await page.goto(server.url); await ready(page);
-  await page.waitForFunction(() => [...document.querySelectorAll('#gallery img')].every(img => img.complete && img.naturalWidth > 0));
   await page.locator('#seed').fill('7');
   await page.getByRole('button', { name: 'Random sample', exact: true }).click();
   await status(page, 'sample ready');
@@ -474,10 +476,9 @@ test('real server integration: source images, authenticated sample and validatio
   await page.getByRole('button', { name: 'Validate', exact: true }).click();
   await status(page, 'validation passed');
   assert.deepEqual(JSON.parse(await page.locator('#script-json').inputValue()).sourceLock, sampled.sourceLock);
-  const boxes = page.locator('#gallery input[type="checkbox"]');
-  const nextId = await boxes.evaluateAll((inputs, selected) => inputs.find(input => input.getAttribute('aria-label') !== `Select ${selected}`).getAttribute('aria-label').slice(7), sampled.comics[0]);
-  await page.getByRole('checkbox', { name: `Select ${sampled.comics[0]}`, exact: true }).uncheck();
-  await page.getByRole('checkbox', { name: `Select ${nextId}`, exact: true }).check();
+  await page.waitForFunction(() => { const images = [...document.querySelectorAll('#page-previews img')]; return images.length > 0 && images.every(img => img.complete && img.naturalWidth > 0); });
+  const nextId = await page.locator('#page-selectors select option').evaluateAll((options, selected) => options.find(option => option.value && option.value !== selected && !option.disabled).value, sampled.comics[0]);
+  await page.getByLabel('Page 1', { exact: true }).selectOption(nextId);
   await page.getByLabel('Line 1 comic', { exact: true }).selectOption(nextId);
   assert.equal(JSON.parse(await page.locator('#script-json').inputValue()).sourceLock, undefined);
   await page.getByRole('button', { name: 'Validate', exact: true }).click();

@@ -37,15 +37,20 @@ export async function verifyCatalog(catalog,root=ROOT){
   const p=await safePath(root,entry.path),b=await fs.readFile(p);
   if(b.subarray(0,80).toString().includes('version https://git-lfs.github.com'))throw Error(`${entry.path}: Git LFS pointer. Run git lfs pull.`);
   if(digest(b)!==entry.sha256)throw Error(`${entry.path}: source hash mismatch; restore the verified asset or review a new catalog version.`);
-  if(p.endsWith('.glb')){if(b.readUInt32LE(0)!==0x46546c67||b.readUInt32LE(4)!==2||b.readUInt32LE(8)!==b.length)throw Error('Invalid GLB');const j=JSON.parse(b.subarray(20,20+b.readUInt32LE(12)).toString());for(const r of [...(j.buffers??[]),...(j.images??[])])if(r.uri)throw Error(`${entry.path}: external GLB dependencies are not allowed; pack the GLB`);if(entry===catalog.assets.book)book={j,b,offset:28+b.readUInt32LE(12)};}
+  if(p.endsWith('.glb')){if(b.readUInt32LE(0)!==0x46546c67||b.readUInt32LE(4)!==2||b.readUInt32LE(8)!==b.length)throw Error('Invalid GLB');const j=JSON.parse(b.subarray(20,20+b.readUInt32LE(12)).toString());for(const r of [...(j.buffers??[]),...(j.images??[])])if(r.uri)throw Error(`${entry.path}: external GLB dependencies are not allowed; pack the GLB`);if(entry===catalog.assets.book)book=b;}
   results.push(entry.path);
  }
  if(!book)throw Error('Missing verified book GLB');
- for(const comic of catalog.comics){
-  const material=book.j.materials?.find(m=>m.name===`Comic page ${comic.pdfPage-2}`);
+ verifyBookPages(book,catalog.comics);
+ return results;
+}
+export function verifyBookPages(bytes,comics){
+ if(bytes.length<28||bytes.readUInt32LE(0)!==0x46546c67||bytes.readUInt32LE(4)!==2||bytes.readUInt32LE(8)!==bytes.length)throw Error('Invalid book GLB');
+ const book={b:bytes,j:JSON.parse(bytes.subarray(20,20+bytes.readUInt32LE(12)).toString()),offset:28+bytes.readUInt32LE(12)};
+ for(const comic of comics){
+  const material=book.j.materials?.find(m=>m.name===`Comic page ${String(comic.pdfPage-2).padStart(2,'0')}`);
   const texture=book.j.textures?.[material?.pbrMetallicRoughness?.baseColorTexture?.index];
   const image=book.j.images?.[texture?.source],view=book.j.bufferViews?.[image?.bufferView];
   if(!view||digest(book.b.subarray(book.offset+(view.byteOffset??0),book.offset+(view.byteOffset??0)+view.byteLength))!==comic.sha256)throw Error(`${comic.id}: embedded book page does not match the catalog image and PDF page. Review the source mapping.`);
  }
- return results;
 }

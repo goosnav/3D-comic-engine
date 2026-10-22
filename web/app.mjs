@@ -1,3 +1,5 @@
+import { EMOTIONS, GESTURES } from '../src/contracts.mjs';
+
 const $ = id => document.getElementById(id);
 const browserMode=document.querySelector('meta[name="theatre-runtime"]')?.content==='browser';
 let browserAPI;
@@ -9,7 +11,7 @@ const el = (tag, text, className) => {
   if (className) node.className = className;
   return node;
 };
-const state = { catalog: null, script: null, token: null, dirtyJSON: false, revision: 0, busy: false, connecting: false, polling: false };
+const state = { catalog: null, script: null, pageRows: [''], token: null, dirtyJSON: false, revision: 0, busy: false, connecting: false, polling: false };
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const clone = value => structuredClone(value);
 const stringify = value => JSON.stringify(value, null, 2);
@@ -154,7 +156,7 @@ function selectionErrors(script) {
   if (!template) return ['Choose a catalog template.'];
   const count = script.comics.length;
   if (count < template.minComics || count > template.maxComics) errors.push(`${template.id} needs ${template.minComics === template.maxComics ? template.minComics : `${template.minComics}–${template.maxComics}`} selected page(s); you have ${count}. Adjust the selection explicitly.`);
-  for (const id of script.comics) if (comicFor(id)?.verified !== true) errors.push(`Page ${id} is not verified. Select a reviewed source page.`);
+  for (const id of script.comics) if (comicFor(id)?.verified !== true) errors.push(`Page ${id} is not verified. Select a catalog-verified source page.`);
   if (script.scene && !template.scenes.includes(script.scene)) errors.push(`Scene ${script.scene} is unavailable for ${template.id}. Choose ${template.scenes.join(' or ')} or Template default.`);
   return errors;
 }
@@ -195,43 +197,66 @@ function choose(select, choices, value, blank) {
   select.value = value ?? '';
 }
 
-function renderGallery() {
+function updatePages(focusIndex = 0) {
+  const comics = state.pageRows.filter(Boolean);
+  if (JSON.stringify(comics) !== JSON.stringify(state.script.comics)) {
+    state.script.comics = comics;
+    delete state.script.sourceLock;
+    changed();
+  }
+  renderPages(); renderLines();
+  $(`page-${focusIndex}`)?.focus();
+}
+function renderPages() {
   $('edition').textContent = state.catalog.edition?.title ?? 'Local source catalog';
-  $('gallery').replaceChildren();
-  if (!state.catalog.comics.length) $('gallery').append(el('p', 'No source pages in this catalog. Ask the server operator to add reviewed assets.', 'muted'));
-  for (const comic of state.catalog.comics) {
-    const card = el('article', undefined, 'comic');
-    card.dataset.comicId = comic.id;
+  const selectors = $('page-selectors'); selectors.replaceChildren();
+  const sorted = [...state.catalog.comics].sort((a, b) => (Number.isFinite(a.pdfPage) ? a.pdfPage : Infinity) - (Number.isFinite(b.pdfPage) ? b.pdfPage : Infinity) || a.id.localeCompare(b.id));
+  state.pageRows.forEach((id, index) => {
+    const row = el('div', undefined, 'page-row');
+    const select = el('select'); select.id = `page-${index}`;
+    choose(select, sorted.map(comic => ({ id: comic.id, label: `PDF ${comic.pdfPage ?? '?'} · ${comic.title} · ${comic.id}${comic.verified === true ? '' : ' (unverified)'}` })), id, 'Choose a page…');
+    for (const entry of select.options) if (entry.value) entry.disabled = comicFor(entry.value)?.verified !== true || state.pageRows.some((value, i) => i !== index && value === entry.value);
+    select.addEventListener('change', () => { state.pageRows[index] = select.value; updatePages(index); });
+    const remove = el('button', 'Remove'); remove.type = 'button'; remove.setAttribute('aria-label', `Remove page ${index + 1}`);
+    remove.disabled = state.pageRows.length === 1 && !id;
+    remove.addEventListener('click', () => {
+      state.pageRows.splice(index, 1);
+      if (!state.pageRows.length) state.pageRows.push('');
+      updatePages(Math.min(index, state.pageRows.length - 1));
+    });
+    row.append(field(`Page ${index + 1}`, select), remove); selectors.append(row);
+  });
+  const max = templateFor(state.script)?.maxComics ?? 1;
+  $('add-page').hidden = max <= 1;
+  $('add-page').disabled = state.pageRows.length >= max || state.pageRows.includes('') || !sorted.some(comic => comic.verified === true && !state.pageRows.includes(comic.id));
+  $('page-previews').replaceChildren();
+  if (!sorted.length) selectors.append(el('p', 'No source pages in this catalog. Ask the server operator to add verified assets.', 'muted'));
+  for (const id of state.script.comics) {
+    const comic = comicFor(id);
+    if (!comic) continue;
+    const card = el('article', undefined, 'page-preview');
+    card.append(el('h3', comic.title));
     const approvedPath = localPath(comic.path, '/assets/');
     const path = browserMode&&approvedPath?new URL(approvedPath.slice(1),document.baseURI).href:approvedPath;
     if (path) {
-      const link = el('a'); link.href = path; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.setAttribute('aria-label', `View source page ${comic.id}`);
       const img = el('img'); img.src = path; img.alt = `Source page ${comic.id}: ${comic.title}`; img.loading = 'lazy';
-      img.addEventListener('error', () => { img.hidden = true; link.textContent = `Image unavailable for ${comic.id}. Open source or check catalog assets.`; }, { once: true });
-      link.append(img); card.append(link);
+      img.addEventListener('error', () => { img.hidden = true; card.append(el('p', `Image unavailable for ${comic.id}. Check catalog assets.`, 'hint')); }, { once: true });
+      card.append(img);
     } else card.append(el('p', 'Source image path is unavailable. Check the local catalog.', 'hint'));
-    const label = el('label');
-    const checkbox = el('input'); checkbox.type = 'checkbox'; checkbox.setAttribute('aria-label', `Select ${comic.id}`); checkbox.disabled = comic.verified !== true;
-    checkbox.addEventListener('change', () => {
-      delete state.script.sourceLock;
-      if (checkbox.checked) state.script.comics.push(comic.id);
-      else state.script.comics = state.script.comics.filter(id => id !== comic.id);
-      changed(); renderLines();
-    });
-    label.append(checkbox, el('span', comic.title)); card.append(label);
     card.append(el('p', `${comic.id} · PDF page ${comic.pdfPage ?? 'unknown'} · Printed page ${comic.printedPage ?? 'not supplied'}`, 'page-meta'));
-    if (comic.verified === true) card.append(el('p', 'Catalog-reviewed source', 'page-meta'));
-    if (comic.verified !== true) card.append(el('p', 'Unreviewed source — selection unavailable.', 'hint'));
+    if (comic.verified === true) card.append(el('p', 'Catalog-verified source identity', 'page-meta'));
+    if (comic.verified !== true) card.append(el('p', 'Unverified source — selection unavailable.', 'hint'));
     const details = el('details'); details.append(el('summary', 'Read transcript'));
-    details.append(el('p', Array.isArray(comic.transcript) ? comic.transcript.join('\n\n') : comic.transcript || 'No transcript supplied.', 'transcript'));
+    const transcript = Array.isArray(comic.transcript) ? comic.transcript.join('\n\n') : comic.transcript;
+    details.append(el('p', typeof transcript === 'string' && transcript.trim() ? transcript : 'No transcript supplied.', 'transcript'));
     if (comic.observations) details.append(el('p', `Source notes: ${comic.observations}`, 'transcript'));
-    card.append(details); $('gallery').append(card);
+    card.append(details); $('page-previews').append(card);
   }
 }
 function renderSelection() {
   if (!state.script) return;
   const selected = $('selected-pages'); selected.replaceChildren();
-  if (!state.script.comics.length) selected.textContent = 'No pages selected. Choose thumbnails or request a random sample.';
+  if (!state.script.comics.length) selected.textContent = 'No pages selected. Choose a page from the dropdown or request a random sample.';
   else {
     const list = el('ol');
     for (const id of state.script.comics) {
@@ -249,10 +274,6 @@ function renderSelection() {
     details.append(el('p', 'Dialogue edits and JSON imports preserve this lock. Changing pages or template in the form clears it; Validate records the new lock.'));
     lockBox.append(details);
   } else lockBox.textContent = 'No source lock yet. Validate records the selected pages and their hashes.';
-  for (const card of $('gallery').children) {
-    const checkbox = card.querySelector('input');
-    if (checkbox) { checkbox.checked = state.script.comics.includes(card.dataset.comicId); card.classList.toggle('is-selected', checkbox.checked); }
-  }
 }
 function field(labelText, input) {
   const box = el('div'); const label = el('label', labelText); label.htmlFor = input.id; box.append(label, input); return box;
@@ -297,7 +318,16 @@ function renderLines() {
       choose(source, state.script.comics.map(id => ({ id, label: `${id} · printed ${comicFor(id)?.printedPage ?? '?'}` })), line.comic, 'Continue current page');
       source.addEventListener('change', () => { if (source.value) line.comic = source.value; else delete line.comic; changed(); });
       pair.append(field('Speaker', speaker), field('Source page', source)); card.append(pair, lineInput(index, 'text', true));
-      const performance = el('div', undefined, 'field-pair'); performance.append(lineInput(index, 'emotion'), lineInput(index, 'gesture')); card.append(performance);
+      const performance = el('div', undefined, 'field-pair');
+      for (const [key, choices, fallback] of [['emotion', EMOTIONS, 'neutral'], ['gesture', GESTURES, 'none']]) {
+        const select = el('select'); select.id = `line-${index}-${key}`; select.setAttribute('aria-label', `Line ${index + 1} ${key}`);
+        choose(select, choices, line[key], `Default (${fallback})`);
+        // Preserve unknown imported values for validation; never offer them as a new choice.
+        for (const entry of select.options) if (entry.value && !choices.includes(entry.value)) entry.disabled = true;
+        select.addEventListener('change', () => { if (select.value) line[key] = select.value; else delete line[key]; changed(); });
+        performance.append(field(key[0].toUpperCase() + key.slice(1), select));
+      }
+      card.append(performance);
       const shot = el('select'); shot.id = `line-${index}-shot`; shot.setAttribute('aria-label', `Line ${index + 1} shot`);
       choose(shot, shots, line.shot ?? 'auto');
       shot.addEventListener('change', () => { line.shot = shot.value; changed(); });
@@ -319,7 +349,7 @@ function renderForm() {
   for (const key of ['title', 'text', 'url', 'seconds']) $(`end-card-${key}`).value = endCard[key];
   const template = templateFor(state.script);
   $('template-help').textContent = template ? `${template.minComics === template.maxComics ? template.minComics : `${template.minComics}–${template.maxComics}`} page(s) · cast: ${template.speakers.join(', ')}. Changing templates keeps your pages and dialogue; adjust any incompatibilities explicitly.` : 'Choose a catalog template.';
-  renderSelection(); renderLines(); controls();
+  renderPages(); renderSelection(); renderLines(); controls();
 }
 function install(script) {
   check(structureErrors(script));
@@ -331,7 +361,7 @@ function install(script) {
   // An incoming lock belongs to the imported script, not the current selection.
   // Preserve even stale locks for backend rejection. Only explicit selection
   // controls (or an author's removal in JSON) may discard a previous source lock.
-  state.script = next; state.revision++; syncJSON(); renderForm();
+  state.script = next; state.pageRows = next.comics.length ? [...next.comics] : ['']; state.revision++; syncJSON(); renderForm();
 }
 function unchanged(revision) {
   if (revision !== state.revision) throw new Error('The editor changed while the request was running. The response was not applied. Your newer edits are safe; retry when ready.');
@@ -347,6 +377,10 @@ async function operate(kind, work) {
 }
 
 $('template').addEventListener('change', () => { state.script.template = $('template').value; delete state.script.sourceLock; changed(); renderForm(); });
+$('add-page').addEventListener('click', () => {
+  if ($('add-page').disabled || $('add-page').hidden) return;
+  state.pageRows.push(''); renderPages(); $(`page-${state.pageRows.length - 1}`).focus();
+});
 $('scene').addEventListener('change', () => { if ($('scene').value) state.script.scene = $('scene').value; else delete state.script.scene; changed(); });
 $('seed').addEventListener('input', () => { if ($('seed').value === '') delete state.script.seed; else state.script.seed = Number($('seed').value); changed(); });
 $('title').addEventListener('input', () => { state.script.title = $('title').value; changed(); });
@@ -434,13 +468,15 @@ $('draft').addEventListener('click', () => operate('AI Draft', async () => {
 }));
 $('generate').addEventListener('click', () => operate('Generate video', async () => {
   const script = clone(state.script); check(completeErrors(script));
+  const music = browserMode ? $('background-music').files[0] : undefined;
   if(browserMode){script.output={width:432,height:540,fps:12};$('device-canvas').hidden=false;}
   const voice = $('voice').value;
   if (voice === 'recorded' && script.lines.some(line => !line.action && (typeof line.audio !== 'string' || !line.audio.trim()))) throw new Error('Recorded mode needs an audio path on every spoken line. Add audio in JSON, or choose Local Kokoro.');
-  const result = await api('/api/render', { script, voice });
+  const result = await api('/api/render', { script, voice, ...(music ? { music } : {}) });
   if (!result || typeof result.id !== 'string') throw new Error('Server did not return a job ID. Refresh jobs before trying again.');
   message(`Submitted ${result.id} (${result.status ?? 'queued'}). It uses the script sent when you clicked Generate; later edits stay in the editor.`);
   await refreshJobs();
+  $('jobs-heading').closest('section').scrollIntoView({ block: 'start' });
 }));
 
 function renderJobs(jobs) {
@@ -448,20 +484,44 @@ function renderJobs(jobs) {
   if (!jobs.length) $('jobs').append(el('p', 'No films yet. Your first render will appear here.', 'muted'));
   for (const job of jobs) {
     const card = el('article', undefined, 'job'); card.append(el('h3', String(job.id ?? 'Unknown job')));
-    let progress = '';
-    if (typeof job.progress === 'number' && Number.isFinite(job.progress)) {
-      const percent = Math.round(Math.max(0, Math.min(100, job.progress <= 1 ? job.progress * 100 : job.progress)));
-      progress = ` · ${percent}%`;
-      const meter = el('progress'); meter.max = 100; meter.value = percent; meter.setAttribute('aria-label', `Job ${job.id} progress`); card.append(meter);
+    const detail = object(job.progressDetail) ? job.progressDetail : null;
+    const rawProgress = detail ? detail.progress : job.progress;
+    const finite = typeof rawProgress === 'number' && Number.isFinite(rawProgress);
+    // Structured progress is a fraction of the named stage. Legacy numeric
+    // progress also accepted percentages, so keep that interpretation separately.
+    const percent = finite ? Math.round(Math.max(0, Math.min(100, detail || rawProgress <= 1 ? rawProgress * 100 : rawProgress))) : null;
+    const phase = typeof detail?.phase === 'string' ? detail.phase.replace(/[_-]+/g, ' ').replace(/^./, c => c.toUpperCase()) : '';
+    const terminal = ['complete', 'failed', 'cancelled'].includes(job.status);
+    card.append(el('p', String(job.status ?? 'unknown')));
+    if (finite || !terminal) {
+      const meter = el('progress'); meter.max = 100;
+      if (finite) meter.value = percent;
+      meter.setAttribute('aria-label', `Job ${job.id} ${phase || 'progress'}`);
+      card.append(meter);
     }
-    card.append(el('p', `${job.status ?? 'unknown'}${progress}`));
-    if (typeof job.progress === 'string' && job.progress) card.append(el('p', job.progress));
-    if (job.error) card.append(el('p', `${typeof job.error === 'string' ? job.error : stringify(job.error)}\n${browserMode?'Your script is preserved. Correct the issue, keep the tab visible, and Generate again to retry.':'Check the script and local server setup, then Generate again when corrected.'}`, 'status error'));
+    if (phase || finite) card.append(el('p', `${phase || 'Progress'}${finite ? ` · ${percent}%${detail ? ' of stage' : ''}` : ''}`, 'job-stage'));
+    if (typeof detail?.message === 'string' && detail.message) card.append(el('p', detail.message));
+    else if (typeof job.progress === 'string' && job.progress) card.append(el('p', job.progress));
+    const startedAt = typeof job.startedAt === 'number' ? job.startedAt : Date.parse(job.startedAt);
+    const end = job.completedAt ?? job.finishedAt ?? job.updatedAt;
+    const endedAt = typeof end === 'number' ? end : Date.parse(end);
+    if (Number.isFinite(startedAt) && (!terminal || Number.isFinite(endedAt))) {
+      const seconds = Math.max(0, Math.floor(((terminal ? endedAt : Date.now()) - startedAt) / 1000));
+      card.append(el('p', `Elapsed · ${Math.floor(seconds / 60)}m ${seconds % 60}s`, 'job-elapsed'));
+    }
+    if (job.error) card.append(el('p', `${typeof job.error === 'string' ? job.error : stringify(job.error)}\n${browserMode?'Your script is preserved. Keep the tab visible and try Generate again. If it repeats, copy this error and include your phone/browser version.':'Check the script and local server setup, then Generate again when corrected.'}`, 'status error'));
     if (job.video) {
       const path = browserMode&&browserAPI?.ownsURL(job.video)?job.video:localPath(job.video, '/output/');
       if (path) { const link = el('a', 'Open video ↗'); link.href = path; link.target = '_blank'; link.rel = 'noopener noreferrer'; card.append(link); }
       else card.append(el('p', 'Video link is not a local /output/ path. Check the job output on the server.', 'hint'));
-      if(browserMode&&path){const link=el('a','Download video');link.href=path;link.download=job.filename;card.append(link);}
+      if(browserMode&&path){
+        const extension = typeof job.filename === 'string' ? job.filename.split('.').at(-1).toLowerCase() : '';
+        const format = ['mp4', 'webm'].includes(extension) ? extension.toUpperCase() : '';
+        const link=el('a',`Download video${format ? ` (${format})` : ''}`);link.href=path;
+        if (typeof job.filename === 'string') link.download=job.filename;
+        card.append(link);
+        if (extension === 'webm') card.append(el('p', 'WebM fallback: MP4 was unavailable for this export. The download is a .webm file.', 'hint'));
+      }
     }
     if(browserMode&&job.status==='running'){const button=el('button','Cancel export');button.onclick=()=>api('/api/cancel',{id:job.id}).catch(e=>message(e.message,true));card.append(button);}
     $('jobs').append(card);
@@ -487,7 +547,6 @@ async function connect() {
     if (typeof session?.token !== 'string' || !session.token) throw new Error('No session token returned. Check the server and retry.');
     if (!object(catalog) || !Array.isArray(catalog.comics) || !Array.isArray(catalog.templates) || !catalog.templates.length || !Array.isArray(catalog.scenes)) throw new Error('Catalog is missing comics, templates or scenes. Check the server catalog.');
     state.token = session.token; state.catalog = catalog;
-    renderGallery();
     if (!state.script) {
       const template = templates().find(item => item.id === 'book-duet') ?? templates()[0];
       install({ version: 1, template: template.id, title: 'Untitled reading', comics: [], lines: [] });
@@ -497,8 +556,10 @@ async function connect() {
   finally { state.connecting = false; controls(); }
 }
 $('retry').addEventListener('click', connect);
+$('clear-music').addEventListener('click', () => { $('background-music').value = ''; });
 let savedDraft;try{savedDraft=localStorage.getItem(draftKey);}catch{}
 if(browserMode){
+ $('background-music-fields').hidden=false;
  $('device-note').hidden=false;$('draft').hidden=true;
  for(const option of [...$('voice').options])if(option.value!=='flite')option.remove();
  try{

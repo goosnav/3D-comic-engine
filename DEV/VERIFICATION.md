@@ -3,7 +3,48 @@
 Migration date: 2026-10-21 Pacific / 2026-10-22 UTC. This document reports
 execution evidence, not creative approval or native-platform certification.
 
-## Completed checks
+## Browser production follow-up — 2026-10-22 UTC
+
+- Fresh Node suite: **85 passed**, zero failures/skips, including the optional
+  Python identity fixture. Default rendering still requires no Python or AI.
+- Full serial browser run with real local-server tests enabled: **77 of 78
+  passed**, zero skips/cancellations. The remaining test assumed the catalog's
+  second entry was one of the original three comics. The expanded ordered
+  catalog correctly invalidated that fixture. Changed the fixture to explicit
+  stable comic IDs, then reran all three cinematography cases: **3 passed**,
+  zero failures/skips/cancellations. This is full-suite coverage plus a focused
+  rerun, not a claim that the original 78-case invocation was wholly green.
+- Actual static `/studio/` GUI export: 4.38 seconds decoded for a 4.238-second
+  script, both dialogue voices, spinning-book ending, and an attached 220 Hz
+  music tone measured during the end card. No external/API requests. The main
+  agent inspected the static GUI, desktop/mobile layouts and encoded end frame;
+  audio was machine-checked, not personally auditioned.
+- Real recorder-startup regression passed after synchronous and asynchronous
+  pre-start MP4 failures fell back to an actual complete WebM recording.
+- Metadata-only endcard startup regression failed before playback priming and
+  passed afterward. Separate real-video/player-loading tests passed (6 cases).
+- Full bundled asset audit: **158 verified entries**. All 144 book interiors
+  match their canonical page manifest and embedded book images. Only the original
+  three have curated transcripts; no other transcripts were invented.
+- Static build succeeded. Browser endcard derivative fully decoded through
+  FFmpeg; original desktop endcard remains byte-for-byte unchanged.
+- Independent final code review found no remaining actionable blockers after
+  encoder-start fallback repair. The static integration also exercises selected
+  previews, source locks, restored JSON, music attachment and real final frames.
+
+Commands: `npm test` (with the existing optional `THEATRE_PYTHON` fixture),
+`THEATRE_GUI_REAL_SERVER=1 npm run test:browser`,
+`node --test tests/cinematography.browser.mjs`, `npm run build`, and
+`node bin/theatre.mjs assets --json`.
+
+**Remaining platform check:** the user's physical iPhone Chrome has not been
+tested here. Linux WebKit's GStreamer decoder failed independently and cannot
+certify iOS. The mobile loading defenses need a real iPhone retry after the
+Cloudflare deployment. Live deployment was not verified from this environment.
+See [implementation notes](2026-10-22-browser-production.md) for diagnostics,
+format fallback and bounded music behavior.
+
+## Initial migration checks (historical)
 
 - Full Node suite after review and shutdown fixes, with optional Python fixture: 68 passed,
   zero failures/skips.

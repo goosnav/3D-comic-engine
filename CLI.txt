@@ -69,6 +69,11 @@ ASSETS / WEB
   npm run build
 dist/ is the static on-device website. It has no rendering server/Worker compute.
 Browser export is real-time, lower resolution, and requires a visible awake tab.
-It downloads actual WebM or MP4 according to browser support; no disguised format.
+It prefers H.264/AAC MP4 when the browser can encode it, with a clearly labeled
+WebM fallback. Generic MP4/VP9 is not used as a compatibility shortcut.
+The GUI includes all 141 numbered Book Two pages and ordered native page selectors.
+Random selection excludes title/copyright/blank pages. Emotion/gesture fields are
+dropdowns; stage progress is visible. Optional browser background music accepts
+a local file up to 15 MiB / 180 seconds, quietly trimmed to the film; no upload.
 Use desktop CLI for large automation batches and verified frame-exact MP4.
 See README.md, TUTORIAL.md and DEV/ for architecture and platform limitations.

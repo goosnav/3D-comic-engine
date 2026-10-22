@@ -9,6 +9,40 @@ import { browserFixture, shortScript } from './speech-export-fixture.mjs';
 const exec = promisify(execFile);
 const entries = ['browser/export.mjs', 'browser/voice-worker.mjs', 'browser/assets.mjs', 'src/player.mjs'];
 
+test('MP4 start exceptions and asynchronous startup errors retry with a complete WebM recording', { timeout: 120000 }, async t => {
+  const { page, catalog } = await browserFixture(t, entries);
+  const result = await page.evaluate(async ({ script, catalog }) => {
+    const { exportFilm } = await import('/browser/export.mjs');
+    const NativeRecorder = MediaRecorder, attempts = [];
+    window.MediaRecorder = class {
+      static isTypeSupported(type) { return type.startsWith('video/mp4') || NativeRecorder.isTypeSupported(type); }
+      constructor(stream, options) {
+        attempts.push(options.mimeType);
+        if (!options.mimeType.startsWith('video/mp4')) return new NativeRecorder(stream, options);
+        const synchronous = attempts.length === 1;
+        return new class extends EventTarget {
+          mimeType = options.mimeType; state = 'inactive';
+          start() {
+            if (synchronous) throw new DOMException('Encoder unavailable', 'NotSupportedError');
+            this.state = 'recording';
+            setTimeout(() => { const event = new Event('error'); event.error = new Error('Encoder startup failed'); this.dispatchEvent(event); }, 10);
+          }
+          stop() { this.state = 'inactive'; this.dispatchEvent(new Event('stop')); }
+        }();
+      }
+    };
+    try {
+      const output = await exportFilm({ canvas: document.querySelector('canvas'), script, catalog });
+      return { attempts, extension: output.extension, bytes: output.blob.size, lines: output.timeline.events.filter(e => e.type === 'line').length };
+    } finally { window.MediaRecorder = NativeRecorder; }
+  }, { script: shortScript, catalog });
+  assert.equal(result.attempts.length, 3);
+  assert.ok(result.attempts[0].startsWith('video/mp4'));
+  assert.ok(result.attempts[1].startsWith('video/mp4'));
+  assert.equal(result.extension, 'webm');
+  assert.equal(result.lines, 2); assert.ok(result.bytes > 10000);
+});
+
 test('real browser export includes both voices, complete duration, and real video with no external requests', { timeout: 90000 }, async t => {
   const { page, catalog } = await browserFixture(t, entries);
   const result = await page.evaluate(async ({ script, catalog }) => {

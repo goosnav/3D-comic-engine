@@ -62,6 +62,7 @@ async function fixture(t, { legacy = false } = {}) {
       if (path === '/api/catalog') { const value = structuredClone(catalog); if (legacy) delete value.variants; return json(res, 200, value); }
       if (path === '/api/jobs') return json(res, 200, { jobs: [] });
       const files = { '/': ['index.html', 'text/html'], '/app.mjs': ['app.mjs', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
+      if (path === '/src/contracts.mjs' || path === '/src/book-pages.mjs') { res.writeHead(200, { 'Content-Type': 'text/javascript' }); return res.end(await readFile(new URL(path.slice(1), root))); }
       if (files[path]) { const [file, type] = files[path]; res.writeHead(200, { 'Content-Type': type }); return res.end(await readFile(new URL(`web/${file}`, root))); }
       res.writeHead(404); res.end('Not found');
     } catch (error) { json(res, 500, { error: error.message }); }
@@ -201,8 +202,8 @@ for (const endpoint of ['draft', 'validate', 'select']) test(`${endpoint} cannot
 
 test('source reselection and random samples keep authored presentation settings', async t => {
   const { page, state } = await fixture(t); const value = authored(); await load(page, value);
-  await page.getByRole('checkbox', { name: 'Select page-a', exact: true }).uncheck();
-  await page.getByRole('checkbox', { name: 'Select page-a', exact: true }).check();
+  await page.getByLabel('Page 1', { exact: true }).selectOption('');
+  await page.getByLabel('Page 1', { exact: true }).selectOption('page-a');
   assert.equal((await current(page)).sourceLock, undefined);
   await page.locator('#random').click(); await status(page, 'sample ready');
   const sampled = await current(page);

@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {digest} from '../src/library.mjs';
 import {loadCatalog} from '../src/library.mjs';
-import {selectScript} from '../src/contracts.mjs';
+import {selectScript,resolveScript} from '../src/contracts.mjs';
 test('optional writer rejects remote providers before making any request',async()=>{
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'theatre-local-writer-'));
  try {
@@ -18,9 +18,16 @@ test('optional writer rejects remote providers before making any request',async(
  }finally{await fs.rm(root,{recursive:true});}
 });
 test('writer receives selected exact source and cannot switch comic or template',async()=>{
- const c=await loadCatalog(),s=selectScript('book-duet',8,c),p=writerPacket(s,c);assert.equal(p.sources.length,1);assert.equal(p.sources[0].id,s.comics[0]);assert.ok(p.sources[0].transcript.length);
+ const c=await loadCatalog(),s=selectScript('book-duet',8,c),p=writerPacket(s,c);assert.equal(p.sources.length,1);assert.equal(p.sources[0].id,s.comics[0]);assert.deepEqual(p.sources[0].transcript,c.comics.find(c=>c.id===s.comics[0]).transcript);
  assert.throws(()=>acceptDraft({...s,comics:['bad']},s,c),/selection|source/i);
  const proposed={title:'A thought',lines:[{speaker:'reader',text:'That is quite a choice.',comic:s.comics[0]}]};const out=acceptDraft(proposed,s,c);assert.deepEqual(out.sourceLock,s.sourceLock);
+});
+test('new source pages carry explicit untranscribed status to the optional writer',async()=>{
+ const c=await loadCatalog(),s=resolveScript({template:'book-duet',title:'Page one',comics:['book2-001'],lines:[{speaker:'reader',text:'A reading.'}]},c);
+ const p=writerPacket(s,c);
+ assert.equal(p.sources[0].transcriptStatus,'not-transcribed');
+ assert.deepEqual(p.sources[0].transcript,[]);
+ assert.equal(p.sources[0].pdfPage,5);
 });
 test('optional producer attaches exact selected images and repairs invalid JSON once',async()=>{
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'theatre-writer-'));
