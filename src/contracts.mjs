@@ -1,8 +1,10 @@
 // Web Crypto is available in both supported Node and secure browser contexts.
 const randomInt=()=>globalThis.crypto.getRandomValues(new Uint32Array(1))[0];
 import {bookSpread} from './book-pages.mjs';
-export const EMOTIONS=['neutral','thoughtful','curious','skeptical','dry','pleased','concerned','exasperated'];
-export const GESTURES=['none','explain','nod','head_tilt','shrug','page_glance'];
+import {emotions} from './facial-performance.mjs';
+import {gestures,ARM_GESTURES} from './gesture-performance.mjs';
+export const EMOTIONS=Object.keys(emotions);
+export const GESTURES=['none','explain','nod','head_tilt','shrug','page_glance',...Object.keys(gestures)];
 export const SHOTS=['auto','speaker','two-shot','over-shoulder','book','source'];
 const ACTIONS=['open','turn','hold','read','place','close','slam'];
 const fail=(s)=>{throw new Error(s);};
@@ -16,6 +18,29 @@ function selection(template,ids,catalog){
  const t=catalog.templates.find(t=>t.id===template);if(!t)fail(`template: choose ${catalog.templates.map(t=>t.id).join(', ')}`);
  if(!Array.isArray(ids)||ids.length<t.minComics||ids.length>t.maxComics||new Set(ids).size!==ids.length)fail(`${template} needs ${t.minComics}–${t.maxComics} distinct comic IDs`);
  const selected=ids.map(id=>{const c=catalog.comics.find(c=>c.id===id&&c.verified);if(!c)fail(`Unknown or unverified comic: ${id}`);return c;});return {t,selected};
+}
+function selectScene(requested,template,characters,catalog,seed){
+ const restrictions=template.speakers.flatMap(actor=>{
+  const variant=catalog.variants?.find(v=>v.id===characters[actor]);
+  if(variant?.allowedScenes===undefined)return [];
+  if(!Array.isArray(variant.allowedScenes)||!variant.allowedScenes.every(s=>typeof s==='string'))fail(`characters.${actor}: ${variant.id} has invalid allowedScenes metadata`);
+  return [{actor,variant:variant.id,allowed:variant.allowedScenes}];
+ });
+ const compatible=template.scenes.filter(scene=>restrictions.every(r=>r.allowed.includes(scene)));
+ if(requested!==undefined&&requested!==null){
+  choice(requested,template.scenes,'scene');
+  const conflict=restrictions.find(r=>!r.allowed.includes(requested));
+  if(conflict)fail(`scene ${requested} is incompatible with characters.${conflict.actor} (${conflict.variant}); compatible scenes for this cast/template: ${compatible.join(', ')||'none'}`);
+  return requested;
+ }
+ if(!compatible.length)fail(`No compatible scene for template ${template.id} and cast ${restrictions.map(r=>`${r.actor} (${r.variant})`).join(', ')}`);
+ // Preserve template order and the original single seeded draw. Optional scene
+ // additions cannot perturb old scripts; restricted casts can opt into scenes
+ // only when none of the default scenes can accommodate them.
+ const defaults=compatible.filter(scene=>catalog.scenes?.find(s=>s.id===scene)?.default!==false);
+ const pool=defaults.length?defaults:restrictions.length?compatible:[];
+ if(!pool.length)fail(`No default scene for template ${template.id}; choose an explicit scene: ${compatible.join(', ')}`);
+ return pool[Math.floor(seeded(seed)()*pool.length)];
 }
 export function resolveScript(raw,catalog){
  keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard'], 'script');
@@ -33,7 +58,7 @@ export function resolveScript(raw,catalog){
  for(const [key,max] of [['title',120],['text',240],['url',160]])if(typeof endCard[key]!=='string'||endCard[key].length>max||/[\u0000-\u0008\u000b-\u001f]/.test(endCard[key]))fail(`endCard.${key} must be plain text up to ${max} characters`);
  number(endCard.seconds,1,12,'endCard.seconds');
  const seed=raw.seed??randomInt(0,2147483647);number(seed,0,4294967295,'seed');if(!Number.isInteger(seed))fail('seed must be an integer');
- const scene=raw.scene??t.scenes[Math.floor(seeded(seed)()*t.scenes.length)];choice(scene,t.scenes,'scene');
+ const scene=selectScene(raw.scene,t,characters,catalog,seed);
  const sourceLock=selected.map(c=>({id:c.id,sha256:c.sha256,pdfPage:c.pdfPage,pdfSha256:catalog.edition.pdfSha256}));
  if(raw.sourceLock&&JSON.stringify(raw.sourceLock)!==JSON.stringify(sourceLock))fail('Source lock changed. Re-select and review the source before creating a new script.');
  if(!Array.isArray(raw.lines)||!raw.lines.length||raw.lines.length>200)fail('lines must contain 1–200 entries');
@@ -56,10 +81,10 @@ export function resolveScript(raw,catalog){
   if(state==='table-closed')fail(`${label}: open the book before reading dialogue`);
   if(comic!==current&&state==='held-open')fail(`${label}: place the held book before switching comic`);
   current=comic;used.add(comic);const gesture=choice(line.gesture??'none',GESTURES,label+'.gesture');
-  if(state==='held-open'&&line.speaker==='reader'&&['explain','shrug'].includes(gesture))fail(`${label}: held book reserves the reader's hands; choose nod, head_tilt, page_glance or none`);
+  if(state==='held-open'&&line.speaker==='reader'&&ARM_GESTURES.includes(gesture))fail(`${label}: held book reserves the reader's hands; choose nod, head_tilt, page_glance or none`);
   let reaction;if(line.reaction){keys(line.reaction,['actor','emotion','gesture','face','at','duration'],label+'.reaction');reaction={...line.reaction,actor:line.reaction.actor??t.speakers.find(s=>s!==line.speaker),emotion:choice(line.reaction.emotion??'neutral',EMOTIONS,label+'.reaction.emotion'),gesture:choice(line.reaction.gesture??'none',GESTURES,label+'.reaction.gesture'),face:face(line.reaction.face,label+'.reaction.face'),at:choice(line.reaction.at??'line_end',['line_start','line_end'],label+'.reaction.at'),duration:number(line.reaction.duration??.8,.1,5,label+'.reaction.duration')};if(!t.speakers.includes(reaction.actor)||reaction.actor===line.speaker)fail(`${label}: reaction needs a different cast actor`);}
   if(line.audio!==undefined&&(typeof line.audio!=='string'||!line.audio||line.audio.includes('\0')))fail(`${label}.audio must be a relative filename`);
-  if(state==='held-open'&&reaction?.actor==='reader'&&['explain','shrug'].includes(reaction.gesture))fail(`${label}: held book reserves the reader's hands during reactions too`);
+  if(state==='held-open'&&reaction?.actor==='reader'&&ARM_GESTURES.includes(reaction.gesture))fail(`${label}: held book reserves the reader's hands during reactions too`);
   return {...line,id:`beat-${i}`,comic,emotion:choice(line.emotion??'neutral',EMOTIONS,label+'.emotion'),gesture,face:face(line.face,label+'.face'),pause:number(line.pause??.4,0,5,label+'.pause'),shot:choice(line.shot??'auto',SHOTS,label+'.shot'),...(reaction?{reaction}:{}),bookState:state};
  });
  if(!used.size)fail('At least one dialogue line is required');for(const c of raw.comics)if(!used.has(c))fail(`Selected comic ${c} needs a dialogue line`);

@@ -1,0 +1,13 @@
+{
+  "template": "book-duet",
+  "title": "A Second Opinion on the Moon",
+  "seed": 42,
+  "scene": "moon-base",
+  "characters": {"reader": "astronaut", "friend": "astronaut-beady"},
+  "comics": ["book2-036"],
+  "lines": [
+    {"speaker": "reader", "text": "My brain parasite says you're toxic.", "shot": "source"},
+    {"speaker": "friend", "text": "That's a very convenient second opinion.", "emotion": "cosmic_rage", "gesture": "rubber_hose", "shot": "two-shot"},
+    {"speaker": "reader", "text": "We came all this way for a second opinion.", "emotion": "brain_static", "gesture": "windmill", "shot": "two-shot"}
+  ]
+}

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { clamp, ease, clothing, envelope as faceEnvelope, sampleMouth, sampleExpression, sampleVisemes } from './facial-performance.mjs';
+import { gestures, ARM_GESTURES, sampleGesture } from './gesture-performance.mjs';
 export { clamp, ease, sampleMouth } from './facial-performance.mjs';
 
 // Provenance: Homunculus web/room.js (rest-relative bone poses), browser-room.js
@@ -108,6 +109,9 @@ export function createActor(source, id, index = 0, config = {}) {
     const visemes = sampleVisemes(mouthValue, age, seed, index);
     const phase = time * 1.7 + index * 2.1 + (seed % 100) * .13;
     const gesture = (ownsLine ? line.gesture : reaction.gesture) || 'none';
+    const armGesture = held > .5 && ARM_GESTURES.includes(gesture) ? 'none' : gesture;
+    const extra = Object.hasOwn(gestures, armGesture) ? sampleGesture({ gesture: armGesture,
+      time, start: line?.start ?? time, duration: expressionDuration, seed: seed + index }) : null;
     let tilt = exp.tilt;
     if (gesture === 'tilt' || gesture === 'head_tilt') tilt += .13 * envelope;
     const gazeTarget = reading || held > .5 || gesture === 'page_glance' ? 'book' : faceControl.gaze ?? reaction.gaze ?? (listening ? 'speaker' : 'partner');
@@ -117,18 +121,35 @@ export function createActor(source, id, index = 0, config = {}) {
     const nod = gesture === 'nod' ? Math.sin(age * 5) * .13 * envelope : 0;
     pose('chest', Math.sin(phase) * .008, 0, 0);
     pose('head', down + nod - .025 + (speaking ? (.025 + Math.sin(age * 4) * .025) * envelope : 0), yaw, tilt);
+    if (extra) {
+      pose('chest', Math.sin(phase) * .008 + extra.chest[0], extra.chest[1], extra.chest[2]);
+      pose('head', down + nod - .025 + (speaking ? (.025 + Math.sin(age * 4) * .025) * envelope : 0) + extra.head[0], yaw + extra.head[1], tilt + extra.head[2]);
+    }
     for (const [side, sign] of [['L', 1], ['R', -1]]) {
       let arm = .08, elbow = .10, spread = sign * .04;
-      if (gesture === 'shrug') { arm += .22 * envelope; elbow += .8 * envelope; spread += sign * .28 * envelope; }
-      if ((gesture === 'explain' || gesture === 'point' || gesture === 'offer') && side === 'R') {
+      if (armGesture === 'shrug') { arm += .22 * envelope; elbow += .8 * envelope; spread += sign * .28 * envelope; }
+      if ((armGesture === 'explain' || armGesture === 'point' || armGesture === 'offer') && side === 'R') {
         arm += .65 * envelope; elbow += .65 * envelope;
         spread -= .2 * envelope;
       }
       pose(`upper_arm${side}`, arm, 0, spread);
       pose(`forearm${side}`, elbow);
+      if (extra) {
+        const upper = extra[`upper_arm${side}`], lower = extra[`forearm${side}`];
+        pose(`upper_arm${side}`, arm + upper[0], upper[1], spread + upper[2]);
+        pose(`forearm${side}`, elbow + lower[0], lower[1], lower[2]);
+      }
       // Subtle deliberate finger curl; never random perturbations on a grip.
       for (const digit of ['f11', 'f21', 'f31']) pose(`${digit}${side}`, .15 - held * .05);
       for (const digit of ['f12', 'f22', 'f32']) pose(`${digit}${side}`, held * .08);
+      if (extra && (armGesture === 'fist_shake' && side === 'R' || armGesture === 'double_point')) {
+        const curl = faceEnvelope(age, expressionDuration);
+        const digits = armGesture === 'fist_shake' ? ['f11', 'f12', 'f21', 'f31', 'f22', 'f32'] : ['f21', 'f31', 'f22', 'f32'];
+        for (const digit of digits) {
+          const base = digit.endsWith('1') ? .15 - held * .05 : held * .08;
+          pose(`${digit}${side}`, base + (.9 - base) * curl);
+        }
+      }
     }
     for (const mesh of mouthMeshes) {
       const weights = { ...visemes, smile: Math.max(0, exp.smile), frown: Math.max(0, -exp.smile) };

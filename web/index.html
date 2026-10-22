@@ -24,6 +24,10 @@
     <div class="workspace">
       <section class="panel sources" aria-labelledby="sources-heading">
         <div class="section-heading"><span class="step">01</span><h2 id="sources-heading">Choose your pages</h2></div>
+        <div class="toolbar">
+          <button id="random" type="button" data-post>Random sample</button>
+          <button id="new-video" type="button" disabled>+ New video</button>
+        </div>
         <fieldset id="source-fields" disabled>
           <label for="template">Template</label><select id="template"></select>
           <p id="template-help" class="hint"></p>
@@ -31,8 +35,6 @@
             <div><label for="scene">Scene</label><select id="scene"></select></div>
             <div><label for="seed">Seed <span class="optional">optional</span></label><input id="seed" type="number" step="1" placeholder="Automatic"></div>
           </div>
-          <button id="random" type="button" data-post>Random sample</button>
-          <p class="hint">Replaces the current pages and dialogue.</p>
           <p id="edition" class="edition"></p>
           <div id="page-selectors"><p class="muted">Loading the local catalog…</p></div>
           <button id="add-page" type="button" hidden>+ Add page</button>
@@ -48,10 +50,10 @@
         </div>
         <fieldset id="author-fields" disabled>
           <label for="title">Film title</label><input id="title" type="text" maxlength="500" autocomplete="off">
-          <div class="subheading"><h3>Clothing colors</h3></div>
+          <div class="subheading"><h3>Characters</h3></div>
           <div class="field-pair">
-            <div><label for="reader-clothing">Reader clothing</label><select id="reader-clothing"></select></div>
-            <div><label for="friend-clothing">Friend clothing</label><select id="friend-clothing"></select></div>
+            <div><label for="reader-clothing">Reader character</label><select id="reader-clothing"></select></div>
+            <div><label for="friend-clothing">Friend character</label><select id="friend-clothing"></select></div>
           </div>
           <div class="end-card-fields">
             <h3>End card</h3>

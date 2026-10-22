@@ -1,6 +1,8 @@
 # Developer guide
 
 Start with DESIGN.md, then IMPLEMENTATION_PLAN.md and VERIFICATION.md.
+EXPANSION_IMPLEMENTATION.md explains reset, the absurd performance pack and
+catalog-driven character/environment extensions; EXPANSION_PLAN.md records scope.
 TECH_STACK.md explains runtime boundaries, interfaces and the coding methodology.
 PROGRESS.md records migration decisions. history/ contains the inherited
 Comic Theatre prototype notes; these are historical, not current setup guidance.

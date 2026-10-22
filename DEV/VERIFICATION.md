@@ -3,6 +3,42 @@
 Migration date: 2026-10-21 Pacific / 2026-10-22 UTC. This document reports
 execution evidence, not creative approval or native-platform certification.
 
+## Reset and absurd performance pack
+
+- Final serial Node suite: **109 passed**, no failures/skips/cancellations,
+  including the real sequential CLI batch and new CPU camera-clearance checks.
+- Canonical Blender checks: eight variants passed source geometry/rig/morph
+  preservation, head/suit tracking, oral/eye clearance, export reload and resource
+  checks. Four sets passed anchors, table top, actor/camera clearance, embedded
+  resources and mesh budgets. Layout validation passed.
+- Engine asset audit: 171 verified entries. Static build passed. Eight actor and
+  four scene copies match canonical SHA-256 values; both performance modules
+  match their canonical copies byte-for-byte.
+- Reset/browser regression tests cover malformed JSON, pending responses,
+  failed persistence, Cancel, music clearing and retained downloads/running jobs.
+  Review-driven astronaut Random sample regression failed before the fix and
+  passed afterward; actual resolver checks cover compatible automatic staging.
+- Main visually inspected canonical character/set contact sheets and actual
+  engine astronaut two-shot, crooked-hat portrait and diner two-shot. A helmet
+  obstruction in the astronaut over-shoulder view prompted a camera correction.
+  The corrected render was inspected: the speaking face is clear while the
+  foreground helmet/shoulder remains. CPU rays cover both eye styles, both
+  speakers, portrait ratios and animated poses; >90% of sampled face rays clear.
+- Full serial browser suite: **89 passed**, no failures/skips/cancellations,
+  including actual four-set rendering/disposal, headgear bounds, real desktop
+  MP4 capture, mobile GUI and a static speech/music/endcard export with video
+  playback denied. Its 4.38-second recording completed without external requests.
+  This is not a physical iPhone check or personal voice-performance audition.
+- New end-to-end CLI sample: `examples/moon-reading.json --preview`, local Flite,
+  140 frames / 11.666667 seconds / 432×540, completed in about 51 seconds on this
+  machine. SHA-256 `b336c1723901a7841f0f86ed514db9873276a48b9dd9544ae584041185d1448b`.
+  Main inspected one-second samples from the encoded MP4: exact source page,
+  plate/beady astronauts, exaggerated arm/head poses, and changing spinning-book
+  end frames with blue underlined URL. This is sampled-frame inspection, not a
+  claim of continuous playback or listening. Audio passed the existing technical
+  verifier. Output is local-only and not committed or uploaded; the reusable
+  JSON example is committed. The timing is one observation, not a guarantee.
+
 ## Safari endcard playback denial — 2026-10-22 UTC
 
 The reported `NotAllowedError` was reproduced in the real static GUI by rejecting

@@ -28,7 +28,7 @@ let browser;
 before(async () => { browser = await chromium.launch({ headless: true, ...(process.env.THEATRE_TEST_CHROMIUM ? { executablePath: process.env.THEATRE_TEST_CHROMIUM } : {}) }); });
 after(async () => { await browser?.close(); });
 
-async function fixture(t, { legacy = false } = {}) {
+async function fixture(t, { legacy = false, expansion = false } = {}) {
   const state = { requests: [], writer: false, rewrite: false, resolve: false, error: '' };
   const held = new Map();
   state.hold = path => { let release; const promise = new Promise(resolve => { release = resolve; }); held.set(path, { promise, release }); };
@@ -44,7 +44,7 @@ async function fixture(t, { legacy = false } = {}) {
         if (held.has(path)) await held.get(path).promise;
         if (state.error) return json(res, 400, { error: state.error });
         if (path === '/api/render') return json(res, 200, { id: 'manual-render', status: 'queued' });
-        if (path === '/api/select') return json(res, 200, { script: script() });
+        if (path === '/api/select') return json(res, 200, { script: {...script(),scene:'library'} });
         let value = structuredClone(body.script);
         if (path === '/api/draft') {
           if (!state.writer) return json(res, 409, { error: 'Optional writer is not configured' });
@@ -59,10 +59,18 @@ async function fixture(t, { legacy = false } = {}) {
         return json(res, 200, { script: value });
       }
       if (path === '/api/session') return json(res, 200, { token: 'polish-test-token' });
-      if (path === '/api/catalog') { const value = structuredClone(catalog); if (legacy) delete value.variants; return json(res, 200, value); }
+      if (path === '/api/catalog') {
+        const value = structuredClone(catalog); if (legacy) delete value.variants;
+        if (expansion) {
+          value.scenes.push({id:'moon-base',label:'Moon base',default:false});
+          value.templates[0].scenes.push('moon-base');
+          value.variants.push({id:'astronaut',label:'Astronaut',allowedScenes:['moon-base']});
+        }
+        return json(res, 200, value);
+      }
       if (path === '/api/jobs') return json(res, 200, { jobs: [] });
       const files = { '/': ['index.html', 'text/html'], '/app.mjs': ['app.mjs', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
-      if (path === '/src/contracts.mjs' || path === '/src/book-pages.mjs') { res.writeHead(200, { 'Content-Type': 'text/javascript' }); return res.end(await readFile(new URL(path.slice(1), root))); }
+      if (['/src/contracts.mjs', '/src/book-pages.mjs', '/src/editor-defaults.mjs', '/src/gesture-performance.mjs', '/src/facial-performance.mjs'].includes(path)) { res.writeHead(200, { 'Content-Type': 'text/javascript' }); return res.end(await readFile(new URL(path.slice(1), root))); }
       if (files[path]) { const [file, type] = files[path]; res.writeHead(200, { 'Content-Type': type }); return res.end(await readFile(new URL(`web/${file}`, root))); }
       res.writeHead(404); res.end('Not found');
     } catch (error) { json(res, 500, { error: error.message }); }
@@ -78,6 +86,67 @@ async function fixture(t, { legacy = false } = {}) {
   return { page, state };
 }
 const current = async page => JSON.parse(await page.locator('#script-json').inputValue());
+test('New video clears authored and unapplied inputs and persists the blank draft', async t => {
+  const { page } = await fixture(t);
+  await load(page, authored());
+  await page.locator('#voice').selectOption('recorded');
+  await page.locator('#script-json').fill('{broken');
+  await page.locator('#new-video').click();
+  const blank = {version:1,template:'book-duet',title:'Untitled reading',comics:[],lines:[]};
+  assert.deepEqual(await current(page), blank);
+  assert.equal(await page.locator('#voice').inputValue(), 'flite');
+  assert.equal(await page.locator('#source-fields').isDisabled(), false);
+  await page.reload(); await status(page, 'Restored');
+  assert.deepEqual(await current(page), blank);
+});
+test('New video rejects a late random response without overwriting its status', async t => {
+  const {page,state} = await fixture(t);
+  state.hold('/api/select');
+  const sent = page.waitForRequest('**/api/select');
+  await page.locator('#random').click(); await sent;
+  await page.locator('#new-video').click();
+  const blank = await current(page);
+  const done = page.waitForResponse('**/api/select'); state.release('/api/select'); await done;
+  await page.waitForTimeout(100);
+  assert.deepEqual(await current(page), blank);
+  assert.match(await page.locator('#editor-status').textContent(), /New video/);
+});
+test('New video removes an old saved draft and warns if persisting the blank draft fails', async t => {
+  const {page} = await fixture(t);
+  await load(page, authored());
+  await page.evaluate(() => {Storage.prototype.setItem = () => {throw new DOMException('full','QuotaExceededError');};});
+  await page.locator('#new-video').click();
+  assert.match(await page.locator('#editor-status').textContent(), /storage|saved/i);
+  assert.equal(await page.evaluate(() => localStorage.getItem('comic-theatre-editor-v1')), null);
+  await page.reload(); await status(page,'Ready');
+  assert.equal((await current(page)).title, 'Untitled reading');
+});
+test('astronaut choices follow explicit scene and never silently replace imported cast', async t => {
+  const {page,state} = await fixture(t,{expansion:true});
+  await load(page, script());
+  await page.locator('#scene').selectOption('library');
+  assert.equal(await page.locator('#reader-clothing option[value="astronaut"]').isDisabled(),true);
+  await page.locator('#scene').selectOption('moon-base');
+  await page.locator('#reader-clothing').selectOption('astronaut');
+  await page.locator('#scene').selectOption('library');
+  assert.equal((await current(page)).characters.reader,'astronaut');
+  await page.locator('#validate').click(); await status(page,'needs moon-base');
+  assert.equal(state.requests.length,0);
+  await page.locator('#scene').selectOption('');
+  assert.equal(await page.locator('#reader-clothing option[value="astronaut"]').isDisabled(),false);
+  await page.locator('#validate').click(); await status(page,'validation passed');
+});
+test('Random sample preserves explicit scene or automatic astronaut-compatible selection', async t => {
+  const {page} = await fixture(t,{expansion:true});
+  for(const scene of ['moon-base',undefined]){
+    await load(page,{...script(),characters:{reader:'astronaut'},...(scene?{scene}:{})});
+    await page.locator('#random').click(); await status(page,'sample ready');
+    const result=await current(page);
+    assert.equal(result.characters.reader,'astronaut');
+    assert.equal(result.scene,scene);
+    await page.locator('#validate').click(); await status(page,'validation passed');
+  }
+});
 const status = async (page, pattern) => page.waitForFunction(pattern => new RegExp(pattern, 'i').test(document.querySelector('#editor-status').textContent), pattern);
 async function load(page, value) {
   await page.locator('#script-json').fill(JSON.stringify(value));
@@ -94,8 +163,8 @@ async function download(page) {
 for (const legacy of [false, true]) test(`clothing and Book Two defaults display without rewriting old scripts (legacy catalog: ${legacy})`, async t => {
   const { page, state } = await fixture(t, { legacy });
   const value = script(); await load(page, value);
-  assert.equal(await page.getByLabel('Reader clothing', { exact: true }).inputValue(), 'blue');
-  assert.equal(await page.getByLabel('Friend clothing', { exact: true }).inputValue(), 'rust');
+  assert.equal(await page.getByLabel('Reader character', { exact: true }).inputValue(), 'blue');
+  assert.equal(await page.getByLabel('Friend character', { exact: true }).inputValue(), 'rust');
   assert.deepEqual(await page.locator('#reader-clothing option').evaluateAll(nodes => nodes.map(node => node.value)), legacy ? ['blue', 'rust', 'olive'] : catalog.variants.map(v => v.id));
   if (!legacy) assert.equal(await page.locator('#reader-clothing option').first().textContent(), 'blue clothes');
   assert.equal(await page.locator('#product').inputValue(), 'book2');
@@ -110,8 +179,8 @@ for (const legacy of [false, true]) test(`clothing and Book Two defaults display
 
 test('real form input, every shot, upload and download preserve advanced fields and source locks', async t => {
   const { page } = await fixture(t); const value = authored(); await load(page, value);
-  await page.getByLabel('Reader clothing', { exact: true }).selectOption('rust-beady');
-  await page.getByLabel('Friend clothing', { exact: true }).selectOption('olive');
+  await page.getByLabel('Reader character', { exact: true }).selectOption('rust-beady');
+  await page.getByLabel('Friend character', { exact: true }).selectOption('olive');
   await page.getByLabel('Show end card', { exact: true }).check();
   const text = { title: 'A custom title', text: 'A custom closing line.', url: 'www.goosnav.shop/custom', seconds: 5.5 };
   for (const [key, val] of Object.entries(text)) await page.locator(`#end-card-${key}`).fill(String(val));

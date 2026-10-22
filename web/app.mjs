@@ -1,17 +1,19 @@
 import { EMOTIONS, GESTURES } from '../src/contracts.mjs';
+import { editorDefaults } from '../src/editor-defaults.mjs';
 
 const $ = id => document.getElementById(id);
 const browserMode=document.querySelector('meta[name="theatre-runtime"]')?.content==='browser';
 let browserAPI;
 const draftKey='comic-theatre-editor-v1';
-function saveDraft(text){try{localStorage.setItem(draftKey,text);}catch{if(browserMode)$('device-note').textContent='Browser storage is unavailable. Download your JSON to keep it. Keep the tab visible during export and download videos before closing.';}}
+let draftSaved = true;
+function saveDraft(text){try{localStorage.setItem(draftKey,text);draftSaved=true;}catch{draftSaved=false;if(browserMode)$('device-note').textContent='Browser storage is unavailable. Download your JSON to keep it. Keep the tab visible during export and download videos before closing.';}}
 const el = (tag, text, className) => {
   const node = document.createElement(tag);
   if (text !== undefined) node.textContent = text;
   if (className) node.className = className;
   return node;
 };
-const state = { catalog: null, script: null, pageRows: [''], token: null, dirtyJSON: false, revision: 0, busy: false, connecting: false, polling: false };
+const state = { catalog: null, script: null, pageRows: [''], token: null, dirtyJSON: false, revision: 0, operation: 0, busy: false, connecting: false, polling: false };
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const clone = value => structuredClone(value);
 const stringify = value => JSON.stringify(value, null, 2);
@@ -49,6 +51,8 @@ function controls() {
   $('script-json').disabled = !state.script;
   $('json-state').textContent = state.dirtyJSON ? 'Unapplied edits · form paused' : 'In sync';
   for (const button of document.querySelectorAll('[data-post]')) button.disabled = state.busy;
+  $('random').disabled = paused || state.busy;
+  $('new-video').disabled = !state.catalog;
 }
 function requireReady() {
   if (!state.token || !state.catalog || !state.script) throw new Error('Connect to the local theatre first. Use Retry connection.');
@@ -109,7 +113,7 @@ function structureErrors(script) {
   if (script.characters !== undefined) {
     if (!object(script.characters)) errors.push('characters must be an object.');
     else for (const role of ['reader', 'friend']) {
-      if (script.characters[role] !== undefined && !variants().some(item => item.id === script.characters[role])) errors.push(`characters.${role} must be a clothing variant from the catalog.`);
+      if (script.characters[role] !== undefined && !variants().some(item => item.id === script.characters[role])) errors.push(`characters.${role} must be a character variant from the catalog.`);
     }
   }
   if (script.endCard !== undefined) {
@@ -158,6 +162,10 @@ function selectionErrors(script) {
   if (count < template.minComics || count > template.maxComics) errors.push(`${template.id} needs ${template.minComics === template.maxComics ? template.minComics : `${template.minComics}–${template.maxComics}`} selected page(s); you have ${count}. Adjust the selection explicitly.`);
   for (const id of script.comics) if (comicFor(id)?.verified !== true) errors.push(`Page ${id} is not verified. Select a catalog-verified source page.`);
   if (script.scene && !template.scenes.includes(script.scene)) errors.push(`Scene ${script.scene} is unavailable for ${template.id}. Choose ${template.scenes.join(' or ')} or Template default.`);
+  for (const role of template.speakers) {
+    const variant = variants().find(v => v.id === script.characters?.[role]);
+    if (script.scene && variant?.allowedScenes && !variant.allowedScenes.includes(script.scene)) errors.push(`${role}: ${variant.label} needs ${variant.allowedScenes.join(' or ')}. Choose a compatible scene or Template default.`);
+  }
   return errors;
 }
 function usedPages(script) {
@@ -337,12 +345,22 @@ function renderLines() {
     $('dialogue').append(card);
   });
 }
+function renderCharacters() {
+  for (const role of ['reader', 'friend']) {
+    const select = $(`${role}-clothing`);
+    choose(select, variants(), state.script.characters?.[role] ?? characterDefaults[role]);
+    for (const item of select.options) {
+      const variant = variants().find(v => v.id === item.value);
+      item.disabled = !!(state.script.scene && variant?.allowedScenes && !variant.allowedScenes.includes(state.script.scene));
+    }
+  }
+}
 function renderForm() {
   choose($('template'), templates().map(item => ({ id: item.id, label: `${item.id} · ${item.label}` })), state.script.template);
   choose($('scene'), state.catalog.scenes, state.script.scene, 'Template default');
   $('seed').value = state.script.seed ?? '';
   $('title').value = state.script.title;
-  for (const role of ['reader', 'friend']) choose($(`${role}-clothing`), variants(), state.script.characters?.[role] ?? characterDefaults[role]);
+  renderCharacters();
   $('product').value = state.script.product ?? 'book2';
   const endCard = { ...endCardDefaults, ...state.script.endCard };
   $('end-card-enabled').checked = endCard.enabled;
@@ -369,19 +387,38 @@ function unchanged(revision) {
 
 async function operate(kind, work) {
   if (state.busy) return;
+  const operation = ++state.operation;
   try {
     requireReady(); state.busy = true; controls(); message(`${kind}…`);
     await work();
-  } catch (error) { message(`${kind}: ${error.message}`, true); }
-  finally { state.busy = false; controls(); }
+  } catch (error) { if (operation === state.operation) message(`${kind}: ${error.message}`, true); }
+  finally { if (operation === state.operation) { state.busy = false; controls(); } }
 }
+
+$('new-video').addEventListener('click', () => {
+  if (!state.catalog) return;
+  const defaults = editorDefaults(state.catalog);
+  const authored = state.dirtyJSON || stringify(state.script) !== stringify(defaults.script) || $('voice').value !== defaults.voice || $('background-music').files.length || $('upload-json').files.length;
+  if (authored && !window.confirm('Start a new video? Current inputs will be cleared. Existing videos and jobs stay.')) return;
+  state.operation++; state.busy = false;
+  $('voice').value = defaults.voice;
+  $('background-music').value = ''; $('upload-json').value = '';
+  install(defaults.script);
+  if (draftSaved) message('New video. Choose a page to begin.');
+  else {
+    let removed = false;
+    try { localStorage.removeItem(draftKey); removed = true; } catch {}
+    message(`New video. Browser storage failed; the blank draft could not be saved. ${removed ? 'The old saved draft was removed.' : 'The old saved draft may return after reload.'} Download JSON to keep new edits.`, true);
+  }
+  $('page-0')?.focus();
+});
 
 $('template').addEventListener('change', () => { state.script.template = $('template').value; delete state.script.sourceLock; changed(); renderForm(); });
 $('add-page').addEventListener('click', () => {
   if ($('add-page').disabled || $('add-page').hidden) return;
   state.pageRows.push(''); renderPages(); $(`page-${state.pageRows.length - 1}`).focus();
 });
-$('scene').addEventListener('change', () => { if ($('scene').value) state.script.scene = $('scene').value; else delete state.script.scene; changed(); });
+$('scene').addEventListener('change', () => { if ($('scene').value) state.script.scene = $('scene').value; else delete state.script.scene; changed(); renderCharacters(); });
 $('seed').addEventListener('input', () => { if ($('seed').value === '') delete state.script.seed; else state.script.seed = Number($('seed').value); changed(); });
 $('title').addEventListener('input', () => { state.script.title = $('title').value; changed(); });
 for (const role of ['reader', 'friend']) $(`${role}-clothing`).addEventListener('change', () => {
@@ -419,13 +456,14 @@ $('download-json').addEventListener('click', () => {
 });
 $('upload-json').addEventListener('change', async () => {
   const file = $('upload-json').files[0]; if (!file) return;
+  const operation = state.operation;
   try {
     requireReady();
     if (file.size > 2 * 1024 * 1024) throw new Error('Choose a script JSON file smaller than 2 MB.');
     const revision = state.revision; const script = JSON.parse(await file.text()); unchanged(revision); install(script);
     message('JSON uploaded. Review selected pages, then validate the script.');
-  } catch (error) { message(`Upload not applied: ${error.message}`, true); }
-  finally { $('upload-json').value = ''; }
+  } catch (error) { if (operation === state.operation) message(`Upload not applied: ${error.message}`, true); }
+  finally { if (operation === state.operation) $('upload-json').value = ''; }
 });
 $('random').addEventListener('click', () => operate('Random sample', async () => {
   if (state.script.lines.length && !window.confirm('Replace the current selected pages and dialogue with a random sample? Download JSON first if you want to keep this script.')) { message('Random sample cancelled. Your script is unchanged.'); return; }
@@ -436,7 +474,13 @@ $('random').addEventListener('click', () => operate('Random sample', async () =>
   const result = await api('/api/select', request); unchanged(revision);
   check(structureErrors(result.script)); check(selectionErrors(result.script));
   if (result.script.template !== request.template) throw new Error('Server returned a different template. Sample not applied; retry or check the server.');
-  install(keepPresentation(result.script, original)); message('Random sample ready. Review the selected pages and edit its dialogue before generating.');
+  const sample = keepPresentation(result.script, original);
+  // The sampled default cast may have resolved a different scene. Preserve the
+  // author's explicit staging, or let the preserved cast resolve its own default.
+  if (original.scene !== undefined) sample.scene = original.scene;
+  else delete sample.scene;
+  check(structureErrors(sample)); check(selectionErrors(sample));
+  install(sample); message('Random sample ready. Review the selected pages and edit its dialogue before generating.');
 }));
 $('validate').addEventListener('click', () => operate('Validate', async () => {
   const script = clone(state.script); const revision = state.revision;
@@ -467,6 +511,7 @@ $('draft').addEventListener('click', () => operate('AI Draft', async () => {
   check(completeErrors(result.script)); install(result.script); message('AI draft applied for the same selected pages. Review the wording and validate before generating.');
 }));
 $('generate').addEventListener('click', () => operate('Generate video', async () => {
+  const revision = state.revision;
   const script = clone(state.script); check(completeErrors(script));
   const music = browserMode ? $('background-music').files[0] : undefined;
   if(browserMode){script.output={width:432,height:540,fps:12};$('device-canvas').hidden=false;}
@@ -474,9 +519,9 @@ $('generate').addEventListener('click', () => operate('Generate video', async ()
   if (voice === 'recorded' && script.lines.some(line => !line.action && (typeof line.audio !== 'string' || !line.audio.trim()))) throw new Error('Recorded mode needs an audio path on every spoken line. Add audio in JSON, or choose Local Kokoro.');
   const result = await api('/api/render', { script, voice, ...(music ? { music } : {}) });
   if (!result || typeof result.id !== 'string') throw new Error('Server did not return a job ID. Refresh jobs before trying again.');
-  message(`Submitted ${result.id} (${result.status ?? 'queued'}). It uses the script sent when you clicked Generate; later edits stay in the editor.`);
+  if (revision === state.revision) message(`Submitted ${result.id} (${result.status ?? 'queued'}). It uses the script sent when you clicked Generate; later edits stay in the editor.`);
   await refreshJobs();
-  $('jobs-heading').closest('section').scrollIntoView({ block: 'start' });
+  if (revision === state.revision) $('jobs-heading').closest('section').scrollIntoView({ block: 'start' });
 }));
 
 function renderJobs(jobs) {
@@ -548,8 +593,7 @@ async function connect() {
     if (!object(catalog) || !Array.isArray(catalog.comics) || !Array.isArray(catalog.templates) || !catalog.templates.length || !Array.isArray(catalog.scenes)) throw new Error('Catalog is missing comics, templates or scenes. Check the server catalog.');
     state.token = session.token; state.catalog = catalog;
     if (!state.script) {
-      const template = templates().find(item => item.id === 'book-duet') ?? templates()[0];
-      install({ version: 1, template: template.id, title: 'Untitled reading', comics: [], lines: [] });
+      install(editorDefaults(catalog).script);
     } else { renderForm(); }
     $('retry').hidden = true; message('Ready. Choose source pages to begin.');
   } catch (error) { state.token = null; message(`Connection failed: ${error.message} Use Retry connection.`, true); $('retry').hidden = false; }

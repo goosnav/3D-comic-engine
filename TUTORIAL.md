@@ -15,8 +15,8 @@ portable but has not yet been exercised on those operating systems.
 
 Clone `goosnav/3D-comic-engine`, then enter its root directory. Its `assets/` contains the character,
 book, environment export and verified comic excerpts; there are no runtime links
-to another checkout, a home directory, or archived models. The directory is about
-46 MB before dependencies. Node packages, browser binaries and optional voice weights are
+to another checkout, a home directory, or archived models. Node packages,
+browser binaries and optional voice weights are
 installed once, not checked in.
 
 ```sh
@@ -71,8 +71,14 @@ generate the video. The jobs area shows named loading stages and progress bars.
 Percentages describe the current stage; an indeterminate bar means the stage's
 remaining work cannot yet be measured. Browser downloads prefer compatible MP4,
 with clearly labeled WebM fallback. Desktop downloads are MP4.
-The clothing selectors distinguish the readers without changing their familiar
-silhouette. The end-card fields edit the closing title, supporting text, URL and
+Use **+ New video**, next to Random sample, to start from scratch. It clears pages,
+dialogue, JSON edits, cast, scene/seed, voice, music and end-card customization.
+Confirm discarding authored inputs, or Cancel to keep them. Finished downloads
+and submitted jobs stay. If browser storage is unavailable, the editor warns you;
+download JSON to preserve new work.
+
+The character selectors distinguish the readers with clothes and accessories.
+The end-card fields edit the closing title, supporting text, URL and
 duration; disabling the card never removes dialogue.
 
 The AI draft action is optional, requires explicit configuration (section 7), and
@@ -177,9 +183,15 @@ Add only the fields you need:
 ```
 
 - Emotions: `neutral`, `thoughtful`, `curious`, `skeptical`, `dry`, `pleased`,
-  `concerned`, `exasperated`. Omitted means neutral.
+  `concerned`, `exasperated`, `angry`, `furious`, `panicked`, `manic`,
+  `cosmic_rage`, `brain_static`, `overclocked`. Omitted means neutral.
 - Gestures: `none`, `explain`, `nod`, `head_tilt`, `shrug`, `page_glance`.
   Omitted means none, with restrained automatic talk/listening motion.
+  For exaggeration: `arm_flail`, `fist_shake`, `double_point`, `despair`,
+  `windmill`, `rubber_hose`. Try `shot: "two-shot"` for the big arm movements.
+  These are bounded, repeatable caricatures, not physics or collision simulation.
+  Put the book on the table before using arm gestures on its reader; the free
+  partner can still gesture. Facial tags change the face, not the synthesized voice.
 - Face: `brow_left`, `brow_right`, `mouth_curve` from -1 to 1; `eye_open` from 0
   to 1; `blink`: `auto`, `once`, `off`. Unspecified channels use the emotion preset.
   Audio still controls speech-mouth opening. These settings control the visible
@@ -218,7 +230,11 @@ clothing and end-card controls look like this:
 Merge these fields into a complete script. Available variants: `blue`, `rust`,
 `olive` have white eyes; `blue-beady`, `rust-beady`, `olive-beady` have small black
 eyes without whites. You can mix the eye styles in one cast. Default readers wear
-different colors. Book Two is the currently supported
+different colors. Accessory variants are `cowboy`, `glasses`, `crooked` (lopsided
+tall hat), and `astronaut`; each also has a `-beady` version. Astronauts require
+`moon-base` or `tv-studio`. With Template default, the engine selects a compatible
+scene; an explicitly incompatible scene is rejected, not silently changed.
+Book Two is the currently supported
 product. Omitted end-card values use the example defaults. Title/text/URL limits
 are 120/240/160 characters; duration is 1–12 seconds. The card is appended after
 every spoken line and reaction. It uses the bundled Minecraft-style spinning-book
@@ -231,6 +247,11 @@ the video are bundled so another computer uses the same assets.
 Mouth motion uses measured speech energy with smooth jaw/round/wide shapes and
 onset/offset easing. It is not phoneme-accurate lip sync. Expressions blend in and
 out instead of snapping; all evaluation remains seekable and deterministic.
+
+For a deliberately absurd astronaut example, upload `examples/moon-reading.json`
+or run `node bin/theatre.mjs render examples/moon-reading.json --preview`.
+The opening quotes the selected comic; the moon setting and replies are invented
+commentary, not additional panels or canon from the book.
 
 Local Kokoro currently has stable reader/friend voices, not a reliable direct
 “angry” or “sad” synthesis knob. Use punctuation, short phrase structure and pauses,
@@ -259,8 +280,10 @@ Lines inherit the last comic ID. Every selected comic needs a dialogue line, and
 you cannot reference an undeclared comic. A change to a nonadjacent page is a
 deliberate edit/source cut, not a fake continuous page flip.
 
-`scene` may be `library` or `fireside`, if compatible with the template. Omit it
-for seeded selection. Omit `seed` for fresh variation; the chosen seed and all
+`scene` may be `library`, `fireside`, `diner`, `basement`, `moon-base`, or
+`tv-studio`, if compatible with the template. The four new settings are optional;
+ordinary scripts still choose from their original default scenes. Astronauts
+without an explicit scene choose from compatible settings. Omit `seed` for fresh variation; the chosen seed and all
 defaults are saved in the run. Resume retains them. Randomness never changes the
 words, comic IDs, voice identity or an explicitly specified reaction.
 

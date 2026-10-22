@@ -14,6 +14,13 @@ export const emotions = Object.freeze({
   pleased: Object.freeze({ brow: .18, asymmetry: 0, tilt: -.03, smile: .7, eye_open: .9 }),
   concerned: Object.freeze({ brow: .35, asymmetry: -.12, tilt: .06, smile: -.9, eye_open: .92 }),
   exasperated: Object.freeze({ brow: -.38, asymmetry: .18, tilt: -.09, smile: -.75, eye_open: .6 }),
+  angry: Object.freeze({ brow: -.65, asymmetry: .08, tilt: -.12, smile: -.8, eye_open: .65 }),
+  furious: Object.freeze({ brow: -1, asymmetry: .15, tilt: -.24, smile: -1, eye_open: .42 }),
+  panicked: Object.freeze({ brow: .9, asymmetry: -.3, tilt: .22, smile: -.85, eye_open: 1 }),
+  manic: Object.freeze({ brow: .65, asymmetry: -.85, tilt: -.32, smile: 1, eye_open: 1 }),
+  cosmic_rage: Object.freeze({ brow: -1, asymmetry: 1.8, tilt: .5, smile: -1, eye_open: .15 }),
+  brain_static: Object.freeze({ brow: 1, asymmetry: -2, tilt: -.5, smile: .15, eye_open: .35 }),
+  overclocked: Object.freeze({ brow: .95, asymmetry: -.65, tilt: .38, smile: 1, eye_open: .55 }),
 });
 const aliases = { calm: 'neutral', deadpan: 'dry', amused: 'pleased', happy: 'pleased',
   surprised: 'curious', annoyed: 'exasperated', sad: 'concerned' };

@@ -30,7 +30,7 @@ async function fixture(t, { staticMode = false } = {}) {
       if (req.url === '/api/session') return json({ token: 'fixture' });
       if (req.url === '/api/catalog' || req.url === `${prefix}assets/catalog.json`) return json(catalog);
       if (req.url === '/api/jobs') return json({ jobs: state.jobs });
-      if (/^\/(?:nested\/)?src\/(contracts|book-pages)\.mjs$/.test(req.url)) {
+      if (/^\/(?:nested\/)?src\/(contracts|book-pages|editor-defaults|gesture-performance|facial-performance)\.mjs$/.test(req.url)) {
         res.setHeader('Content-Type', 'text/javascript'); return res.end(await readFile(new URL(`src/${req.url.split('/').at(-1)}`, root)));
       }
       // Stub only the on-device runtime boundary: no GPU, speech, or export work.
@@ -246,6 +246,25 @@ test('browser music attaches a File snapshot to rendering only and clears withou
   await music.setInputFiles({ name: 'quiet.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('fixture music bytes') });
   await page.reload(); await music.waitFor();
   assert.equal(await music.evaluate(n => n.files.length), 0);
+});
+
+test('New video cancellation preserves input; confirmation clears music but retains downloads and jobs', async t => {
+  const { page } = await fixture(t, { staticMode: true });
+  await load(page, { ...script, comics: ['p30'] });
+  const original = await current(page);
+  const music = page.locator('#background-music');
+  await music.setInputFiles({ name: 'quiet.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('music') });
+  await page.evaluate(() => window.publishJobs([{id:'finished',status:'complete',video:'blob:fixture-video',filename:'finished.mp4'},{id:'active',status:'running'}]));
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.locator('#new-video').click();
+  assert.deepEqual(await current(page), original);
+  assert.equal(await music.evaluate(n => n.files.length), 1);
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('#new-video').click();
+  assert.equal(await music.evaluate(n => n.files.length), 0);
+  assert.deepEqual((await current(page)).lines, []);
+  assert.equal(await page.getByRole('link', {name:'Download video (MP4)',exact:true}).getAttribute('href'), 'blob:fixture-video');
+  assert.equal(await page.getByRole('button', {name:'Cancel export'}).count(), 1);
 });
 
 test('desktop does not offer browser-only background music', async t => {

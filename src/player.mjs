@@ -15,6 +15,17 @@ function assetURL(base, path) {
 }
 const material = color => new THREE.MeshStandardMaterial({ color, roughness: .83 });
 
+function sceneAsset(catalog, id) {
+  const entry = catalog?.scenes?.find(s => s.id === id);
+  if (entry?.asset !== undefined || !['library', 'fireside'].includes(id)) {
+    if (!entry) throw new Error(`Unknown scene treatment: ${id}`);
+    const asset = catalog.assets?.[entry.asset];
+    if (!entry.asset || !asset?.path) throw new Error(`Missing scene asset: ${id}`);
+    return asset;
+  }
+  return null;
+}
+
 function actorAsset(catalog, timeline, id) {
   if (!catalog.variants) {
     if (!catalog.assets.actor?.path) throw new Error('Legacy catalog must supply actor GLB');
@@ -39,7 +50,51 @@ function pageCenter(book, pdfPage) {
   return bounds.isEmpty() ? book.root.getWorldPosition(new THREE.Vector3()) : bounds.getCenter(new THREE.Vector3());
 }
 
-function frameCamera(camera, { shot, focusId, actors, book, bookState, event, time }) {
+// Cache rigid head-weighted vertices in head-bone space once. Only extended
+// headgear opts into adaptive framing; ordinary actors keep their exact cameras.
+export function headgearFraming(actor) {
+  actor.root.updateMatrixWorld(true);
+  const inverse = actor.bones.head.matrixWorld.clone().invert();
+  const points = [], bounds = new THREE.Box3();
+  let accessory = false;
+  actor.root.traverse(o => {
+    if (!o.isSkinnedMesh) return;
+    o.skeleton.update();
+    const head = o.skeleton.bones.indexOf(actor.bones.head);
+    const indices = o.geometry.attributes.skinIndex, weights = o.geometry.attributes.skinWeight;
+    for (let i = 0; i < indices.count; i++) {
+      let weight = 0;
+      for (let j = 0; j < 4; j++) if (indices.getComponent(i, j) === head) weight += weights.getComponent(i, j);
+      if (weight < .5) continue;
+      const p = o.getVertexPosition(i, new THREE.Vector3()).applyMatrix4(o.matrixWorld);
+      bounds.expandByPoint(p); points.push(p.applyMatrix4(inverse));
+      if (o.name.startsWith('theatre_expansion_')) accessory = true;
+    }
+  });
+  return accessory && bounds.max.y > 1.82 ? { points, lift: (bounds.max.y - 1.8) / 2 } : null;
+}
+
+function fitHeadgear(camera, actors) {
+  const lift = Math.max(0, ...actors.map(a => a.headgearFrame?.lift || 0));
+  if (!lift) return;
+  // Translate the existing composition upward, then retreat along its own axis.
+  // No actor scaling, FOV change, history-dependent smoothing or camera state.
+  camera.position.y += lift;
+  camera.updateMatrixWorld(true);
+  const tangent = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  let retreat = 0;
+  for (const actor of actors) {
+    if (!actor.headgearFrame) continue;
+    for (const local of actor.headgearFrame.points) {
+      const p = local.clone().applyMatrix4(actor.bones.head.matrixWorld).applyMatrix4(camera.matrixWorldInverse);
+      retreat = Math.max(retreat, Math.abs(p.x) / (tangent * camera.aspect * .88) + p.z,
+        Math.abs(p.y) / (tangent * .88) + p.z);
+    }
+  }
+  camera.position.addScaledVector(camera.getWorldDirection(new THREE.Vector3()), -retreat);
+}
+
+export function frameCamera(camera, { shot, focusId, actors, book, bookState, event, time }) {
   camera.up.set(0, 1, 0);
   const focused = actors.find(a => a.root.name === `actor-${focusId}`) || actors[0];
   const x = focused.root.position.x, z = focused.root.position.z, side = focused.root.name === 'actor-reader' ? -1 : 1;
@@ -67,6 +122,13 @@ function frameCamera(camera, { shot, focusId, actors, book, bookState, event, ti
     // conversation. Keep the near shoulder at the edge, clear of the speaker.
     const distance = Math.max(1, .7 / camera.aspect);
     camera.position.set(listener.root.position.x - side * .8 * distance, 1.76, z - .9);
+    if (listener.headgearFrame) {
+      // Step inward around the near helmet, not farther along the line through
+      // both heads. Keep the listening shoulder in frame and retain the reverse angle.
+      camera.position.x += side * .35;
+      camera.position.y += .12;
+      camera.position.z -= .10;
+    }
     camera.lookAt(THREE.MathUtils.lerp(x, listener.root.position.x, .12), 1.44, z + .06);
   } else {
     camera.fov = 38;
@@ -75,6 +137,9 @@ function frameCamera(camera, { shot, focusId, actors, book, bookState, event, ti
     const distance = Math.max(2.5, halfWidth / (Math.tan(THREE.MathUtils.degToRad(19)) * camera.aspect));
     camera.position.set(middle + .06, 1.77, distance);
     camera.lookAt(middle, 1.08, .03);
+  }
+  if (shot !== 'book' && shot !== 'source') {
+    fitHeadgear(camera, shot === 'speaker' || shot === 'over-shoulder' ? [focused] : actors);
   }
   camera.updateProjectionMatrix();
 }
@@ -160,7 +225,7 @@ function validate(timeline, catalog) {
   if (!timeline || !Array.isArray(timeline.events) || !Number.isInteger(timeline.fps) || timeline.fps <= 0 ||
       !Number.isInteger(timeline.frames) || timeline.frames < 1) throw new Error('Timeline requires events, positive integer fps and frames');
   for (const key of ['width', 'height']) if (!Number.isInteger(timeline[key]) || timeline[key] < 1 || timeline[key] > 4096) throw new Error(`Invalid timeline ${key}`);
-  if (!['library', 'fireside'].includes(timeline.scene)) throw new Error('Unknown scene treatment');
+  sceneAsset(catalog, timeline.scene);
   if (!catalog?.assets?.book?.path) throw new Error('Catalog must supply book GLB');
   if (!Array.isArray(timeline.cast) || !timeline.cast.includes('reader') || timeline.cast.some(id => !['reader', 'friend'].includes(id)) || new Set(timeline.cast).size !== timeline.cast.length) throw new Error('Cast must contain reader and optionally friend');
   timeline.cast.forEach(id => actorAsset(catalog, timeline, id));
@@ -190,6 +255,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
   const timeline = structuredClone(input);
   timeline.events?.sort((a, b) => a.start - b.start);
   const comics = validate(timeline, catalog);
+  const environment = sceneAsset(catalog, timeline.scene);
   const loading = message => { signal?.throwIfAborted(); onProgress(message, { phase: 'loading', progress: null, message }); };
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0x192929);
   const insertScene = new THREE.Scene();
@@ -209,6 +275,14 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       return url;
     });
     const loader = new GLTFLoader(manager), actorModels = new Map();
+    let environmentRoot;
+    if (environment) {
+      loading(`Loading scene ${timeline.scene}`);
+      const gltf = await loader.loadAsync(assetURL(assetBase, environment.path));
+      environmentRoot = gltf.scene; loadedRoots.push(environmentRoot);
+      environmentRoot.name = `environment-${timeline.scene}`;
+      environmentRoot.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    }
     const selections = timeline.cast.map(id => actorAsset(catalog, timeline, id));
     for (const { asset } of selections) if (!actorModels.has(asset.path)) {
       loading('Loading actor model');
@@ -256,7 +330,8 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
     scene.add(key);
     const fill = new THREE.DirectionalLight(0xc7e4ef, 1.6); fill.position.set(2, 2, 2); scene.add(fill);
     const rim = new THREE.DirectionalLight(0xf9bd77, 2); rim.position.set(0, 3, -2); scene.add(rim);
-    buildSet(scene, timeline.scene);
+    if (environmentRoot) scene.add(environmentRoot);
+    else buildSet(scene, timeline.scene);
     actors = timeline.cast.map((id, i) => {
       const actor = createActor(actorModels.get(selections[i].asset.path), id, i);
       actor.variant = selections[i].variant;
@@ -264,6 +339,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       // bringing the listening actor inward instead of disturbing the grip rig.
       actor.root.position.set(id === 'reader' ? -.64 : .08, 0, -.02);
       actor.root.rotation.y = id === 'reader' ? .30 : -.30;
+      actor.headgearFrame = headgearFraming(actor);
       scene.add(actor.root); return actor;
     });
     book = createBook(bookGLTF, timeline, comics); scene.add(book.root);
@@ -334,7 +410,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       actors: actors.map(a => ({ ...a.diagnostics(), variant: a.variant })), book: book.diagnostics(),
       camera: { position: camera.position.toArray(), quaternion: camera.quaternion.toArray(), fov: camera.fov },
       disposed, warnings: ['Grip measures wrist targets only; natural finger contact has not been certified.',
-        'Procedural library/fireside set; optional environment GLB is not used.',
+        ...(environment ? [] : ['Procedural library/fireside set; optional environment GLB is not used.']),
         'Page changes outside explicit turn rails are deliberate source cuts.'] });
   }
   function dispose() {

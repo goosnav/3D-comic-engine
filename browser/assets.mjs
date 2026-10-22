@@ -28,6 +28,11 @@ export async function verifyAssetCatalog(input,{script,onProgress=()=>{},baseURL
    if(!key||!catalog.assets[key])throw Error(`Missing actor asset: ${id}`);
    keys.add(key);
   }
+  const scene=catalog.scenes?.find(s=>s.id===resolved.scene);
+  if(scene?.asset!==undefined||!['library','fireside'].includes(resolved.scene)){
+   if(!scene?.asset||!catalog.assets[scene.asset]?.path)throw Error(`Missing scene asset: ${resolved.scene}`);
+   keys.add(scene.asset);
+  }
   if(resolved.endCard.enabled){
    if(!catalog.assets.endCardFrames)throw Error('Endcard frame asset is missing. Reload the updated application.');
    keys.add('endCardFrames');
