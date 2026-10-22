@@ -26,11 +26,12 @@ test('script snapshot fetches only its two actors, book and selected JPEG, prese
  }finally{snapshot.dispose();}
 });
 
-test('solo repeated variant deduplicates actor and enabled endcard adds only video/fonts',async()=>{
+test('solo repeated variant deduplicates actor and enabled endcard adds only frames/fonts, never MP4',async()=>{
  const catalog=await loadCatalog();
  const {snapshot,fetched}=await snapshotFor(catalog,{script:reading(catalog,{characters:{reader:'olive-beady',friend:'olive-beady'},endCard:{enabled:true}})});
- try{assert.deepEqual(fetched.sort(),['assets/actor-olive-beady.glb','assets/book.glb','assets/comics/book2-020.jpg','assets/book2-item-browser.mp4','assets/fonts/LiberationSerif-Regular.ttf','assets/fonts/LiberationSans-Bold.ttf'].sort());
-  assert.equal(snapshot.catalog.assets.endCardVideo.path,snapshot.catalog.assets.endCardVideoBrowser.path);
+ try{assert.deepEqual(fetched.sort(),['assets/actor-olive-beady.glb','assets/book.glb','assets/comics/book2-020.jpg','assets/book2-item.frames','assets/fonts/LiberationSerif-Regular.ttf','assets/fonts/LiberationSans-Bold.ttf'].sort());
+  assert.match(snapshot.catalog.assets.endCardFrames.path,/^blob:/);
+  assert.equal(snapshot.catalog.assets.endCardVideo.path,catalog.assets.endCardVideo.path);
  }finally{snapshot.dispose();}
 });
 

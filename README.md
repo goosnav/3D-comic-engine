@@ -20,6 +20,10 @@ fail visibly and your JSON remains available for retry. Download videos before
 closing the page. Slow devices can drop frames. Use desktop for long/bulk or
 frame-exact high-resolution rendering.
 
+The browser's spinning-book end card uses frames extracted from the original
+video, not autoplay. It needs no video playback permission or extra tap. Desktop
+exports retain the full-resolution original video.
+
 ## Desktop quick start
 
 Clone this repository, install Node and FFmpeg, then run:

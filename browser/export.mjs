@@ -88,7 +88,7 @@ async function recordFilm({ canvas, script: input, catalog: inputCatalog, assetB
       musicBuffer = await guard(prepareMusic(context, music, { signal: controller.signal, maxSeconds: timeline.frames / timeline.fps }));
     }
     report('loading', null, 'Loading the scene');
-    player = await guard(createPlayer(canvas, { timeline, catalog, assetBase, onProgress, signal: controller.signal }).then(value => {
+    player = await guard(createPlayer(canvas, { timeline, catalog, assetBase, onProgress, signal: controller.signal, endcardMode: 'frames' }).then(value => {
       if (failure || finished) { value.dispose(); throw failure ?? new Error('Export already ended'); }
       return value;
     }));

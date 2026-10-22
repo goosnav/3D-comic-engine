@@ -55,8 +55,10 @@ function textBlock(ctx, text, rect, { font, size, weight = 'normal', color = '#0
   return { lines, size: fitted, color, underline, font, rect };
 }
 
-export function createEndcard({ width, height, card, video, videoAsset, coverAsset, sourceOffset = 2 }) {
-  if (!video?.videoWidth || !video.videoHeight || !Number.isFinite(video.duration) || video.duration <= 0) throw new Error('Endcard requires a loaded video');
+export function createEndcard({ width, height, card, video, frameSource, videoAsset, coverAsset, sourceOffset = 2 }) {
+  const sourceWidth = frameSource?.width ?? video?.videoWidth, sourceHeight = frameSource?.height ?? video?.videoHeight;
+  const duration = frameSource?.duration ?? video?.duration;
+  if (!sourceWidth || !sourceHeight || !Number.isFinite(duration) || duration <= 0) throw new Error('Endcard requires a loaded video or frame source');
   if (!Number.isFinite(sourceOffset)) throw new Error('Endcard source offset must be finite');
   const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
   const ctx = canvas.getContext('2d');
@@ -64,7 +66,7 @@ export function createEndcard({ width, height, card, video, videoAsset, coverAss
   const imageArea = landscape
     ? { x: 0, y: 0, width: width * .46, height }
     : { x: 0, y: 0, width, height };
-  const ratio = video.videoWidth / video.videoHeight;
+  const ratio = sourceWidth / sourceHeight;
   const h = Math.min(imageArea.height, imageArea.width / ratio), w = h * ratio;
   const videoRect = { x: Math.round(imageArea.x + (imageArea.width - w) / 2), y: Math.round(imageArea.y + (imageArea.height - h) / 2), width: Math.round(w), height: Math.round(h) };
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
@@ -89,9 +91,13 @@ export function createEndcard({ width, height, card, video, videoAsset, coverAss
   const renderAt = seconds => {
     const render = async () => {
       if (!Number.isFinite(seconds)) throw new Error('Endcard time must be finite');
-      sourceTime = await seekEndcardVideo(video, sourceOffset + seconds);
+      let image = video;
+      if (frameSource) {
+        const frame = await frameSource.getFrame(sourceOffset + seconds);
+        image = frame.image; sourceTime = frame.time;
+      } else sourceTime = await seekEndcardVideo(video, sourceOffset + seconds);
       ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, width, height);
-      ctx.drawImage(video, videoRect.x, videoRect.y, videoRect.width, videoRect.height);
+      ctx.drawImage(image, videoRect.x, videoRect.y, videoRect.width, videoRect.height);
       ctx.drawImage(type, 0, 0); texture.needsUpdate = true;
     };
     const result = pending.then(render);

@@ -20,6 +20,13 @@
     }
   },
   "assets": {
+    "endCardFrames": {
+      "path": "assets/book2-item.frames",
+      "sha256": "dc1f462e9f0d815c136cb96c66dcbf5fd0358e3a670ed8d2028174df32845534",
+      "derivedFrom": "assets/book2-item.mp4",
+      "sourceSha256": "503f1c67fbe1dafb17bb4224b9dd0bc1b10828077b376d5299757699c995c1c2",
+      "processing": "Full original 15-second spinning-book film, sampled at 12 fps and scaled to 432x540. 180 JPEG frames (FFmpeg quality 2) indexed in GCEF v1. No replacement artwork. Browser draws frames without video playback or autoplay permission."
+    },
     "endCardVideoBrowser": {
       "path": "assets/book2-item-browser.mp4",
       "sha256": "e5f68b8478cd67c03a81988dba77715abec6b067fca1e04370841361a88a6565",

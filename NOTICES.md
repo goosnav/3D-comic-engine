@@ -36,9 +36,14 @@ page. These are portable snapshots, not runtime links to the source checkouts.
   `assets/book2-item.mp4` with its exact hash in the catalog. Runtime resolves
   the catalog entry; it does not require a source checkout or archived folder.
 - `assets/book2-item-browser.mp4` is a 432×540 baseline-H.264 derivative of that
-  same spinning-book video, preserving its full duration and imagery for the
-  browser's 432×540 preset. The original remains unchanged for desktop. Both
+  same spinning-book video, retained from the initial browser implementation.
+  The original remains unchanged for desktop. Both
   hashes and the derivative's source identity are recorded in the catalog.
+- Browser exports now use `assets/book2-item.frames`: all 15 seconds of the same
+  source film, sampled at 12 fps and scaled to 432×540, with JPEG quality 2.
+  This is a distribution derivative, not new canonical artwork. Frames are
+  decoded on demand without video playback permission. Its hash and original
+  source hash are in the catalog; regenerate with `tools/build-endcard-frames.mjs`.
 
 New source additions require an exact edition and embedded book-page match.
 Transcripts require separate manual review. See the tutorial. Changing a file without reviewing its catalog

@@ -29,6 +29,9 @@ Mobile metadata-only video loading; cancelled pending loads; full catalog withou
 
 ## Mobile investigation and implemented defenses
 
+**Superseded for browser exports by the frame source below.** The video loader
+remains available to desktop. Its original investigation is retained here.
+
 The user reported iPhone Chrome. The original loader gave download and paused
 decoder startup one combined eight-second deadline. It never requested playback,
 and copied the already verified browser video blob into another blob. A controlled
@@ -43,7 +46,7 @@ loads but fails seeking through its GStreamer stack (missing h264parse / invalid
 packet errors), and lacks MediaRecorder in this environment. That result cannot
 certify iOS. Reference: [WebKit's documented muted inline video policy](https://webkit.org/blog/6784/new-video-policies-for-ios/).
 
-Browser jobs use a baseline-H.264 432×540 derivative of the same spinning-book
+The initial browser jobs used a baseline-H.264 432×540 derivative of the same spinning-book
 video, matching the already-existing browser export preset. It is about 3.2 MiB
 instead of 9.5 MiB, with shorter keyframe spacing; desktop keeps the unchanged
 1080×1350 original. Source/derivative hashes are in the catalog. Reproduction:
@@ -78,3 +81,49 @@ or padding. Peaks are attenuated to at most .08 and never amplified. Native audi
 decoding cannot be forcibly cancelled; aborted work is detached and late results
 cannot continue the export. A real static-GUI export test measures an attached
 tone during the end card to detect an attachment silently ignored by the mixer.
+
+## Safari playback-denial follow-up
+
+The user's subsequent Safari failure exposed a design error: `loadEndcardVideo`
+treated a denied `play()` call as fatal, even though exporting a sequence of
+frames should not require playback permission. The priming call happened after
+asset/speech work, outside the original Generate click. The exact OS policy
+(including whether Low Power Mode was involved) is unknown. Retrying the same
+path cannot reliably fix this. A static-site integration test that rejects
+`HTMLVideoElement.play()` with `NotAllowedError` reproduced the exact reported
+failure before this change.
+
+Browser exports now select `endcardMode: 'frames'`. The catalog's `endCardFrames`
+asset holds the entire original 15-second spin as 180 indexed JPEGs at the
+existing browser cadence/resolution (12 fps, 432×540). The 4.44 MiB pack is
+SHA-256 verified with the other selected assets. No MP4 is fetched or played by
+this browser path. Only one frame image is retained at a time, rather than a
+full decoded-film image bank. Absolute timeline time selects a frame; repeated,
+backward and wrapped times remain deterministic. Authored text/blue underlined
+Times URL and the original spinning imagery are unchanged in intent. JPEG
+sampling is a browser distribution trade-off, not a replacement scene.
+
+`src/endcard-frames.mjs` owns bounded loading/decoding, abort handling and temporary
+image URLs. Corrupt data remains a visible error; it never substitutes a static
+end card, silently skips the ending, or disables the user's card. Desktop keeps
+the original high-resolution MP4 path. No user-agent sniffing, paid API,
+cloud renderer, runtime FFmpeg or extra installation is introduced.
+
+Pack format: `GCEF` magic, uint32 little-endian JSON header length, UTF-8 header
+`{version:1,width,height,fps,lengths:[...]}`, then the exact JPEG byte sequences.
+The parser bounds dimensions, rate, count and total size and validates offsets
+and JPEG boundaries; the decoder checks actual dimensions. This is an internal
+derived asset, not a new authoring-JSON requirement.
+
+To regenerate into a **new** file (the tool refuses to overwrite):
+
+```sh
+node tools/build-endcard-frames.mjs assets/book2-item.mp4 assets/book2-item-new.frames
+```
+
+Review the result and update the catalog path/hash/source identity explicitly.
+Generation uses local FFmpeg; neither the website nor a normal checkout needs
+to regenerate it. Existing catalog-relative paths and static hosting work at
+nested mounts. Browser output still depends on WebGL, Web Audio and recording
+support; removal of the endcard playback gate is not certification of every
+physical iPhone/browser combination.

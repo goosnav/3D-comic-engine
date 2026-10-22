@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createActor } from './actor.mjs';
 import { createBook } from './book.mjs';
 import { createEndcard, endCardFields, loadEndcardVideo } from './endcard.mjs';
+import { loadEndcardFrames } from './endcard-frames.mjs';
 
 function assetURL(base, path) {
   // Browser adapter owns hash-verified immutable snapshots for one render.
@@ -183,7 +184,8 @@ function validate(timeline, catalog) {
   return comics;
 }
 
-export async function createPlayer(canvas, { timeline: input, catalog, assetBase = '', onProgress = () => {}, signal }) {
+export async function createPlayer(canvas, { timeline: input, catalog, assetBase = '', onProgress = () => {}, signal, endcardMode = 'video' }) {
+  if (!['video', 'frames'].includes(endcardMode)) throw Error('Unknown endcard source mode');
   // Own a stable snapshot: host edits must create a new player, never alter a capture.
   const timeline = structuredClone(input);
   timeline.events?.sort((a, b) => a.start - b.start);
@@ -231,9 +233,15 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
         const font = new FontFace(family, `url(${JSON.stringify(assetURL(assetBase, catalog.assets[key].path))})`, { weight });
         await font.load(); document.fonts.add(font); fonts.push(font);
       }
-      if (!catalog.assets.endCardVideo?.path) throw new Error('Endcard needs the catalog spinning-product video');
-      loading('Loading endcard video');
-      endcardVideo = await loadEndcardVideo(assetURL(assetBase, catalog.assets.endCardVideo.path), { signal });
+      if (endcardMode === 'frames') {
+        if (!catalog.assets.endCardFrames?.path) throw new Error('Endcard frame asset is missing. Reload the updated application.');
+        loading('Loading endcard frames');
+        endcardVideo = await loadEndcardFrames(assetURL(assetBase, catalog.assets.endCardFrames.path), { signal });
+      } else {
+        if (!catalog.assets.endCardVideo?.path) throw new Error('Endcard needs the catalog spinning-product video');
+        loading('Loading endcard video');
+        endcardVideo = await loadEndcardVideo(assetURL(assetBase, catalog.assets.endCardVideo.path), { signal });
+      }
     }
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, preserveDrawingBuffer: true });
     renderer.setPixelRatio(1); renderer.setSize(timeline.width, timeline.height, false);
@@ -297,7 +305,8 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
     if (endEvent) {
       if (!endcards.has(endEvent)) endcards.set(endEvent, createEndcard({ width: timeline.width, height: timeline.height,
         card: endCardFields(timeline, endEvent), video: endcardVideo.video,
-        videoAsset: catalog.assets.endCardVideo }));
+        frameSource: endcardMode === 'frames' ? endcardVideo : undefined,
+        videoAsset: endcardMode === 'frames' ? catalog.assets.endCardFrames : catalog.assets.endCardVideo }));
       endcard = endcards.get(endEvent); shot = 'endcard'; source = null;
       const card = endcard;
       return card.renderAt(time - endEvent.start).then(() => {

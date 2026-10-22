@@ -8,7 +8,7 @@ import {chromium} from 'playwright';
 import {run} from '../src/process.mjs';
 import {ROOT} from '../src/library.mjs';
 
-test('static GUI exports full on-device film with speech and attached music, restores input, and never calls an API', {timeout:180000},async t=>{
+test('static GUI exports speech, music and spinning endcard even when video playback is denied', {timeout:180000},async t=>{
  const out=await fs.mkdtemp(path.join(os.tmpdir(),'comic-static-e2e-'));
  await run(process.execPath,['tools/build-web.mjs','--out-dir',out],{timeout:60000});
  const server=http.createServer(async(req,res)=>{
@@ -28,6 +28,12 @@ test('static GUI exports full on-device film with speech and attached music, res
  const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required']});
  t.after(()=>browser.close());
  const page=await browser.newPage({acceptDownloads:true});const unexpected=[],errors=[];
+ // Reproduce the reported Safari policy rejection while leaving canvas capture,
+ // real JPEG decoding, Web Audio and the actual MediaRecorder untouched.
+ await page.addInitScript(()=>{
+  window.endcardPlayCalls=0;
+  HTMLVideoElement.prototype.play=function(){window.endcardPlayCalls++;return Promise.reject(new DOMException('Playback denied','NotAllowedError'));};
+ });
  page.on('pageerror',e=>errors.push(e.message));
  page.on('request',r=>{if(r.url().startsWith('http')&&(!r.url().startsWith(origin+'/')||r.url().includes('/api/')))unexpected.push(r.url());});
  await page.goto(origin+'/');await page.waitForFunction(()=>document.querySelector('#template').options.length>0);
@@ -55,6 +61,7 @@ test('static GUI exports full on-device film with speech and attached music, res
  await page.locator('#generate').click();
  await page.waitForFunction(()=>/Ready —|failed|cancelled/.test(document.querySelector('#jobs').textContent),{},{timeout:120000});
  const status=await page.locator('#jobs').innerText();assert.match(status,/Ready —/,status+'\n'+errors.join('\n'));
+ assert.equal(await page.evaluate(()=>window.endcardPlayCalls),0,'browser endcard must not depend on video playback permission');
  const downloadPromise=page.waitForEvent('download');await page.getByRole('link',{name:/^Download video \((MP4|WEBM)\)$/}).click();const download=await downloadPromise;
  const film=path.join(os.tmpdir(),'comic-static-proof'+path.extname(download.suggestedFilename()));await download.saveAs(film);
  const probe=JSON.parse((await run(process.env.FFPROBE??'ffprobe',['-v','error','-show_streams','-show_format','-of','json',film])).toString());

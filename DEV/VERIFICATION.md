@@ -3,6 +3,41 @@
 Migration date: 2026-10-21 Pacific / 2026-10-22 UTC. This document reports
 execution evidence, not creative approval or native-platform certification.
 
+## Safari endcard playback denial — 2026-10-22 UTC
+
+The reported `NotAllowedError` was reproduced in the real static GUI by rejecting
+`HTMLVideoElement.play()`. Before the change, the job failed with the user's exact
+"Endcard video playback was blocked" message. After switching browser exports
+to the catalog's original-video frame derivative, the same test completed a real
+4.38-second recording with both voices, attached music and spinning end card,
+with **zero video playback calls**. The main agent inspected the encoded ending;
+audio was machine-checked rather than personally auditioned.
+
+Focused image-source tests passed in Chromium and **Linux WebKit** (2 cases in
+each): actual JPEG decoding/drawing, changing spin frames, repeat/reverse/wrap
+identity, authored type, blocked-video independence, cancellation after load and
+during decode, corrupt image rejection, bounded decoder stalls, temporary URL
+cleanup and caller-owned blob preservation. Linux WebKit initially could not
+launch because its wrapper replaced the dependency library path; launching the
+same installed MiniBrowser directly with its local libraries and extracted
+libavif dependencies allowed both tests to pass. This did not change product
+code or install system packages. It is **not a physical Safari/iPhone test**.
+
+The canonical MP4 and 180-frame pack hashes match their catalog provenance.
+Independent FFmpeg decoding checks derived pixels against the original source
+with a JPEG-error tolerance rather than requiring identical encoder versions.
+All 87 Node tests and the full serial 80-case browser suite passed with no
+skips/failures/cancellations. The latter includes actual desktop MP4 capture,
+12/24/30 fps seeking, browser recorder fallback/timing/final-frame checks, GUI
+and cancellation regressions, and the denied-playback static export. All 159
+catalog entries passed the asset audit, and the static build succeeded.
+Independent read-only review found no actionable issues; its additional lifecycle
+checks were mocked and do not establish native Safari memory behavior.
+
+The earlier playback-priming mitigation below was insufficient for the reported
+phone. Browser exports now bypass that video loader entirely; desktop keeps it.
+See [the implementation follow-up](2026-10-22-browser-production.md#safari-playback-denial-follow-up).
+
 ## Browser production follow-up — 2026-10-22 UTC
 
 - Fresh Node suite: **85 passed**, zero failures/skips, including the optional

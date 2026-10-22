@@ -1,6 +1,6 @@
 import {resolveScript} from '../src/contracts.mjs';
 const hash=async bytes=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
-const mime=p=>p.endsWith('.glb')?'model/gltf-binary':p.endsWith('.mp4')?'video/mp4':p.endsWith('.ttf')?'font/ttf':'image/jpeg';
+const mime=p=>p.endsWith('.glb')?'model/gltf-binary':p.endsWith('.frames')?'application/octet-stream':p.endsWith('.mp4')?'video/mp4':p.endsWith('.ttf')?'font/ttf':'image/jpeg';
 function pathURL(p,base){
  if(typeof p!=='string'||!p.startsWith('assets/')||/[%\\?#\x00-\x1f]/.test(p)||p.split('/').some(x=>!x||['.','..','archive','archives','archived'].includes(x.toLowerCase())))throw Error('Invalid asset path');
  const url=new URL(p,base);if(url.origin!==new URL(base).origin)throw Error('External asset origin is not allowed');return url;
@@ -29,8 +29,8 @@ export async function verifyAssetCatalog(input,{script,onProgress=()=>{},baseURL
    keys.add(key);
   }
   if(resolved.endCard.enabled){
-   if(!catalog.assets.endCardVideo)throw Error('Endcard needs the catalog video');
-   keys.add(catalog.assets.endCardVideoBrowser?'endCardVideoBrowser':'endCardVideo');
+   if(!catalog.assets.endCardFrames)throw Error('Endcard frame asset is missing. Reload the updated application.');
+   keys.add('endCardFrames');
    for(const key of ['serifFont','sansFont'])if(catalog.assets[key])keys.add(key);
   }
   comics=resolved.comics.map(id=>catalog.comics.find(c=>c.id===id));
@@ -56,9 +56,6 @@ export async function verifyAssetCatalog(input,{script,onProgress=()=>{},baseURL
    const image=j.images?.[texture?.source],view=j.bufferViews?.[image?.bufferView];
    if(!view||await hash(book.bytes.subarray(book.offset+(view.byteOffset??0),book.offset+(view.byteOffset??0)+view.byteLength))!==comic.sha256)throw Error(`${comic.id}: embedded book page does not match source`);
   }
-  // Small baseline-H.264 derivative matches the browser output resolution;
-  // desktop/full-audit callers retain the unchanged full-resolution original.
-  if(script!==undefined&&catalog.assets.endCardVideoBrowser?.path.startsWith('blob:'))catalog.assets.endCardVideo=catalog.assets.endCardVideoBrowser;
   return {catalog,dispose};
  }catch(e){dispose();throw e;}
 }
