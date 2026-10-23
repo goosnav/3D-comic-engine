@@ -39,7 +39,7 @@ node bin/theatre.mjs render templates/book-duet.example.json --preview
 node bin/theatre.mjs render templates/book-duet.example.json
 ```
 
-`--preview` keeps the full script and aspect ratio at up to 768 pixels and 12 fps. The normal render uses
+`--preview` keeps the full script and aspect ratio normally at up to 768 pixels and 12 fps. The normal render uses
 the dimensions/fps in your JSON. Run `validate` first: it catches unsupported
 fields, scene/cast mismatches, missing dialogue, and impossible book actions
 before production starts. These examples have fixed seeds for repeatability;

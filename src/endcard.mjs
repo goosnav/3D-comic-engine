@@ -77,10 +77,9 @@ export function createEndcard({ width, height, card, video, frameSource, videoAs
   const block = (y, h) => ({ x, y: y * height, width: textWidth, height: h * height });
   const typography = {
     title: textBlock(tc, card.title, block(landscape ? .2 : .025, landscape ? .18 : .105), { font: '"ComicTheatreSans", "Helvetica", "Arial", sans-serif', weight: 'bold', size: unit * .068 }),
-    text: textBlock(tc, card.text, block(landscape ? .43 : .78, landscape ? .15 : .11), { font: '"ComicTheatreTimes", "Times New Roman", "Liberation Serif", Times, serif', size: unit * .045 }),
-    // Three 12px lines need 43.92px at 4:5/432x540. Expand around the
-    // existing URL center, keeping a gap below body text and clear of the book.
-    url: textBlock(tc, card.url, block(landscape ? .66 : .90, landscape ? .12 : .09), { font: '"ComicTheatreTimes", "Times New Roman", "Liberation Serif", Times, serif', size: unit * .053, color: '#0000ee', underline: true }),
+    text: textBlock(tc, card.text, block(landscape ? .43 : .80, landscape ? .15 : .11), { font: '"ComicTheatreTimes", "Times New Roman", "Liberation Serif", Times, serif', size: unit * .045 }),
+    // Reserve room below the product for four body lines and three URL lines at 432×540.
+    url: textBlock(tc, card.url, block(landscape ? .66 : .915, landscape ? .12 : .085), { font: '"ComicTheatreTimes", "Times New Roman", "Liberation Serif", Times, serif', size: unit * .053, color: '#0000ee', underline: true }),
   };
   const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
   texture.generateMipmaps = false; texture.minFilter = THREE.LinearFilter; texture.magFilter = THREE.LinearFilter;

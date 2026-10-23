@@ -29,7 +29,7 @@ Exit codes: 0 success; 1 production/runtime failure (including any failed batch 
 2 invalid command, input JSON/contract or manifest; Ctrl+C normally exits 130.
 Flite is free bundled speech with no model/Python. Kokoro is optional local speech.
 Rendering calls no paid service. 'draft' explicitly enables an optional local model.
---preview preserves aspect ratio at up to 768 px / 12 fps. Default: Reels 1080×1920 / 24 fps.
+--preview preserves aspect ratio normally at up to 768 px / 12 fps. Default: Reels 1080×1920 / 24 fps.
 Default output: ${OUTPUT}. Reuse --output-dir for status/resume of custom outputs.
 First run: node tools/setup.mjs. See launchers/README.md and TUTORIAL.md.
 `;

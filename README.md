@@ -98,7 +98,8 @@ See **[CLI.txt](CLI.txt)** for manifest format, exit codes and output directorie
 The default is Instagram Reels, 1080×1920 (9:16) at 24 fps. The Video size control
 also offers portrait 1080×1350 (4:5), landscape 1920×1080 (16:9), square
 1080×1080, and custom dimensions. CLI previews preserve the aspect ratio at
-12 fps, with the short edge up to 432 px and the long edge up to 768 px.
+12 fps, normally with the short edge up to 432 px and the long edge up to 768 px.
+Extreme custom ratios retain at least 128 pixels on the short edge.
 Measured dialogue and reactions determine duration. Preview retains the whole film.
 One job runs at a time within a shared output queue; independent output roots can
 run independently when your hardware can handle it.

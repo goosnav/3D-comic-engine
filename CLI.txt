@@ -25,7 +25,7 @@ RENDER
 Voices: flite (default, free on-device WASM), kokoro (optional local installation),
 recorded (every spoken line must have an audio filename).
 Recorded paths are relative to the input JSON, never machine-global paths.
---preview preserves the entire film and aspect ratio at up to 768 pixels / 12fps.
+--preview preserves the entire film and aspect ratio normally at up to 768 pixels / 12fps.
 Normal defaults: 1080x1920/24fps (Instagram Reels, 9:16). JSON output fields may override these defaults.
 Duration follows actual measured audio/reactions. Safety bound: 600 seconds.
 

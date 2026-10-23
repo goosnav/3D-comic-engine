@@ -226,7 +226,8 @@ node bin/theatre.mjs render my-script.json
 ```
 
 `--preview` makes a complete small video at 12 fps, preserving aspect ratio
-with a short edge up to 432 pixels and long edge up to 768. Normal output defaults
+normally with a short edge up to 432 pixels and long edge up to 768.
+Extreme custom ratios retain the minimum 128-pixel short edge. Normal output defaults
 to Instagram Reels at 1080×1920/24 fps. Both include the same dialogue; preview never means “end card
 only.” Speech is measured, so you do not enter a duration. Pauses and reactions
 extend the episode rather than cutting words off.
