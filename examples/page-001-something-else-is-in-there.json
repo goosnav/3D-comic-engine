@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 001 — Something Else Is in There",
+  "comics": [
+    "book2-001"
+  ],
+  "seed": 25001,
+  "scene": "basement",
+  "characters": {
+    "reader": "blue",
+    "friend": "crooked-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "action": "open",
+      "seconds": 1.2
+    },
+    {
+      "speaker": "reader",
+      "comic": "book2-001",
+      "text": "So the organ that makes ideas can just disappear into the fourth dimension.",
+      "emotion": "curious",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.3
+    },
+    {
+      "speaker": "friend",
+      "text": "Mine's been gone for weeks.",
+      "emotion": "dry",
+      "gesture": "shrug",
+      "shot": "speaker",
+      "pause": 0.3
+    },
+    {
+      "speaker": "reader",
+      "text": "Then whose idea was it to buy this book?",
+      "emotion": "thoughtful",
+      "gesture": "head_tilt",
+      "shot": "over-shoulder",
+      "pause": 0.4
+    },
+    {
+      "speaker": "friend",
+      "text": "I don't know.",
+      "emotion": "concerned",
+      "gesture": "none",
+      "shot": "speaker",
+      "face": {
+        "eye_open": 0.95,
+        "blink": "off"
+      },
+      "pause": 1.2
+    },
+    {
+      "action": "read",
+      "seconds": 1.1
+    },
+    {
+      "speaker": "reader",
+      "text": "Something else is in there.",
+      "emotion": "concerned",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 0.7,
+      "reaction": {
+        "actor": "friend",
+        "emotion": "panicked",
+        "gesture": "head_tilt",
+        "at": "line_start",
+        "duration": 1.4
+      }
+    },
+    {
+      "speaker": "friend",
+      "text": "Don't make it nervous.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "two-shot",
+      "face": {
+        "eye_open": 1,
+        "mouth_curve": -0.15,
+        "blink": "off"
+      },
+      "pause": 2
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1350,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 016 — The Sun Lobby",
+  "seed": 29016,
+  "scene": "tv-studio",
+  "comics": [
+    "book2-016"
+  ],
+  "characters": {
+    "reader": "glasses",
+    "friend": "cowboy-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "action": "open",
+      "seconds": 0.9
+    },
+    {
+      "speaker": "reader",
+      "text": "He wants every whim turned into policy.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.6
+    },
+    {
+      "speaker": "friend",
+      "text": "I could run on that.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "two-shot",
+      "pause": 0.4
+    },
+    {
+      "speaker": "reader",
+      "text": "First policy?",
+      "emotion": "curious",
+      "gesture": "none",
+      "shot": "over-shoulder",
+      "pause": 0.4
+    },
+    {
+      "speaker": "friend",
+      "text": "No more mornings.",
+      "emotion": "pleased",
+      "gesture": "double_point",
+      "shot": "speaker",
+      "pause": 0.6
+    },
+    {
+      "speaker": "reader",
+      "text": "What happens to the sun?",
+      "emotion": "skeptical",
+      "gesture": "head_tilt",
+      "shot": "two-shot",
+      "pause": 0.5
+    },
+    {
+      "speaker": "friend",
+      "text": "We'll deal with that after the election.",
+      "emotion": "exasperated",
+      "gesture": "windmill",
+      "shot": "speaker",
+      "pause": 0.7
+    },
+    {
+      "speaker": "reader",
+      "text": "How?",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 1
+    },
+    {
+      "speaker": "friend",
+      "text": "Why are you defending the sun?",
+      "emotion": "furious",
+      "gesture": "fist_shake",
+      "shot": "two-shot",
+      "pause": 1.8,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "exasperated",
+        "gesture": "none",
+        "at": "line_end",
+        "duration": 1.5,
+        "face": {
+          "eye_open": 0.45,
+          "blink": "off"
+        }
+      }
+    },
+    {
+      "action": "slam",
+      "seconds": 0.65
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1350,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

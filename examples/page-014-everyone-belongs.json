@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 014 — Everyone Belongs",
+  "seed": 29014,
+  "scene": "library",
+  "comics": [
+    "book2-014"
+  ],
+  "characters": {
+    "reader": "blue-beady",
+    "friend": "crooked-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "action": "open",
+      "seconds": 1.3
+    },
+    {
+      "speaker": "reader",
+      "text": "He puts universal love in the water supply.",
+      "emotion": "concerned",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.5
+    },
+    {
+      "speaker": "friend",
+      "text": "Finally. Everyone belongs.",
+      "emotion": "pleased",
+      "gesture": "explain",
+      "shot": "two-shot",
+      "pause": 0.5
+    },
+    {
+      "speaker": "reader",
+      "text": "They're physically joined together.",
+      "emotion": "concerned",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.5
+    },
+    {
+      "speaker": "friend",
+      "text": "That's commitment.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "speaker",
+      "pause": 0.8
+    },
+    {
+      "speaker": "reader",
+      "text": "What if I don't want to join?",
+      "emotion": "skeptical",
+      "gesture": "head_tilt",
+      "shot": "two-shot",
+      "pause": 0.7,
+      "reaction": {
+        "actor": "friend",
+        "emotion": "manic",
+        "gesture": "none",
+        "at": "line_start",
+        "duration": 1.3,
+        "face": {
+          "mouth_curve": 0.65,
+          "blink": "off"
+        }
+      }
+    },
+    {
+      "speaker": "friend",
+      "text": "We love you too much to allow that.",
+      "emotion": "manic",
+      "gesture": "explain",
+      "shot": "two-shot",
+      "pause": 2,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "panicked",
+        "gesture": "none",
+        "at": "line_end",
+        "duration": 1.8,
+        "face": {
+          "eye_open": 1,
+          "mouth_curve": -0.5,
+          "blink": "off"
+        }
+      }
+    },
+    {
+      "action": "close",
+      "seconds": 1
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1350,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

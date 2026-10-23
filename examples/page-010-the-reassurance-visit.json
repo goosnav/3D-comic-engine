@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "template": "fireside-reader",
+  "title": "Page 010 — The Reassurance Visit",
+  "seed": 29010,
+  "scene": "fireside",
+  "comics": [
+    "book2-010"
+  ],
+  "characters": {
+    "reader": "crooked-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "action": "hold",
+      "seconds": 1
+    },
+    {
+      "speaker": "reader",
+      "text": "He's worried that he's let everyone down.",
+      "emotion": "concerned",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.4
+    },
+    {
+      "speaker": "reader",
+      "text": "They've brought a band to tell him nobody cares.",
+      "emotion": "skeptical",
+      "gesture": "head_tilt",
+      "shot": "source",
+      "pause": 1.2
+    },
+    {
+      "speaker": "reader",
+      "text": "I'd ask them to leave.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 0.6
+    },
+    {
+      "action": "read",
+      "seconds": 1.5
+    },
+    {
+      "speaker": "reader",
+      "text": "But they've clearly worked hard on it.",
+      "emotion": "thoughtful",
+      "gesture": "nod",
+      "shot": "book",
+      "pause": 0.8
+    },
+    {
+      "speaker": "reader",
+      "text": "I'd hate to let them down.",
+      "emotion": "concerned",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 2,
+      "face": {
+        "eye_open": 0.65,
+        "mouth_curve": -0.2,
+        "blink": "once"
+      }
+    },
+    {
+      "action": "place",
+      "seconds": 1.1
+    },
+    {
+      "action": "close",
+      "seconds": 1
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1350,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

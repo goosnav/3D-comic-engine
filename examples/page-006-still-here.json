@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "template": "fireside-reader",
+  "title": "Page 006 — Still Here",
+  "comics": [
+    "book2-006"
+  ],
+  "seed": 25006,
+  "scene": "fireside",
+  "characters": {
+    "reader": "olive-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "action": "open",
+      "seconds": 1.4
+    },
+    {
+      "speaker": "reader",
+      "comic": "book2-006",
+      "text": "Fifty years of enjoying himself because he thought the world was about to end.",
+      "emotion": "thoughtful",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.4
+    },
+    {
+      "action": "hold",
+      "seconds": 1.2
+    },
+    {
+      "speaker": "reader",
+      "text": "I tried that.",
+      "emotion": "neutral",
+      "gesture": "nod",
+      "shot": "speaker",
+      "pause": 0.7
+    },
+    {
+      "speaker": "reader",
+      "text": "Spent all my money.",
+      "emotion": "pleased",
+      "gesture": "none",
+      "shot": "auto",
+      "pause": 1
+    },
+    {
+      "action": "read",
+      "seconds": 1.4
+    },
+    {
+      "speaker": "reader",
+      "text": "Then the sun came up.",
+      "emotion": "exasperated",
+      "gesture": "head_tilt",
+      "shot": "speaker",
+      "face": {
+        "eye_open": 0.4,
+        "mouth_curve": -0.25,
+        "blink": "auto"
+      },
+      "pause": 1.1
+    },
+    {
+      "speaker": "reader",
+      "text": "And I was late for work.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 2
+    },
+    {
+      "action": "place",
+      "seconds": 1.1
+    },
+    {
+      "action": "close",
+      "seconds": 1
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1350,
+    "fps": 12
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

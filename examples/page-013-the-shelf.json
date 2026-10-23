@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "template": "fireside-reader",
+  "title": "Page 013 — The Shelf",
+  "seed": 29013,
+  "scene": "basement",
+  "comics": [
+    "book2-013"
+  ],
+  "characters": {
+    "reader": "cowboy"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "reader",
+      "text": "He's made a pile of ideas he'll never use.",
+      "emotion": "thoughtful",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.6
+    },
+    {
+      "speaker": "reader",
+      "text": "I could build a shelf for mine.",
+      "emotion": "curious",
+      "gesture": "explain",
+      "shot": "speaker",
+      "pause": 0.5
+    },
+    {
+      "action": "read",
+      "seconds": 0.8
+    },
+    {
+      "speaker": "reader",
+      "text": "That would free up a lot of floor space.",
+      "emotion": "manic",
+      "gesture": "arm_flail",
+      "shot": "speaker",
+      "pause": 0.8
+    },
+    {
+      "speaker": "reader",
+      "text": "Good idea.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "auto",
+      "pause": 0.7
+    },
+    {
+      "speaker": "reader",
+      "text": "I'll put it on the pile.",
+      "emotion": "pleased",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 1.8,
+      "face": {
+        "eye_open": 0.65,
+        "mouth_curve": 0.25,
+        "blink": "once"
+      }
+    },
+    {
+      "action": "close",
+      "seconds": 0.9
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1350,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

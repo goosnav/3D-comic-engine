@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 020 — The Memoirs",
+  "comics": [
+    "book2-020"
+  ],
+  "seed": 1023020,
+  "scene": "fireside",
+  "characters": {
+    "reader": "rust",
+    "friend": "blue-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "friend",
+      "comic": "book2-020",
+      "text": "I've started writing my memoirs.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "two-shot",
+      "pause": 0.5
+    },
+    {
+      "speaker": "reader",
+      "text": "This one wants to be a great man of history. His mother's still bringing him cookies.",
+      "emotion": "curious",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.6
+    },
+    {
+      "speaker": "friend",
+      "text": "Mine stopped.",
+      "emotion": "concerned",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 1.2,
+      "face": {
+        "brow_left": 0.25,
+        "brow_right": 0.25,
+        "mouth_curve": -0.2
+      }
+    },
+    {
+      "speaker": "reader",
+      "text": "Is that in the memoirs?",
+      "emotion": "skeptical",
+      "gesture": "head_tilt",
+      "shot": "over-shoulder",
+      "pause": 0.7
+    },
+    {
+      "speaker": "friend",
+      "text": "That's the memoir.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 2,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "exasperated",
+        "gesture": "none",
+        "at": "line_end",
+        "duration": 1.7
+      }
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1350,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": true,
+    "title": "Goosnav Book Two",
+    "text": "A book of comics.",
+    "url": "www.goosnav.shop",
+    "seconds": 2.5
+  }
+}

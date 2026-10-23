@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 012 — Unauthorized Laughter",
+  "seed": 29012,
+  "scene": "tv-studio",
+  "comics": [
+    "book2-012"
+  ],
+  "characters": {
+    "reader": "rust-beady",
+    "friend": "glasses-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "action": "open",
+      "seconds": 1
+    },
+    {
+      "speaker": "reader",
+      "text": "He has objections to every kind of joke.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.6
+    },
+    {
+      "speaker": "friend",
+      "text": "A serious approach.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "speaker",
+      "pause": 0.5
+    },
+    {
+      "speaker": "reader",
+      "text": "I laughed at the last panel.",
+      "emotion": "pleased",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 0.6
+    },
+    {
+      "speaker": "friend",
+      "text": "Before we'd established whether it was funny?",
+      "emotion": "angry",
+      "gesture": "fist_shake",
+      "shot": "speaker",
+      "pause": 0.8,
+      "face": {
+        "brow_left": -0.8,
+        "brow_right": -0.3
+      }
+    },
+    {
+      "speaker": "reader",
+      "text": "It happened quite suddenly.",
+      "emotion": "concerned",
+      "gesture": "shrug",
+      "shot": "over-shoulder",
+      "pause": 0.5
+    },
+    {
+      "speaker": "friend",
+      "text": "Next time, wait.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 1.8,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "skeptical",
+        "gesture": "none",
+        "at": "line_end",
+        "duration": 1.5,
+        "face": {
+          "brow_left": 0.6,
+          "brow_right": -0.1,
+          "blink": "off"
+        }
+      }
+    },
+    {
+      "action": "close",
+      "seconds": 1.1
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1080,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

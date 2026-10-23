@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "template": "page-tour",
+  "title": "Pages 005, 019, 024 — Returns Department",
+  "comics": [
+    "book2-005",
+    "book2-019",
+    "book2-024"
+  ],
+  "seed": 25102,
+  "scene": "diner",
+  "characters": {
+    "reader": "cowboy",
+    "friend": "rust-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "reader",
+      "comic": "book2-005",
+      "text": "A pair of scissors with one blade.",
+      "emotion": "curious",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.7
+    },
+    {
+      "speaker": "friend",
+      "text": "Going back.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 0.5
+    },
+    {
+      "speaker": "reader",
+      "comic": "book2-019",
+      "text": "A vacuum cleaner that ate someone's son.",
+      "emotion": "concerned",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.7
+    },
+    {
+      "speaker": "friend",
+      "text": "Going back.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 0.5
+    },
+    {
+      "speaker": "reader",
+      "comic": "book2-024",
+      "text": "A shopping cart with a rocket engine.",
+      "emotion": "curious",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.7
+    },
+    {
+      "speaker": "friend",
+      "text": "Keeping that.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "two-shot",
+      "pause": 0.5
+    },
+    {
+      "speaker": "reader",
+      "text": "What for?",
+      "emotion": "skeptical",
+      "gesture": "head_tilt",
+      "shot": "over-shoulder",
+      "pause": 0.4
+    },
+    {
+      "speaker": "friend",
+      "text": "Getting the other two back to the shop.",
+      "emotion": "neutral",
+      "gesture": "explain",
+      "shot": "two-shot",
+      "pause": 1.9,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "thoughtful",
+        "gesture": "nod",
+        "at": "line_end",
+        "duration": 1.5
+      }
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1350,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": true,
+    "title": "Goosnav Book Two",
+    "text": "A book of comics.",
+    "url": "www.goosnav.shop",
+    "seconds": 3
+  }
+}

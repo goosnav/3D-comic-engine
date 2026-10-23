@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 017 — First Contact Cancelled",
+  "comics": [
+    "book2-017"
+  ],
+  "seed": 1023017,
+  "scene": "moon-base",
+  "characters": {
+    "reader": "astronaut",
+    "friend": "astronaut-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "action": "open",
+      "seconds": 1.1
+    },
+    {
+      "speaker": "reader",
+      "text": "They've built an appendage lengthening apparatus.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.6,
+      "comic": "book2-017"
+    },
+    {
+      "speaker": "friend",
+      "text": "Progress.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "speaker",
+      "pause": 0.25
+    },
+    {
+      "speaker": "reader",
+      "text": "It has an anchoring nail.",
+      "emotion": "concerned",
+      "gesture": "head_tilt",
+      "shot": "book",
+      "pause": 0.7
+    },
+    {
+      "speaker": "friend",
+      "text": "An anchoring what?",
+      "emotion": "panicked",
+      "gesture": "arm_flail",
+      "shot": "two-shot",
+      "pause": 1.0,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "skeptical",
+        "gesture": "none",
+        "at": "line_end",
+        "duration": 0.8,
+        "face": {
+          "blink": "once"
+        }
+      }
+    },
+    {
+      "speaker": "reader",
+      "text": "That cow is leaving for Agartha.",
+      "emotion": "curious",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.2
+    },
+    {
+      "speaker": "friend",
+      "text": "Get on the cow.",
+      "emotion": "panicked",
+      "gesture": "double_point",
+      "shot": "two-shot",
+      "pause": 1.6,
+      "face": {
+        "eye_open": 1,
+        "blink": "off"
+      },
+      "reaction": {
+        "actor": "reader",
+        "emotion": "overclocked",
+        "gesture": "nod",
+        "at": "line_start",
+        "duration": 0.7
+      }
+    }
+  ],
+  "output": {
+    "width": 1280,
+    "height": 720,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

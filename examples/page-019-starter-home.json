@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 019 — Starter Home",
+  "comics": [
+    "book2-019"
+  ],
+  "seed": 1023019,
+  "scene": "fireside",
+  "characters": {
+    "reader": "olive",
+    "friend": "rust-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "reader",
+      "text": "She gives her son a vacuum, and it swallows him.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.4,
+      "comic": "book2-019"
+    },
+    {
+      "speaker": "friend",
+      "text": "He's moved out.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "speaker",
+      "pause": 0.4
+    },
+    {
+      "speaker": "reader",
+      "text": "He's in the vacuum.",
+      "emotion": "panicked",
+      "gesture": "windmill",
+      "shot": "two-shot",
+      "pause": 0.6
+    },
+    {
+      "speaker": "friend",
+      "text": "His own place. Very clean.",
+      "emotion": "dry",
+      "gesture": "explain",
+      "shot": "over-shoulder",
+      "pause": 0.6
+    },
+    {
+      "speaker": "reader",
+      "text": "His mother is screaming.",
+      "emotion": "concerned",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 0.4
+    },
+    {
+      "speaker": "friend",
+      "text": "The first one's always hard.",
+      "emotion": "thoughtful",
+      "gesture": "shrug",
+      "shot": "two-shot",
+      "pause": 1.8,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "brain_static",
+        "gesture": "head_tilt",
+        "at": "line_end",
+        "duration": 1.4,
+        "face": {
+          "eye_open": 1,
+          "blink": "off"
+        }
+      }
+    },
+    {
+      "action": "close",
+      "seconds": 1.1
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1350,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

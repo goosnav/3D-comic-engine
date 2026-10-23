@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 011 — Joint Custody",
+  "seed": 29011,
+  "scene": "basement",
+  "comics": [
+    "book2-011"
+  ],
+  "characters": {
+    "reader": "glasses",
+    "friend": "crooked"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "reader",
+      "text": "The robot and the jar both want his consciousness.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.7
+    },
+    {
+      "speaker": "friend",
+      "text": "Give them joint custody.",
+      "emotion": "pleased",
+      "gesture": "explain",
+      "shot": "two-shot",
+      "pause": 0.4
+    },
+    {
+      "speaker": "reader",
+      "text": "How does that work?",
+      "emotion": "skeptical",
+      "gesture": "head_tilt",
+      "shot": "over-shoulder",
+      "pause": 0.5
+    },
+    {
+      "speaker": "friend",
+      "text": "Weekdays in the robot. Weekends in the jar.",
+      "emotion": "neutral",
+      "gesture": "double_point",
+      "shot": "speaker",
+      "pause": 0.7
+    },
+    {
+      "speaker": "reader",
+      "text": "And holidays?",
+      "emotion": "curious",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 0.5
+    },
+    {
+      "speaker": "friend",
+      "text": "He gets to be dead.",
+      "emotion": "dry",
+      "gesture": "shrug",
+      "shot": "two-shot",
+      "pause": 1.8,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "thoughtful",
+        "gesture": "nod",
+        "at": "line_end",
+        "duration": 1.4,
+        "face": {
+          "eye_open": 0.7,
+          "blink": "once"
+        }
+      }
+    },
+    {
+      "action": "read",
+      "seconds": 1
+    }
+  ],
+  "output": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30
+  },
+  "endCard": {
+    "enabled": true,
+    "title": "Goosnav Book Two",
+    "text": "A book of comics.",
+    "url": "www.goosnav.shop",
+    "seconds": 3
+  }
+}

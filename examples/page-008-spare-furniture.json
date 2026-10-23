@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 008 — Spare Furniture",
+  "comics": [
+    "book2-008"
+  ],
+  "seed": 25008,
+  "scene": "fireside",
+  "characters": {
+    "reader": "crooked",
+    "friend": "glasses"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "reader",
+      "comic": "book2-008",
+      "text": "He's made up a new insult. Apparently you're a balloon animal.",
+      "emotion": "curious",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.5
+    },
+    {
+      "speaker": "friend",
+      "text": "Go on. Try one.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "speaker",
+      "pause": 0.4
+    },
+    {
+      "speaker": "reader",
+      "text": "You look like spare furniture.",
+      "emotion": "neutral",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 0.8
+    },
+    {
+      "speaker": "friend",
+      "text": "What does that mean?",
+      "emotion": "skeptical",
+      "gesture": "head_tilt",
+      "shot": "speaker",
+      "face": {
+        "brow_left": -0.6,
+        "brow_right": 0.25
+      },
+      "pause": 0.4
+    },
+    {
+      "speaker": "reader",
+      "text": "Nothing. I just made it up.",
+      "emotion": "dry",
+      "gesture": "shrug",
+      "shot": "over-shoulder",
+      "pause": 1.2,
+      "reaction": {
+        "actor": "friend",
+        "emotion": "concerned",
+        "gesture": "none",
+        "at": "line_end",
+        "duration": 1.2
+      }
+    },
+    {
+      "speaker": "friend",
+      "text": "Well, stop looking at me like that.",
+      "emotion": "exasperated",
+      "gesture": "despair",
+      "shot": "two-shot",
+      "pause": 1.9
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1080,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

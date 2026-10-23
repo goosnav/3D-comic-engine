@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "template": "fireside-reader",
+  "title": "Page 025 — I Used to Get Two",
+  "comics": [
+    "book2-025"
+  ],
+  "seed": 1023025,
+  "scene": "tv-studio",
+  "characters": {
+    "reader": "cowboy-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "reader",
+      "text": "He's explaining his joke to a scarecrow.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.6,
+      "comic": "book2-025"
+    },
+    {
+      "speaker": "reader",
+      "text": "Excellent audience.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "speaker",
+      "pause": 0.5
+    },
+    {
+      "speaker": "reader",
+      "text": "Never interrupts.",
+      "emotion": "thoughtful",
+      "gesture": "explain",
+      "shot": "auto",
+      "pause": 0.4
+    },
+    {
+      "speaker": "reader",
+      "text": "Never leaves.",
+      "emotion": "pleased",
+      "gesture": "shrug",
+      "shot": "book",
+      "pause": 0.8
+    },
+    {
+      "action": "read",
+      "seconds": 1.8
+    },
+    {
+      "speaker": "reader",
+      "text": "I used to get two.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 2.0,
+      "face": {
+        "eye_open": 0.55,
+        "mouth_curve": -0.25,
+        "blink": "once"
+      }
+    },
+    {
+      "action": "close",
+      "seconds": 1.1
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1080,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

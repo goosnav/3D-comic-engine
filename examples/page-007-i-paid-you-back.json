@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 007 — I Paid You Back",
+  "comics": [
+    "book2-007"
+  ],
+  "seed": 25007,
+  "scene": "library",
+  "characters": {
+    "reader": "blue",
+    "friend": "glasses-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "reader",
+      "comic": "book2-007",
+      "text": "He says any outcome can be interpreted however you want.",
+      "emotion": "thoughtful",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.5
+    },
+    {
+      "speaker": "friend",
+      "text": "Good. I've paid you back.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "speaker",
+      "pause": 0.4
+    },
+    {
+      "speaker": "reader",
+      "text": "No, you haven't.",
+      "emotion": "skeptical",
+      "gesture": "head_tilt",
+      "shot": "over-shoulder",
+      "pause": 0.3
+    },
+    {
+      "speaker": "friend",
+      "text": "That's your interpretation.",
+      "emotion": "dry",
+      "gesture": "shrug",
+      "shot": "two-shot",
+      "pause": 0.5
+    },
+    {
+      "speaker": "reader",
+      "text": "Give me the fifty dollars.",
+      "emotion": "angry",
+      "gesture": "fist_shake",
+      "shot": "two-shot",
+      "pause": 0.7,
+      "reaction": {
+        "actor": "friend",
+        "emotion": "concerned",
+        "gesture": "head_tilt",
+        "at": "line_start",
+        "duration": 1.3
+      }
+    },
+    {
+      "speaker": "friend",
+      "text": "Look what money's done to you.",
+      "emotion": "concerned",
+      "gesture": "none",
+      "shot": "two-shot",
+      "face": {
+        "brow_left": 0.5,
+        "brow_right": 0.5,
+        "mouth_curve": -0.2
+      },
+      "pause": 1.9,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "exasperated",
+        "gesture": "none",
+        "face": {
+          "eye_open": 0.6,
+          "blink": "off"
+        },
+        "at": "line_end",
+        "duration": 1.8
+      }
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1350,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

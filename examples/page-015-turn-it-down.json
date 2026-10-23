@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 015 — Turn It Down",
+  "seed": 29015,
+  "scene": "tv-studio",
+  "comics": [
+    "book2-015"
+  ],
+  "characters": {
+    "reader": "glasses-beady",
+    "friend": "crooked"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "reader",
+      "text": "He says it doesn't affect him.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.4
+    },
+    {
+      "speaker": "friend",
+      "text": "His brain's sizzling.",
+      "emotion": "concerned",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.2
+    },
+    {
+      "speaker": "reader",
+      "text": "He can turn it down.",
+      "emotion": "pleased",
+      "gesture": "explain",
+      "shot": "speaker",
+      "pause": 0.5
+    },
+    {
+      "speaker": "friend",
+      "text": "The headset?",
+      "emotion": "curious",
+      "gesture": "head_tilt",
+      "shot": "over-shoulder",
+      "pause": 0.5
+    },
+    {
+      "speaker": "reader",
+      "text": "The part of his brain that notices.",
+      "emotion": "overclocked",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 0.8,
+      "face": {
+        "blink": "off"
+      }
+    },
+    {
+      "speaker": "friend",
+      "text": "Will that fix it?",
+      "emotion": "skeptical",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 0.6,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "brain_static",
+        "gesture": "none",
+        "at": "line_start",
+        "duration": 1.2
+      }
+    },
+    {
+      "speaker": "reader",
+      "text": "He won't complain.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 1.8,
+      "face": {
+        "eye_open": 0.5,
+        "mouth_curve": 0,
+        "blink": "once"
+      },
+      "reaction": {
+        "actor": "friend",
+        "emotion": "exasperated",
+        "gesture": "despair",
+        "at": "line_end",
+        "duration": 1.5
+      }
+    },
+    {
+      "action": "close",
+      "seconds": 1
+    }
+  ],
+  "output": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

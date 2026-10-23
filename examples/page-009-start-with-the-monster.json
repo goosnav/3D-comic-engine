@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 009 — Start with the Monster",
+  "seed": 29009,
+  "scene": "diner",
+  "comics": [
+    "book2-009"
+  ],
+  "characters": {
+    "reader": "olive",
+    "friend": "cowboy-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "action": "open",
+      "seconds": 1.2
+    },
+    {
+      "speaker": "reader",
+      "text": "He thinks fear will make him a better boyfriend.",
+      "emotion": "thoughtful",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.5
+    },
+    {
+      "speaker": "friend",
+      "text": "I need someone like that.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "two-shot",
+      "pause": 0.5
+    },
+    {
+      "speaker": "reader",
+      "text": "What frightens you?",
+      "emotion": "curious",
+      "gesture": "head_tilt",
+      "shot": "over-shoulder",
+      "pause": 0.6
+    },
+    {
+      "speaker": "friend",
+      "text": "Having to introduce myself.",
+      "emotion": "panicked",
+      "gesture": "despair",
+      "shot": "speaker",
+      "pause": 0.8,
+      "face": {
+        "eye_open": 0.95,
+        "blink": "off"
+      }
+    },
+    {
+      "speaker": "reader",
+      "text": "Then you can date anyone.",
+      "emotion": "dry",
+      "gesture": "explain",
+      "shot": "two-shot",
+      "pause": 0.7,
+      "reaction": {
+        "actor": "friend",
+        "emotion": "concerned",
+        "gesture": "none",
+        "at": "line_start",
+        "duration": 1.2
+      }
+    },
+    {
+      "speaker": "friend",
+      "text": "Let's start with the monster.",
+      "emotion": "concerned",
+      "gesture": "page_glance",
+      "shot": "speaker",
+      "pause": 1.7,
+      "face": {
+        "brow_left": 0.4,
+        "brow_right": 0.15,
+        "mouth_curve": -0.15,
+        "blink": "once"
+      }
+    },
+    {
+      "action": "close",
+      "seconds": 1
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1350,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

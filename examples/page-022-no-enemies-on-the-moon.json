@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 022 — No Enemies on the Moon",
+  "comics": [
+    "book2-022"
+  ],
+  "seed": 1023022,
+  "scene": "moon-base",
+  "characters": {
+    "reader": "astronaut-beady",
+    "friend": "astronaut"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "reader",
+      "text": "He says all the bad enemies are in other countries.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.6,
+      "comic": "book2-022"
+    },
+    {
+      "speaker": "friend",
+      "text": "That's why I came to the moon.",
+      "emotion": "pleased",
+      "gesture": "explain",
+      "shot": "auto",
+      "pause": 0.4
+    },
+    {
+      "speaker": "reader",
+      "text": "There aren't any countries here.",
+      "emotion": "thoughtful",
+      "gesture": "head_tilt",
+      "shot": "over-shoulder",
+      "pause": 0.4
+    },
+    {
+      "speaker": "friend",
+      "text": "Exactly. No enemies.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "two-shot",
+      "pause": 0.7
+    },
+    {
+      "action": "read",
+      "seconds": 0.8
+    },
+    {
+      "speaker": "reader",
+      "text": "It's just us.",
+      "emotion": "neutral",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 0.9,
+      "reaction": {
+        "actor": "friend",
+        "emotion": "skeptical",
+        "gesture": "head_tilt",
+        "at": "line_end",
+        "duration": 0.9,
+        "face": {
+          "brow_left": -0.4,
+          "brow_right": 0.4,
+          "eye_open": 0.65,
+          "blink": "off"
+        }
+      }
+    },
+    {
+      "speaker": "friend",
+      "text": "Where were you born?",
+      "emotion": "skeptical",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 1.8,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "concerned",
+        "gesture": "none",
+        "at": "line_start",
+        "duration": 1.2
+      }
+    },
+    {
+      "action": "close",
+      "seconds": 1.0
+    }
+  ],
+  "output": {
+    "width": 720,
+    "height": 900,
+    "fps": 12
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

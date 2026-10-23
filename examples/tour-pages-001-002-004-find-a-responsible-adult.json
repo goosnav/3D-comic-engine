@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "template": "page-tour",
+  "title": "Pages 001, 002, 004 — Find a Responsible Adult",
+  "comics": [
+    "book2-001",
+    "book2-002",
+    "book2-004"
+  ],
+  "seed": 25101,
+  "scene": "library",
+  "characters": {
+    "reader": "olive",
+    "friend": "glasses-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "action": "open",
+      "comic": "book2-001",
+      "seconds": 1.3
+    },
+    {
+      "speaker": "reader",
+      "comic": "book2-001",
+      "text": "The part that makes ideas keeps disappearing.",
+      "emotion": "concerned",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.6
+    },
+    {
+      "speaker": "friend",
+      "text": "Who's running this thing?",
+      "emotion": "skeptical",
+      "gesture": "shrug",
+      "shot": "two-shot",
+      "pause": 0.4
+    },
+    {
+      "action": "turn",
+      "comic": "book2-002",
+      "seconds": 1.5
+    },
+    {
+      "speaker": "reader",
+      "comic": "book2-002",
+      "text": "An explorer. He isn't sure gorillas can think.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.5
+    },
+    {
+      "speaker": "friend",
+      "text": "Ask the gorilla.",
+      "emotion": "dry",
+      "gesture": "explain",
+      "shot": "speaker",
+      "pause": 0.3
+    },
+    {
+      "speaker": "reader",
+      "text": "It wants to put him out of his misery.",
+      "emotion": "concerned",
+      "gesture": "page_glance",
+      "shot": "book",
+      "pause": 0.5
+    },
+    {
+      "speaker": "friend",
+      "text": "Try somebody else.",
+      "emotion": "skeptical",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 0.4
+    },
+    {
+      "action": "turn",
+      "comic": "book2-004",
+      "seconds": 1.4
+    },
+    {
+      "speaker": "reader",
+      "comic": "book2-004",
+      "text": "This man follows written instructions.",
+      "emotion": "pleased",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.5
+    },
+    {
+      "speaker": "friend",
+      "text": "He's put his foot in his mouth.",
+      "emotion": "exasperated",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1
+    },
+    {
+      "action": "read",
+      "seconds": 1
+    },
+    {
+      "speaker": "friend",
+      "text": "Go back.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 0.2
+    },
+    {
+      "action": "turn",
+      "comic": "book2-002",
+      "seconds": 1.5
+    },
+    {
+      "speaker": "reader",
+      "comic": "book2-002",
+      "text": "To the gorilla?",
+      "emotion": "skeptical",
+      "gesture": "head_tilt",
+      "shot": "over-shoulder",
+      "pause": 0.5
+    },
+    {
+      "speaker": "friend",
+      "text": "At least he's got a plan.",
+      "emotion": "neutral",
+      "gesture": "nod",
+      "shot": "two-shot",
+      "pause": 1.8,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "concerned",
+        "gesture": "page_glance",
+        "at": "line_end",
+        "duration": 1.6
+      }
+    },
+    {
+      "action": "close",
+      "seconds": 1
+    }
+  ],
+  "output": {
+    "width": 1280,
+    "height": 720,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

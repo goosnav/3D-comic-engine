@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 002 — A Hat Helps",
+  "comics": [
+    "book2-002"
+  ],
+  "seed": 25002,
+  "scene": "library",
+  "characters": {
+    "reader": "olive",
+    "friend": "cowboy"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "reader",
+      "comic": "book2-002",
+      "text": "The gorilla thinks the explorer is a little bald gorilla.",
+      "emotion": "thoughtful",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.6
+    },
+    {
+      "speaker": "friend",
+      "text": "A hat helps.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "speaker",
+      "pause": 0.4
+    },
+    {
+      "speaker": "reader",
+      "text": "With what?",
+      "emotion": "curious",
+      "gesture": "head_tilt",
+      "shot": "two-shot",
+      "pause": 0.3
+    },
+    {
+      "speaker": "friend",
+      "text": "Being recognized as a person.",
+      "emotion": "neutral",
+      "gesture": "explain",
+      "shot": "speaker",
+      "pause": 0.5
+    },
+    {
+      "speaker": "reader",
+      "text": "He's wearing a hat.",
+      "emotion": "skeptical",
+      "gesture": "page_glance",
+      "shot": "book",
+      "pause": 0.4
+    },
+    {
+      "speaker": "friend",
+      "text": "The wrong hat.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 0.5
+    },
+    {
+      "speaker": "reader",
+      "text": "I don't have a hat.",
+      "emotion": "concerned",
+      "gesture": "none",
+      "shot": "speaker",
+      "face": {
+        "brow_left": 0.25,
+        "brow_right": -0.15,
+        "eye_open": 0.75,
+        "blink": "once"
+      },
+      "pause": 0.8
+    },
+    {
+      "speaker": "friend",
+      "text": "You're doing very well.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "two-shot",
+      "pause": 1.9,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "skeptical",
+        "gesture": "none",
+        "face": {
+          "mouth_curve": -0.3,
+          "blink": "once"
+        },
+        "at": "line_end",
+        "duration": 1.8
+      }
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1350,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": true,
+    "title": "Goosnav Book Two",
+    "text": "A book of comics.",
+    "url": "www.goosnav.shop",
+    "seconds": 3
+  }
+}

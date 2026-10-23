@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 003 — Another Chicken",
+  "comics": [
+    "book2-003"
+  ],
+  "seed": 25003,
+  "scene": "diner",
+  "characters": {
+    "reader": "glasses",
+    "friend": "rust-beady"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "reader",
+      "comic": "book2-003",
+      "text": "He can't explain why he'd rather be alive.",
+      "emotion": "thoughtful",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.7
+    },
+    {
+      "action": "hold",
+      "seconds": 1
+    },
+    {
+      "speaker": "friend",
+      "text": "I've got a good reason.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "speaker",
+      "pause": 0.3
+    },
+    {
+      "speaker": "reader",
+      "text": "Let's hear it.",
+      "emotion": "curious",
+      "gesture": "head_tilt",
+      "shot": "over-shoulder",
+      "pause": 0.3
+    },
+    {
+      "speaker": "friend",
+      "text": "There's half a chicken in my fridge.",
+      "emotion": "neutral",
+      "gesture": "explain",
+      "shot": "two-shot",
+      "pause": 1.1,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "skeptical",
+        "gesture": "page_glance",
+        "at": "line_end",
+        "duration": 1.1
+      }
+    },
+    {
+      "speaker": "reader",
+      "text": "And when that's gone?",
+      "emotion": "skeptical",
+      "gesture": "head_tilt",
+      "shot": "speaker",
+      "pause": 0.5
+    },
+    {
+      "speaker": "friend",
+      "text": "I'll get another chicken.",
+      "emotion": "pleased",
+      "gesture": "shrug",
+      "shot": "two-shot",
+      "pause": 1.7
+    },
+    {
+      "action": "place",
+      "seconds": 1
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1080,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

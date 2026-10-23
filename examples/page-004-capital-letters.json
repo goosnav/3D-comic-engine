@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 004 — Capital Letters",
+  "comics": [
+    "book2-004"
+  ],
+  "seed": 25004,
+  "scene": "tv-studio",
+  "characters": {
+    "reader": "blue-beady",
+    "friend": "rust"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "action": "open",
+      "seconds": 1.3
+    },
+    {
+      "speaker": "reader",
+      "comic": "book2-004",
+      "text": "He did what the sign told him. Put his foot in his mouth.",
+      "emotion": "concerned",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.5
+    },
+    {
+      "speaker": "friend",
+      "text": "I only obey official signs.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "speaker",
+      "pause": 0.4
+    },
+    {
+      "speaker": "reader",
+      "text": "How can you tell?",
+      "emotion": "curious",
+      "gesture": "head_tilt",
+      "shot": "over-shoulder",
+      "pause": 0.3
+    },
+    {
+      "speaker": "friend",
+      "text": "Capital letters.",
+      "emotion": "neutral",
+      "gesture": "explain",
+      "shot": "two-shot",
+      "pause": 0.6
+    },
+    {
+      "speaker": "reader",
+      "text": "This one's in capitals.",
+      "emotion": "dry",
+      "gesture": "page_glance",
+      "shot": "book",
+      "pause": 0.5
+    },
+    {
+      "action": "read",
+      "seconds": 1.2
+    },
+    {
+      "speaker": "friend",
+      "text": "Close it.",
+      "emotion": "panicked",
+      "gesture": "double_point",
+      "shot": "two-shot",
+      "pause": 0.1,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "concerned",
+        "gesture": "none",
+        "at": "line_start",
+        "duration": 0.6
+      }
+    },
+    {
+      "action": "slam",
+      "seconds": 0.7
+    }
+  ],
+  "output": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30
+  },
+  "endCard": {
+    "enabled": false
+  }
+}

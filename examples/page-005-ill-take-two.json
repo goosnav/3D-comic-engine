@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 005 — I'll Take Two",
+  "comics": [
+    "book2-005"
+  ],
+  "seed": 25005,
+  "scene": "tv-studio",
+  "characters": {
+    "reader": "cowboy-beady",
+    "friend": "crooked"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "speaker": "reader",
+      "comic": "book2-005",
+      "text": "Somebody's invented a pair of scissors with only one blade.",
+      "emotion": "curious",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.4
+    },
+    {
+      "speaker": "friend",
+      "text": "Good. I'll take two.",
+      "emotion": "pleased",
+      "gesture": "double_point",
+      "shot": "two-shot",
+      "pause": 0.4
+    },
+    {
+      "speaker": "reader",
+      "text": "I think that's just scissors.",
+      "emotion": "skeptical",
+      "gesture": "head_tilt",
+      "shot": "speaker",
+      "pause": 0.4
+    },
+    {
+      "speaker": "friend",
+      "text": "Then I'll take one.",
+      "emotion": "neutral",
+      "gesture": "nod",
+      "shot": "over-shoulder",
+      "pause": 0.4
+    },
+    {
+      "speaker": "reader",
+      "text": "That won't cut.",
+      "emotion": "concerned",
+      "gesture": "explain",
+      "shot": "two-shot",
+      "pause": 0.7
+    },
+    {
+      "speaker": "friend",
+      "text": "Make up your mind.",
+      "emotion": "angry",
+      "gesture": "fist_shake",
+      "shot": "two-shot",
+      "pause": 1.8,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "exasperated",
+        "gesture": "despair",
+        "at": "line_end",
+        "duration": 1.6
+      }
+    }
+  ],
+  "output": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30
+  },
+  "endCard": {
+    "enabled": true,
+    "title": "Goosnav Book Two",
+    "text": "A book of comics.",
+    "url": "www.goosnav.shop",
+    "seconds": 2.5
+  }
+}

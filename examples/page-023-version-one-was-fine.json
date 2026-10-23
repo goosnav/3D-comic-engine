@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 023 — Version One Was Fine",
+  "comics": [
+    "book2-023"
+  ],
+  "seed": 1023023,
+  "scene": "tv-studio",
+  "characters": {
+    "reader": "glasses",
+    "friend": "crooked"
+  },
+  "product": "book2",
+  "lines": [
+    {
+      "action": "open",
+      "seconds": 1.2
+    },
+    {
+      "speaker": "reader",
+      "text": "He says his name is Bug. Out comes a debugging machine.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 1.6,
+      "comic": "book2-023"
+    },
+    {
+      "speaker": "friend",
+      "text": "I would've said hello.",
+      "emotion": "exasperated",
+      "gesture": "rubber_hose",
+      "shot": "two-shot",
+      "pause": 0.7
+    },
+    {
+      "action": "hold",
+      "seconds": 1.0
+    },
+    {
+      "speaker": "reader",
+      "text": "It's version two.",
+      "emotion": "curious",
+      "gesture": "page_glance",
+      "shot": "book",
+      "pause": 0.9
+    },
+    {
+      "speaker": "friend",
+      "text": "What was version one?",
+      "emotion": "curious",
+      "gesture": "head_tilt",
+      "shot": "over-shoulder",
+      "pause": 0.7
+    },
+    {
+      "speaker": "reader",
+      "text": "Probably hello.",
+      "emotion": "thoughtful",
+      "gesture": "nod",
+      "shot": "speaker",
+      "pause": 0.5
+    },
+    {
+      "action": "place",
+      "seconds": 1.0
+    },
+    {
+      "speaker": "friend",
+      "text": "Should've kept it.",
+      "emotion": "dry",
+      "gesture": "shrug",
+      "shot": "two-shot",
+      "pause": 1.7,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "neutral",
+        "gesture": "nod",
+        "at": "line_end",
+        "duration": 1.0
+      }
+    },
+    {
+      "action": "close",
+      "seconds": 0.9
+    }
+  ],
+  "output": {
+    "width": 1280,
+    "height": 720,
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  }
+}
