@@ -45,7 +45,7 @@ package. You can also use recordings with `--voice recorded` (section 6).
 
 For the static website, open its HTTPS URL: no installation or backend needed.
 Choose pages, write dialogue, validate and Generate. Single-video Generate uses
-local Flite at a 432×540 / 12 fps preset; batch rendering uses the output settings
+local Flite at the selected Video size; batch rendering uses the output settings
 in each JSON. Keep the tab visible and the screen unlocked. Download
 the video before closing the page; browser jobs are session-only. Draft JSON is
 saved in browser storage when available, but download it for a durable backup.
@@ -225,8 +225,9 @@ node bin/theatre.mjs render my-script.json --preview
 node bin/theatre.mjs render my-script.json
 ```
 
-`--preview` makes a complete small video at 432×540/12 fps. Normal output defaults
-to 1080×1350/24 fps. Both include the same dialogue; preview never means “end card
+`--preview` makes a complete small video at 12 fps, preserving aspect ratio
+with a short edge up to 432 pixels and long edge up to 768. Normal output defaults
+to Instagram Reels at 1080×1920/24 fps. Both include the same dialogue; preview never means “end card
 only.” Speech is measured, so you do not enter a duration. Pauses and reactions
 extend the episode rather than cutting words off.
 

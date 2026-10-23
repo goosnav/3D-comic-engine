@@ -39,7 +39,7 @@ node bin/theatre.mjs render templates/book-duet.example.json --preview
 node bin/theatre.mjs render templates/book-duet.example.json
 ```
 
-`--preview` keeps the full script at 432 x 540 and 12 fps. The normal render uses
+`--preview` keeps the full script and aspect ratio at up to 768 pixels and 12 fps. The normal render uses
 the dimensions/fps in your JSON. Run `validate` first: it catches unsupported
 fields, scene/cast mismatches, missing dialogue, and impossible book actions
 before production starts. These examples have fixed seeds for repeatability;
@@ -61,7 +61,7 @@ JSON has no comments. Put notes in a separate file; fields such as `notes`,
 | `characters` | No | Maps cast IDs such as `reader` and `friend` to catalog variants. This chooses appearance, not voice. |
 | `product` | No | `book2` is the only supported product. |
 | `lines` | Yes | 1-200 ordered dialogue/action objects. At least one must be dialogue. |
-| `output` | No | `{ "width": 1080, "height": 1350, "fps": 24 }` by default. Width/height must be even integers from 128 through 1920. FPS is 12, 24, or 30. |
+| `output` | No | `{ "width": 1080, "height": 1920, "fps": 24 }` by default. Width/height must be even integers from 128 through 1920. FPS is 12, 24, or 30. |
 | `endCard` | No | Optional final product card. See below. |
 
 ### Format, source count, and cast
@@ -232,3 +232,30 @@ Prefer one clear exchange: show a real line from the page, give the readers
 different reactions, then let one short reply land. Add animation controls only
 when they clarify that exchange. The renderer validates the structure and source
 identity; editorial judgment remains yours.
+
+## Video presets, gaze, and physical comedy
+
+Use `"output": {"preset":"instagram_reels","fps":24}` for 1080×1920 (9:16).
+Other presets are `instagram_portrait` (1080×1350, 4:5), `landscape`
+(1920×1080, 16:9), and `square` (1080×1080). Omit `preset` for custom
+`width` and `height`; conflicting preset dimensions are rejected. Existing
+explicit dimensions are preserved. The GUI and browser export use these same settings.
+
+A dialogue or action beat can set both characters' gaze:
+`"gaze": {"reader":"book","friend":"ceiling"}`. Values are `auto`, `partner`,
+`away`, `book`, `ceiling`, and `camera`. Explicit gaze overrides automatic reading
+and holding poses for that beat. A listener reaction can also set `"gaze":"camera"`;
+the beat's explicit actor gaze takes priority.
+
+- `{"action":"throw","seconds":1.8}` closes and tosses a held book onto the table.
+  Use `hold` first and `open` before further dialogue.
+- `{"action":"slam"}` rapidly closes an open table book.
+- `{"action":"punch","actor":"reader","target":"friend","seconds":2.4}`
+  launches the target into an authored tumble. The target must be another cast member.
+- `{"action":"explode","actor":"friend","seconds":2.4}` briefly replaces that
+  character with a burst of colored pieces.
+
+Place the book before punch/explode. Character actions accept 0.8–8 seconds and
+reset the cast at the end; there is no persistent damage, physics simulation or
+collision response. The camera widens to contain the action. Book actions use the
+reader. See `examples/physical-comedy.json` for a complete valid sequence.

@@ -86,7 +86,7 @@ export function createActor(source, id, index = 0, config = {}) {
     if (bones[name]) bones[name].quaternion.copy(rest[name].q).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z)));
   }
 
-  function apply({ time, line, listening, gaze = 0, held = 0, reading = false, seed = 0 }) {
+  function apply({ time, line, listening, gaze = 0, held = 0, reading = false, gazeOverride, seed = 0 }) {
     for (const [key, bone] of Object.entries(bones)) {
       bone.position.copy(rest[key].p); bone.quaternion.copy(rest[key].q); bone.scale.copy(rest[key].s);
     }
@@ -114,10 +114,11 @@ export function createActor(source, id, index = 0, config = {}) {
       time, start: line?.start ?? time, duration: expressionDuration, seed: seed + index }) : null;
     let tilt = exp.tilt;
     if (gesture === 'tilt' || gesture === 'head_tilt') tilt += .13 * envelope;
-    const gazeTarget = reading || held > .5 || gesture === 'page_glance' ? 'book' : faceControl.gaze ?? reaction.gaze ?? (listening ? 'speaker' : 'partner');
+    const explicitGaze = gazeOverride ?? line?.gaze?.[id] ?? reaction.gaze;
+    const gazeTarget = explicitGaze && explicitGaze !== 'auto' ? explicitGaze : reading || held > .5 || gesture === 'page_glance' ? 'book' : (listening ? 'speaker' : 'partner');
     const yaw = gazeTarget === 'book' ? 0 : typeof gazeTarget === 'number' ? clamp(gazeTarget, -.65, .65)
-      : gazeTarget === 'camera' ? -root.rotation.y : gaze;
-    const down = gazeTarget === 'book' ? .55 : 0;
+      : gazeTarget === 'camera' ? -root.rotation.y : gazeTarget === 'away' ? -Math.sign(gaze || 1) * .65 : gazeTarget === 'ceiling' ? 0 : gaze;
+    const down = gazeTarget === 'book' ? .55 : gazeTarget === 'ceiling' ? -.65 : 0;
     const nod = gesture === 'nod' ? Math.sin(age * 5) * .13 * envelope : 0;
     pose('chest', Math.sin(phase) * .008, 0, 0);
     pose('head', down + nod - .025 + (speaking ? (.025 + Math.sin(age * 4) * .025) * envelope : 0), yaw, tilt);
@@ -190,7 +191,7 @@ export function createActor(source, id, index = 0, config = {}) {
 
   // Analytic two-link reach. Every solve starts from this frame's rest-relative
   // pose; lengths and the elbow pole are bounded, with no iterative frame history.
-  function grip(targets, weight = 1, bookRotation = null) {
+  function grip(targets, weight = 1, bookRotation = null, fingerDirection = null) {
     const errors = [], palmAlignmentErrors = [];
     for (const [i, side] of ['L', 'R'].entries()) {
       const upper = bones[`upper_arm${side}`], lower = bones[`forearm${side}`], hand = bones[`hand${side}`];
@@ -220,9 +221,8 @@ export function createActor(source, id, index = 0, config = {}) {
       aim(upper, lower, elbow); aim(lower, hand, end);
       if (bookRotation) {
         const normal = new THREE.Vector3(0, 1, 0).applyQuaternion(bookRotation);
-        // Grip sides change when the book faces the readers. Fingers always
-        // point toward the other grip, independently of the book's yaw.
-        const forward = targets[1 - i].clone().sub(targets[i]).normalize();
+        // Explicit book-local direction supports the fore-edge; legacy grips point inward.
+        const forward = fingerDirection ? fingerDirection.clone().applyQuaternion(bookRotation) : targets[1 - i].clone().sub(targets[i]).normalize();
         forward.addScaledVector(normal, -forward.dot(normal)).normalize();
         const across = new THREE.Vector3().crossVectors(forward, normal).normalize();
         const desired = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(across, forward, normal));

@@ -76,7 +76,7 @@
     },
     "book": {
       "path": "assets/book.glb",
-      "sha256": "f18cbb1f2931de424dd5043bc3b3d7a010b4633bf3ba4f686a40e799085ec807"
+      "sha256": "9c26c7a9821b0d63de36988e58c5896e779e539e70e6e02528f62c0e87d1d0b1"
     },
     "environment": {
       "path": "assets/library.glb",
@@ -108,42 +108,42 @@
     },
     "actor-cowboy": {
       "path": "assets/actor-cowboy.glb",
-      "sha256": "4ed2e880eba65a4a2967e7070eea70d82979b5a00c8650ba03d172f447b4c42b",
+      "sha256": "ba563f25dd0c84861f29c78ff3e0c2f6e9f525c065597581499e63175c29ed72",
       "sourcePath": "exports/ps1guy_v10_theatre_cowboy.glb"
     },
     "actor-cowboy-beady": {
       "path": "assets/actor-cowboy-beady.glb",
-      "sha256": "0f85361794085a9a6c3d972a731773cf2d0c8cc67cdb3891e7454314273c933e",
+      "sha256": "d2ed478ba094c3cb7f5fb8e6e54adcb1f9510ad41771fe9e4ec8782437b68289",
       "sourcePath": "exports/ps1guy_v10_theatre_cowboy_beady.glb"
     },
     "actor-glasses": {
       "path": "assets/actor-glasses.glb",
-      "sha256": "876319da3602776b1a79bf05eb01264c207c50bb3cbf257668dc140c27071753",
+      "sha256": "5fd7bd71cbcc4f098cfecf2f12536710346bad4345f9b5a96d1a7d5d9429cc1e",
       "sourcePath": "exports/ps1guy_v10_theatre_glasses.glb"
     },
     "actor-glasses-beady": {
       "path": "assets/actor-glasses-beady.glb",
-      "sha256": "be5b66fea8c61f2fe07bfb3dfb3a4d4afda2e959bd322da4e0195f2e4283c205",
+      "sha256": "c4f8cccf202c601be51568085fae8b6f651c5f7254809d38f3411a0a7f9f68d6",
       "sourcePath": "exports/ps1guy_v10_theatre_glasses_beady.glb"
     },
     "actor-crooked": {
       "path": "assets/actor-crooked.glb",
-      "sha256": "701a7279296f1cb783fbf29e0d5fd2f9fe5a56fc2db4768e2fa58af02aeebb79",
+      "sha256": "0cb8301d4b11dc4a4dd3b097b7de84d62ee8862170dfcf74d14a4eb1ca94bbdc",
       "sourcePath": "exports/ps1guy_v10_theatre_crooked.glb"
     },
     "actor-crooked-beady": {
       "path": "assets/actor-crooked-beady.glb",
-      "sha256": "6565b2b8587c936d5dab952a96defac0d3590a0c2f1cdba4cd13b2a7100684fe",
+      "sha256": "80378ce3c34d9cbdb47f78a20d087672421fb6e83903f93ac220ea4f895d4be6",
       "sourcePath": "exports/ps1guy_v10_theatre_crooked_beady.glb"
     },
     "actor-astronaut": {
       "path": "assets/actor-astronaut.glb",
-      "sha256": "76ae5e8b4a821e26cbf8efcf0660c19a873b5836682a5e537ee4025cdaa7b81c",
+      "sha256": "a23f418baf2e7486704334af80b4bded1789a105658d1aac2254ff2ec4a0d7f0",
       "sourcePath": "exports/ps1guy_v10_theatre_astronaut.glb"
     },
     "actor-astronaut-beady": {
       "path": "assets/actor-astronaut-beady.glb",
-      "sha256": "a214d1093a5cfb7438e1f0797eadbd1bb4257facbde5cd92adad66a5737e6ed4",
+      "sha256": "4969451ddf8e6d0e7b685294cbfe128ea475e5a0dcc894c63b7d78eb6b683d0e",
       "sourcePath": "exports/ps1guy_v10_theatre_astronaut_beady.glb"
     }
   },

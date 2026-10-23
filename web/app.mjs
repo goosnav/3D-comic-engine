@@ -1,4 +1,4 @@
-import { EMOTIONS, GESTURES } from '../src/contracts.mjs';
+import { EMOTIONS, GESTURES, GAZES, ACTIONS, ACTOR_ACTIONS, OUTPUT_PRESETS } from '../src/contracts.mjs';
 import { editorDefaults } from '../src/editor-defaults.mjs';
 import { comicReplacements, replaceComic, randomComic } from '../src/editor-selection.mjs';
 import { createBatchUI } from './batch.mjs';
@@ -152,7 +152,7 @@ function structureErrors(script) {
     const at = `Line ${index + 1}: `;
     if (!object(line)) { errors.push(`${at}use a dialogue or action object.`); return; }
     if (line.action !== undefined) {
-      if (!['open', 'turn', 'hold', 'read', 'place', 'close', 'slam'].includes(line.action)) errors.push(`${at}unknown book action.`);
+      if (!ACTIONS.includes(line.action)) errors.push(`${at}unknown action.`);
       if (line.speaker !== undefined || line.text !== undefined) errors.push(`${at}an action cannot also be dialogue.`);
       if (line.seconds !== undefined && (typeof line.seconds !== 'number' || !Number.isFinite(line.seconds) || line.seconds <= 0)) errors.push(`${at}seconds must be positive.`);
     } else {
@@ -352,7 +352,7 @@ function renderLines() {
   if (!state.script.lines.length) $('dialogue').append(el('p', 'Start with a line of dialogue, or request an optional AI draft after choosing pages.', 'muted'));
   state.script.lines.forEach((line, index) => {
     const card = el('section', undefined, 'line');
-    const heading = el('div', undefined, 'line-heading'); heading.append(el('h4', `Line ${index + 1}${line.action ? ' · Book action' : ''}`));
+    const heading = el('div', undefined, 'line-heading'); heading.append(el('h4', `Line ${index + 1}${line.action ? ' · Action' : ''}`));
     const actions = el('div', undefined, 'line-actions');
     for (const [label, delta] of [['Move up', -1], ['Move down', 1], ['Remove', 0]]) {
       const button = el('button', label); button.type = 'button'; button.setAttribute('aria-label', `${label} line ${index + 1}`);
@@ -365,7 +365,30 @@ function renderLines() {
     }
     heading.append(actions); card.append(heading);
     if (line.action) {
-      card.append(el('p', stringify(line), 'action-summary'), el('p', 'Edit this book action in JSON. Server validation checks book-state order.', 'hint'));
+      const controls = el('div', undefined, 'field-pair');
+      const action = el('select'); action.id = `line-${index}-action`;
+      choose(action, ACTIONS, line.action);
+      action.addEventListener('change', () => {
+        line.action = action.value; delete line.actor; delete line.target; delete line.seconds;
+        changed(); renderLines();
+      });
+      controls.append(field('Action', action));
+      const seconds = el('input'); seconds.id = `line-${index}-seconds`; seconds.type = 'number'; seconds.step = '.1'; seconds.min = '.3'; seconds.max = '8'; seconds.placeholder = 'Automatic'; seconds.value = line.seconds ?? '';
+      seconds.addEventListener('input', () => { if (seconds.value === '') delete line.seconds; else line.seconds = seconds.valueAsNumber; changed(); });
+      controls.append(field('Duration (seconds)', seconds));
+      if (ACTOR_ACTIONS.includes(line.action)) for (const key of line.action === 'punch' ? ['actor', 'target'] : ['actor']) {
+        const select = el('select'); select.id = `line-${index}-${key}`;
+        choose(select, templateFor(state.script).speakers, line[key], 'Automatic');
+        select.addEventListener('change', () => { if (select.value) line[key] = select.value; else delete line[key]; changed(); });
+        controls.append(field(key === 'actor' ? 'Character' : 'Hit character', select));
+      }
+      if (['open', 'turn'].includes(line.action)) {
+        const select = el('select'); select.id = `line-${index}-comic`;
+        choose(select, state.script.comics, line.comic, 'Current page');
+        select.addEventListener('change', () => { if (select.value) line.comic = select.value; else delete line.comic; changed(); });
+        controls.append(field('Source page', select));
+      }
+      card.append(controls, el('p', 'Throw needs a held book. Place it before a character action. Slam and throw close the book; open it before more dialogue.', 'hint'));
     } else {
       const pair = el('div', undefined, 'field-pair');
       const speaker = el('select'); speaker.id = `line-${index}-speaker`; speaker.setAttribute('aria-label', `Line ${index + 1} speaker`);
@@ -391,6 +414,14 @@ function renderLines() {
       card.append(field('Shot', shot));
       if (['face', 'reaction', 'pause', 'audio'].some(key => line[key] !== undefined)) card.append(el('p', 'Advanced fields present; edit them in JSON. Form edits preserve them.', 'hint'));
     }
+    const gazes = el('div', undefined, 'field-pair');
+    for (const role of templateFor(state.script)?.speakers ?? []) {
+      const select = el('select'); select.id = `line-${index}-gaze-${role}`;
+      choose(select, GAZES.map(id => ({ id, label: ({auto:'Automatic',partner:'At the other character',away:'Away from the other character',book:'At the book',ceiling:'At the ceiling',camera:'At the camera'})[id] })), line.gaze?.[role] ?? 'auto');
+      select.addEventListener('change', () => { line.gaze = { ...line.gaze, [role]: select.value }; changed(); });
+      gazes.append(field(`${role === 'reader' ? 'Reader' : 'Friend'} looks`, select));
+    }
+    card.append(gazes);
     $('dialogue').append(card);
   });
 }
@@ -404,12 +435,21 @@ function renderCharacters() {
     }
   }
 }
+function renderOutput() {
+  const output = state.script.output ?? {};
+  const preset = output.preset ?? (output.width === undefined && output.height === undefined ? 'instagram_reels' : 'custom');
+  choose($('output-preset'), [...Object.entries(OUTPUT_PRESETS).map(([id, item]) => ({id, label:item.label})), {id:'custom',label:'Custom dimensions'}], preset);
+  const size = OUTPUT_PRESETS[preset] ?? {width:1080,height:1920};
+  for (const key of ['width','height']) { $(`output-${key}`).value = output[key] ?? size[key]; $(`output-${key}`).disabled = preset !== 'custom'; }
+  $('output-fps').value = output.fps ?? 24;
+}
 function renderForm() {
   choose($('template'), templates().map(item => ({ id: item.id, label: `${item.id} · ${item.label}` })), state.script.template);
   choose($('scene'), state.catalog.scenes, state.script.scene, 'Template default');
   $('seed').value = state.script.seed ?? '';
   $('title').value = state.script.title;
   renderCharacters();
+  renderOutput();
   $('product').value = state.script.product ?? 'book2';
   const endCard = { ...endCardDefaults, ...state.script.endCard };
   $('end-card-enabled').checked = endCard.enabled;
@@ -518,6 +558,18 @@ for (const key of ['title', 'text', 'url', 'seconds']) $(`end-card-${key}`).addE
   const value = key === 'seconds' ? (Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : null) : input.value;
   state.script.endCard = { ...state.script.endCard, [key]: value }; changed();
 });
+$('output-preset').addEventListener('change', () => {
+  const preset = $('output-preset').value, fps = Number($('output-fps').value);
+  state.script.output = preset === 'custom' ? {width:Number($('output-width').value),height:Number($('output-height').value),fps} : {preset,fps};
+  changed(); renderOutput();
+});
+for (const key of ['width','height','fps']) $(`output-${key}`).addEventListener('change', () => {
+  state.script.output = {...state.script.output, [key]:Number($(`output-${key}`).value)}; changed();
+});
+$('add-action').addEventListener('click', () => {
+  state.script.lines.push({action:'read'}); changed(); renderLines();
+  $(`line-${state.script.lines.length - 1}-action`).focus();
+});
 $('add-line').addEventListener('click', () => {
   const comic = state.script.comics.find(id => !state.script.lines.some(line => line.comic === id)) ?? state.script.comics[0];
   state.script.lines.push({ speaker: templateFor(state.script)?.speakers[0] ?? 'reader', text: '', ...(comic ? { comic } : {}) });
@@ -587,7 +639,7 @@ $('generate').addEventListener('click', () => operate('Generate video', async ()
   const revision = state.revision;
   const script = clone(state.script); check(completeErrors(script));
   const music = browserMode ? $('background-music').files[0] : undefined;
-  if(browserMode){script.output={width:432,height:540,fps:12};$('device-canvas').hidden=false;}
+  if(browserMode)$('device-canvas').hidden=false;
   const voice = $('voice').value;
   if (voice === 'recorded' && script.lines.some(line => !line.action && (typeof line.audio !== 'string' || !line.audio.trim()))) throw new Error('Recorded mode needs an audio path on every spoken line. Add audio in JSON, or choose Local Kokoro.');
   const result = await api('/api/render', { script, voice, ...(music ? { music } : {}) });

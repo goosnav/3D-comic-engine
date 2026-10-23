@@ -4,7 +4,11 @@
   "title": "Three Approaches",
   "seed": 42,
   "scene": "diner",
-  "comics": ["book2-020", "book2-095", "book2-036"],
+  "comics": [
+    "book2-020",
+    "book2-095",
+    "book2-036"
+  ],
   "characters": {
     "reader": "olive",
     "friend": "cowboy-beady"
@@ -79,8 +83,7 @@
     }
   ],
   "output": {
-    "width": 1080,
-    "height": 1350,
+    "preset": "instagram_reels",
     "fps": 24
   },
   "endCard": {

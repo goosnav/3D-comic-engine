@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { clamp, ease } from './actor.mjs';
+import { BOOK_ACTIONS, ACTOR_ACTIONS } from './contracts.mjs';
 import { bookSpread } from './book-pages.mjs';
 
-const rails = new Set(['open', 'turn', 'hold', 'read', 'place', 'close', 'slam']);
+const rails = new Set(BOOK_ACTIONS);
 const mix = THREE.MathUtils.lerp;
 
 export function createBook(gltf, timeline, comics) {
@@ -26,6 +27,7 @@ export function createBook(gltf, timeline, comics) {
   root.add(model);
   const binding = model.getObjectByName('Book2_Root');
   const cover = model.getObjectByName('Cover_Hinge');
+  const spine = model.getObjectByName('Spine_Fold');
   const leaves = [];
   model.traverse(o => { if (/^Page_\d+_Hinge$/.test(o.name)) leaves.push(o); });
   leaves.sort((a, b) => a.name.localeCompare(b.name));
@@ -33,12 +35,13 @@ export function createBook(gltf, timeline, comics) {
   binding.position.set(0, 0, 0);
   root.scale.setScalar(1.15);
   const coverRest = cover.position.clone();
+  const thickness = binding.userData.book_thickness ?? .012954;
   const leafRest = leaves.map(o => o.position.clone());
   // GLB converts Blender's -Y hinge rotation into +Z. Driving named hinges
   // directly avoids seeking the unrelated full-book demonstration clip.
   const axis = new THREE.Vector3(0, 0, 1);
   const pageFor = id => bookSpread(comics.get(id)?.pdfPage);
-  const events = timeline.events.filter(e => e.type === 'action').sort((a, b) => a.start - b.start);
+  const events = timeline.events.filter(e => e.type === 'action' && rails.has(e.rail?.name ?? e.rail)).sort((a, b) => a.start - b.start);
   const firstRail = events[0];
   const initialOpen = firstRail?.rail === 'open' ? 0 : 1;
   const firstComic = timeline.sources?.[0] || timeline.events.find(e => e.comic)?.comic;
@@ -54,6 +57,7 @@ export function createBook(gltf, timeline, comics) {
         continue;
       }
       const name = typeof event.rail === 'string' ? event.rail : event.rail?.name;
+      if (ACTOR_ACTIONS.includes(name)) continue;
       if (!rails.has(name)) throw new Error(`Unsupported book rail: ${name}`);
       const p = clamp((time - event.start) / (event.end - event.start || 1));
       const u = ease(name === 'slam' ? clamp(p / .65) : p);
@@ -65,6 +69,7 @@ export function createBook(gltf, timeline, comics) {
         openness = mix(openness, 1, u); held = mix(held, 0, u);
       }
       if (name === 'close' || name === 'slam') { openness = mix(openness, 0, u); held = mix(held, 0, u); }
+      if (name === 'throw') { openness = mix(openness, 0, ease(p / .25)); held = mix(held, 0, ease((p - .25) / .75)); }
       if (name === 'hold') held = mix(held, 1, u);
       if (name === 'read') held = mix(held, event.bookState === 'held-open' ? 1 : held, u);
       if (name === 'place') held = mix(held, 0, u);
@@ -81,12 +86,13 @@ export function createBook(gltf, timeline, comics) {
   function apply(time, reader) {
     state = evaluate(time);
     cover.quaternion.setFromAxisAngle(axis, Math.PI * state.openness);
-    cover.position.copy(coverRest).lerp(new THREE.Vector3(-.001, -.005227, 0), state.openness);
+    if (spine) spine.quaternion.setFromAxisAngle(axis, Math.PI / 2 * state.openness);
+    cover.position.copy(coverRest).lerp(new THREE.Vector3(-thickness - .001, -.005227, 0), state.openness);
     leaves.forEach((hinge, i) => {
       const turn = clamp(state.page - i) * state.openness;
       hinge.quaternion.setFromAxisAngle(axis, Math.PI * turn);
       const openedY = -.006477 + .0025 + .00025 + (i + .5) * .000099361111;
-      hinge.position.copy(leafRest[i]).lerp(new THREE.Vector3(-.0015, openedY, 0), turn);
+      hinge.position.copy(leafRest[i]).lerp(new THREE.Vector3(-thickness - .0015, openedY, 0), turn);
       hinge.traverse(o => {
         if (o.morphTargetInfluences) o.morphTargetInfluences.fill(Math.sin(turn * Math.PI) * .65);
       });
@@ -96,8 +102,14 @@ export function createBook(gltf, timeline, comics) {
     root.position.copy(table).lerp(heldPoint, state.held);
     // Page top is local -Z: turn it away from the readers, not the audience.
     root.rotation.set(mix(0, -.35, state.held), Math.PI + mix(-.12, reader.root.rotation.y, state.held), 0);
+    const throwing = state.rail === 'throw' && state.progress < 1;
+    const flight = throwing ? clamp((state.progress - .25) / .75) : 0;
+    if (throwing) {
+      root.position.y += Math.sin(Math.PI * flight) * .75;
+      root.rotation.z += Math.PI * 2 * ease(flight);
+    }
     root.updateMatrixWorld(true);
-    const targets = [-1, 1].map(sign => root.localToWorld(new THREE.Vector3(sign * .20, -.024, .025)));
+    const targets = [-1, 1].map(sign => root.localToWorld(new THREE.Vector3(sign * .23 - thickness / 2, -.048, .12)));
     const manipulating = ['open', 'close', 'slam', 'turn'].includes(state.rail) && state.progress < 1;
     let contact = 0;
     if (manipulating && state.held === 0) {
@@ -107,8 +119,8 @@ export function createBook(gltf, timeline, comics) {
       targets[0] = hinge.localToWorld(new THREE.Vector3(.16, .015, .10));
       contact = ease(state.progress / .18) * ease((1 - state.progress) / .18);
     }
-    const weight = Math.max(state.held, contact);
-    const grip = weight > 0 ? reader.grip(targets, weight, state.held > 0 ? root.getWorldQuaternion(new THREE.Quaternion()) : null) : { errors: [], palmAlignmentErrors: [] };
+    const weight = throwing ? 1 - ease(state.progress / .25) : Math.max(state.held, contact);
+    const grip = weight > 0 ? reader.grip(targets, weight, state.held > 0 ? root.getWorldQuaternion(new THREE.Quaternion()) : null, state.held > 0 ? new THREE.Vector3(0, 0, -1) : null) : { errors: [], palmAlignmentErrors: [] };
     state.gripErrors = grip.errors; state.palmAlignmentErrors = grip.palmAlignmentErrors;
     return state;
   }

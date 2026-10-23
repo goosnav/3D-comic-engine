@@ -4,7 +4,9 @@
   "title": "Carry-on Reading",
   "seed": 91,
   "scene": "moon-base",
-  "comics": ["book2-020"],
+  "comics": [
+    "book2-020"
+  ],
   "characters": {
     "reader": "astronaut",
     "friend": "astronaut-beady"
@@ -53,8 +55,7 @@
     }
   ],
   "output": {
-    "width": 1080,
-    "height": 1350,
+    "preset": "instagram_reels",
     "fps": 24
   },
   "endCard": {

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createActor } from './actor.mjs';
+import { createStunts } from './stunts.mjs';
 import { createBook } from './book.mjs';
 import { createEndcard, endCardFields, loadEndcardVideo } from './endcard.mjs';
 import { loadEndcardFrames } from './endcard-frames.mjs';
@@ -96,6 +97,18 @@ function fitHeadgear(camera, actors) {
 
 export function frameCamera(camera, { shot, focusId, actors, book, bookState, event, time }) {
   camera.up.set(0, 1, 0);
+  if (['punch', 'explode', 'throw'].includes(event?.rail)) {
+    const bounds = new THREE.Box3();
+    for (const root of [...actors.map(a => a.root), book.root]) root.traverseVisible(o => {
+      if (o.isMesh) bounds.expandByObject(o, true);
+    });
+    const center = bounds.getCenter(new THREE.Vector3()), size = bounds.getSize(new THREE.Vector3());
+    camera.fov = 38;
+    const tangent = Math.tan(THREE.MathUtils.degToRad(19));
+    const distance = Math.max(size.y, size.x / camera.aspect) / (2 * tangent * .82) + size.z / 2;
+    camera.position.set(center.x, center.y + .12, center.z + distance);
+    camera.lookAt(center); camera.updateProjectionMatrix(); return;
+  }
   const focused = actors.find(a => a.root.name === `actor-${focusId}`) || actors[0];
   const x = focused.root.position.x, z = focused.root.position.z, side = focused.root.name === 'actor-reader' ? -1 : 1;
   if (shot === 'book') {
@@ -265,7 +278,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
   const textures = new Map(), loadedRoots = [];
   const endcards = new Map(), fonts = [];
   let renderRequest = 0;
-  let renderer, actors, book, sourcePlane, endcardVideo, disposed = false, frame = null, active = null, source = null, shot = 'two-shot', endcard = null;
+  let renderer, actors, book, stunts, sourcePlane, endcardVideo, disposed = false, frame = null, active = null, source = null, shot = 'two-shot', endcard = null;
   try {
     // Load sequentially so every fulfilled allocation is owned even if a later load fails.
     const manager = new THREE.LoadingManager();
@@ -342,6 +355,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       actor.headgearFrame = headgearFraming(actor);
       scene.add(actor.root); return actor;
     });
+    stunts = createStunts(actors);
     book = createBook(bookGLTF, timeline, comics); scene.add(book.root);
     sourcePlane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ toneMapped: false }));
     insertScene.background = new THREE.Color(0xeee9df); insertScene.add(sourcePlane);
@@ -365,19 +379,23 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
     source = sourceEvent ? comics.get(sourceEvent.comic) : null;
     const reader = actors.find(a => a.root.name === 'actor-reader');
     const bookState = book.evaluate(time);
+    const action = current.find(e => e.type === 'action');
+    stunts.reset();
     actors.forEach((actor, i) => actor.apply({ time, line: active,
       listening: !!active && active.speaker !== timeline.cast[i],
+      gazeOverride: action?.gaze?.[timeline.cast[i]],
       gaze: actors.length > 1 ? (i === 0 ? .32 : -.32) : 0,
       held: timeline.cast[i] === 'reader' ? bookState.held : 0,
       reading: sourceEvent?.shot === 'book' || (timeline.cast[i] === 'reader' && bookState.rail === 'read' && bookState.progress < 1),
       seed: timeline.seed || 0 }));
+    stunts.apply(action, time);
     book.apply(time, reader);
     scene.updateMatrixWorld(true);
     shot = sourceEvent ? sourceEvent.shot || 'source' : active?.shot || current.find(e => e.shot)?.shot || 'two-shot';
     // Holds after speech favor the reacting listener, retaining a three-quarter angle.
     const reacting = active?.type === 'hold' && active.reaction?.at === 'line_end' && time - active.start < active.reaction.duration;
     const focusId = reacting ? active.reaction.actor : active?.speaker;
-    frameCamera(camera, { shot, focusId, actors, book, bookState: book.diagnostics(), event: sourceEvent || active || current.find(e => e.shot), time });
+    frameCamera(camera, { shot, focusId, actors, book, bookState: book.diagnostics(), event: action || sourceEvent || active || current.find(e => e.shot), time });
     if (endEvent) {
       if (!endcards.has(endEvent)) endcards.set(endEvent, createEndcard({ width: timeline.width, height: timeline.height,
         card: endCardFields(timeline, endEvent), video: endcardVideo.video,
@@ -405,6 +423,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       scene: timeline.scene, shot, activeEvent: active?.id || null,
       source: source ? { id: source.id, path: source.path, sha256: source.sha256, pdfPage: source.pdfPage, fit: shot === 'source' ? 'contain' : 'physical-page' } : null,
       endCard: endcard?.diagnostics() || null,
+      stunt: stunts.diagnostics(),
       independentSkeletons: actors.every((a, i) => actors.slice(i + 1).every(b =>
         a.skeletons.every(s => b.skeletons.every(t => s !== t && s.bones.every(bone => !t.bones.includes(bone)))))),
       actors: actors.map(a => ({ ...a.diagnostics(), variant: a.variant })), book: book.diagnostics(),

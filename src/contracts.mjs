@@ -6,7 +6,30 @@ import {gestures,ARM_GESTURES} from './gesture-performance.mjs';
 export const EMOTIONS=Object.keys(emotions);
 export const GESTURES=['none','explain','nod','head_tilt','shrug','page_glance',...Object.keys(gestures)];
 export const SHOTS=['auto','speaker','two-shot','over-shoulder','book','source'];
-const ACTIONS=['open','turn','hold','read','place','close','slam'];
+export const BOOK_ACTIONS=['open','turn','hold','read','place','close','slam','throw'];
+export const ACTOR_ACTIONS=['punch','explode'];
+export const ACTIONS=[...BOOK_ACTIONS,...ACTOR_ACTIONS];
+export const GAZES=['auto','partner','away','book','ceiling','camera'];
+export const OUTPUT_PRESETS=Object.freeze({
+ instagram_reels:{label:'Instagram Reels / Stories · 9:16 · 1080 × 1920',width:1080,height:1920},
+ instagram_portrait:{label:'Instagram portrait · 4:5 · 1080 × 1350',width:1080,height:1350},
+ landscape:{label:'Landscape · 16:9 · 1920 × 1080',width:1920,height:1080},
+ square:{label:'Square · 1:1 · 1080 × 1080',width:1080,height:1080},
+});
+export function resolveOutput(raw={}){
+ keys(raw,['preset','width','height','fps'],'output');
+ const preset=raw.preset===undefined?null:OUTPUT_PRESETS[choice(raw.preset,Object.keys(OUTPUT_PRESETS),'output.preset')];
+ const output={width:preset?.width??1080,height:preset?.height??1920,fps:24,...raw};
+ for(const k of ['width','height']){number(output[k],128,1920,'output.'+k);if(output[k]%2)fail(`output.${k} must be an even integer`);if(preset&&output[k]!==preset[k])fail(`output.${k} conflicts with output.preset; omit preset for custom dimensions`);}
+ choice(output.fps,[12,24,30],'output.fps');return output;
+}
+export function previewOutput(raw){
+ const {width,height}=resolveOutput(raw);
+ const scale=Math.max(128/Math.min(width,height),Math.min(1,432/Math.min(width,height),768/Math.max(width,height)));
+ return {width:Math.round(width*scale/2)*2,height:Math.round(height*scale/2)*2,fps:12};
+}
+function gaze(v,label,speakers){if(v===undefined)return;keys(v,speakers,label);for(const [id,target] of Object.entries(v))choice(target,GAZES,label+'.'+id);}
+
 const fail=(s)=>{throw new Error(s);};
 const object=(v,label)=>{if(!v||typeof v!=='object'||Array.isArray(v))fail(`${label} must be an object`);};
 const keys=(v,allowed,label)=>{object(v,label);for(const k of Object.keys(v))if(!allowed.includes(k))fail(`${label}.${k}: unknown field. Options: ${allowed.join(', ')}`);};
@@ -67,28 +90,40 @@ export function resolveScript(raw,catalog){
  const lines=raw.lines.map((line,i)=>{
   const label=`lines[${i}]`;object(line,label);
   if(line.action!==undefined){
-   keys(line,['action','comic','seconds','id','bookState'],label);choice(line.action,ACTIONS,label+'.action');
+   keys(line,['action','comic','seconds','id','bookState','actor','target','gaze'],label);choice(line.action,ACTIONS,label+'.action');
+   gaze(line.gaze,label+'.gaze',t.speakers);
+   if(ACTOR_ACTIONS.includes(line.action)){
+    if(state==='held-open')fail(`${label}: place the book before a character action`);
+    const actor=choice(line.actor??t.speakers[0],t.speakers,label+'.actor');
+    const target=line.action==='punch'?choice(line.target??t.speakers.find(id=>id!==actor),t.speakers,label+'.target'):undefined;
+    if(target===actor)fail(`${label}: punch needs a different target actor`);
+    if(line.action==='explode'&&line.target!==undefined)fail(`${label}: explode has no target`);
+    if(line.comic!==undefined&&line.comic!==current)fail(`${label}: character actions cannot change the comic`);
+    return {...line,actor,...(target?{target}:{}),id:`beat-${i}`,seconds:number(line.seconds??2.4,.8,8,label+'.seconds'),comic:current,bookState:state};
+   }
+   if(line.actor!==undefined||line.target!==undefined)fail(`${label}: book actions use the reader; actor/target are for character actions`);
    if(line.action==='turn'&&!line.comic)fail(`${label}: turn needs an explicit target comic`);
    if(line.comic&&line.comic!==current&&!['open','turn'].includes(line.action))fail(`${label}: only open/turn actions may change the comic; use dialogue comic for a source cut`);
-   const transitions={open:['table-closed','table-open'],turn:['table-open','table-open'],hold:['table-open','held-open'],read:[state,state],place:['held-open','table-open'],close:['table-open','table-closed'],slam:['table-open','table-closed']};
+   const transitions={open:['table-closed','table-open'],turn:['table-open','table-open'],hold:['table-open','held-open'],read:[state,state],place:['held-open','table-open'],close:['table-open','table-closed'],slam:['table-open','table-closed'],throw:['held-open','table-closed']};
    const [from,to]=transitions[line.action];if(state!==from||line.action==='read'&&state==='table-closed')fail(`${label}: ${line.action} needs ${from==='table-closed'?'closed':from} book state, currently ${state}`);
    if(line.comic){if(!raw.comics.includes(line.comic))fail(`${label}: comic is not selected`);if(line.action==='turn'){const a=catalog.comics.find(c=>c.id===current),b=catalog.comics.find(c=>c.id===line.comic);if(bookSpread(a.pdfPage)===null||bookSpread(b.pdfPage)===null||Math.abs(bookSpread(a.pdfPage)-bookSpread(b.pdfPage))!==1)fail(`${label}: turn requires an adjacent spread; use a line's comic field for a deliberate source cut`);}current=line.comic;}
-   state=to;return {...line,id:`beat-${i}`,seconds:number(line.seconds??({slam:.65,turn:1.2,open:1.3,hold:1,place:1,close:.9,read:1}[line.action]),.3,8,label+'.seconds'),comic:current,bookState:state};
+   state=to;return {...line,id:`beat-${i}`,seconds:number(line.seconds??({throw:1.8,slam:.65,turn:1.2,open:1.3,hold:1,place:1,close:.9,read:1}[line.action]),.3,8,label+'.seconds'),comic:current,bookState:state};
   }
-  keys(line,['speaker','text','comic','emotion','gesture','face','reaction','pause','shot','audio','id','bookState'],label);
+  keys(line,['speaker','text','comic','emotion','gesture','face','reaction','pause','shot','audio','id','bookState','gaze'],label);
+  gaze(line.gaze,label+'.gaze',t.speakers);
   choice(line.speaker,t.speakers,label+'.speaker');if(typeof line.text!=='string'||!line.text.trim()||line.text.length>1000)fail(`${label}.text needs 1–1000 characters`);
   const comic=line.comic??current;if(!raw.comics.includes(comic))fail(`${label}: comic ${comic} is not selected/declared`);
   if(state==='table-closed')fail(`${label}: open the book before reading dialogue`);
   if(comic!==current&&state==='held-open')fail(`${label}: place the held book before switching comic`);
   current=comic;used.add(comic);const gesture=choice(line.gesture??'none',GESTURES,label+'.gesture');
   if(state==='held-open'&&line.speaker==='reader'&&ARM_GESTURES.includes(gesture))fail(`${label}: held book reserves the reader's hands; choose nod, head_tilt, page_glance or none`);
-  let reaction;if(line.reaction){keys(line.reaction,['actor','emotion','gesture','face','at','duration'],label+'.reaction');reaction={...line.reaction,actor:line.reaction.actor??t.speakers.find(s=>s!==line.speaker),emotion:choice(line.reaction.emotion??'neutral',EMOTIONS,label+'.reaction.emotion'),gesture:choice(line.reaction.gesture??'none',GESTURES,label+'.reaction.gesture'),face:face(line.reaction.face,label+'.reaction.face'),at:choice(line.reaction.at??'line_end',['line_start','line_end'],label+'.reaction.at'),duration:number(line.reaction.duration??.8,.1,5,label+'.reaction.duration')};if(!t.speakers.includes(reaction.actor)||reaction.actor===line.speaker)fail(`${label}: reaction needs a different cast actor`);}
+  let reaction;if(line.reaction){keys(line.reaction,['actor','emotion','gesture','face','at','duration','gaze'],label+'.reaction');reaction={...line.reaction,actor:line.reaction.actor??t.speakers.find(s=>s!==line.speaker),emotion:choice(line.reaction.emotion??'neutral',EMOTIONS,label+'.reaction.emotion'),gesture:choice(line.reaction.gesture??'none',GESTURES,label+'.reaction.gesture'),face:face(line.reaction.face,label+'.reaction.face'),at:choice(line.reaction.at??'line_end',['line_start','line_end'],label+'.reaction.at'),duration:number(line.reaction.duration??.8,.1,5,label+'.reaction.duration')};if(reaction.gaze!==undefined)choice(reaction.gaze,GAZES,label+'.reaction.gaze');if(!t.speakers.includes(reaction.actor)||reaction.actor===line.speaker)fail(`${label}: reaction needs a different cast actor`);}
   if(line.audio!==undefined&&(typeof line.audio!=='string'||!line.audio||line.audio.includes('\0')))fail(`${label}.audio must be a relative filename`);
   if(state==='held-open'&&reaction?.actor==='reader'&&ARM_GESTURES.includes(reaction.gesture))fail(`${label}: held book reserves the reader's hands during reactions too`);
   return {...line,id:`beat-${i}`,comic,emotion:choice(line.emotion??'neutral',EMOTIONS,label+'.emotion'),gesture,face:face(line.face,label+'.face'),pause:number(line.pause??.4,0,5,label+'.pause'),shot:choice(line.shot??'auto',SHOTS,label+'.shot'),...(reaction?{reaction}:{}),bookState:state};
  });
  if(!used.size)fail('At least one dialogue line is required');for(const c of raw.comics)if(!used.has(c))fail(`Selected comic ${c} needs a dialogue line`);
- const output={width:1080,height:1350,fps:24,...raw.output};keys(output,['width','height','fps'],'output');for(const k of ['width','height']){number(output[k],128,1920,'output.'+k);if(output[k]%2)fail(`output.${k} must be an even integer`);}choice(output.fps,[12,24,30],'output.fps');
+ const output=resolveOutput(raw.output);
  return {version:1,template:t.id,title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
 }
 export function selectScript(template,seed=randomInt(0,2147483647),catalog){

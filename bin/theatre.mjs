@@ -2,7 +2,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {ROOT,loadCatalog,verifyCatalog} from '../src/library.mjs';
-import {resolveScript,selectScript} from '../src/contracts.mjs';
+import {previewOutput,resolveScript,selectScript} from '../src/contracts.mjs';
 import {createJob,processJob,listJobs,readJob,runBatch,MAX_BATCH_JOBS,OUTPUT} from '../src/jobs.mjs';
 import {run} from '../src/process.mjs';
 import {openBrowser} from './open-browser.mjs';
@@ -29,7 +29,7 @@ Exit codes: 0 success; 1 production/runtime failure (including any failed batch 
 2 invalid command, input JSON/contract or manifest; Ctrl+C normally exits 130.
 Flite is free bundled speech with no model/Python. Kokoro is optional local speech.
 Rendering calls no paid service. 'draft' explicitly enables an optional local model.
---preview renders 432×540 at 12 fps. Normal default: 1080×1350 at 24 fps.
+--preview preserves aspect ratio at up to 768 px / 12 fps. Default: Reels 1080×1920 / 24 fps.
 Default output: ${OUTPUT}. Reuse --output-dir for status/resume of custom outputs.
 First run: node tools/setup.mjs. See launchers/README.md and TUTORIAL.md.
 `;
@@ -94,7 +94,7 @@ try{
     let raw;if(options.template){try{raw=selectScript(options.template,options.seed===undefined?undefined:Number(options.seed),catalog);}catch(e){invalid(e.message);}}else raw=await validate(await readJSON(positional[0]));
     await save(await draftScript(raw,catalog));
    }else if(command==='render'){
-    const raw=await readJSON(positional[0]);if(options.preview&&raw&&typeof raw==='object'&&!Array.isArray(raw))raw.output={width:432,height:540,fps:12};
+    const raw=await readJSON(positional[0]);if(options.preview&&raw&&typeof raw==='object'&&!Array.isArray(raw))raw.output=previewOutput(raw.output);
     await validate(raw);
     const job=await createJob(raw,{voice:options.voice??'flite',inputRoot:path.dirname(path.resolve(positional[0])),outputRoot});
     progress(`Run ${job.id}`);const finished=await processJob(job.id,{outputRoot,progress});emit(finished,finished.verification.path);

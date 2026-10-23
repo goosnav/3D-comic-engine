@@ -4,7 +4,9 @@
   "title": "The Other Side",
   "seed": 17,
   "scene": "library",
-  "comics": ["book2-036"],
+  "comics": [
+    "book2-036"
+  ],
   "characters": {
     "reader": "blue-beady",
     "friend": "rust"
@@ -64,8 +66,7 @@
     }
   ],
   "output": {
-    "width": 1080,
-    "height": 1350,
+    "preset": "instagram_reels",
     "fps": 24
   },
   "endCard": {

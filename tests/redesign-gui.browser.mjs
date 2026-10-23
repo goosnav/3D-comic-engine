@@ -334,3 +334,26 @@ test('Generate brings phone progress into view before the live canvas', async t 
   assert.ok(position.heading >= 0 && position.headingBottom <= position.viewport && position.progress >= 0 && position.progressBottom <= position.viewport, JSON.stringify(position));
   assert.ok(position.progress < position.canvas, 'progress must not sit below a tall live canvas');
 });
+
+test('size, gaze and action controls round-trip JSON and browser exports keep the chosen size', async t => {
+  const {page}=await fixture(t,{staticMode:true});
+  assert.equal(await page.locator('#output-preset').inputValue(),'instagram_reels');
+  assert.equal(await page.locator('#output-height').inputValue(),'1920');
+  await load(page,{...script,comics:['p30'],output:{width:640,height:480,fps:12}});
+  assert.equal(await page.locator('#output-preset').inputValue(),'custom');
+  await page.locator('#output-preset').selectOption('landscape');
+  await page.locator('#line-0-gaze-reader').selectOption('ceiling');
+  await page.locator('#add-action').click();
+  await page.locator('#line-1-action').selectOption('punch');
+  await page.locator('#line-1-actor').selectOption('friend');
+  await page.locator('#line-1-target').selectOption('reader');
+  const authored=await current(page);
+  assert.deepEqual(authored.output,{preset:'landscape',fps:12});
+  assert.deepEqual(authored.lines[0].gaze,{reader:'ceiling'});
+  assert.equal(authored.lines[1].target,'reader');
+  await load(page,authored);
+  assert.equal(await page.locator('#line-1-action').inputValue(),'punch');
+  await page.locator('#generate').click();
+  await page.waitForFunction(()=>!!window.submittedRender);
+  assert.deepEqual(await page.evaluate(()=>window.submittedRender.script.output),authored.output);
+});

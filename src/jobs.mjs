@@ -3,7 +3,7 @@ import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import lockfile from 'proper-lockfile';
 import {ROOT,digest,loadCatalog,verifyCatalog,safePath} from './library.mjs';
-import {resolveScript} from './contracts.mjs';
+import {previewOutput,resolveScript} from './contracts.mjs';
 import {prepareAudio,writeMix} from './audio.mjs';
 import {compileTimeline} from './timeline.mjs';
 export const OUTPUT=path.join(ROOT,'output');
@@ -41,7 +41,7 @@ export async function runBatch(entries,{baseDir=ROOT,outputRoot=OUTPUT,voice='fl
    const input=await safePath(baseDir,entry.input);
    if((await fs.stat(input)).size>256000)throw Error('Script exceeds the 256000-byte limit');
    const raw=JSON.parse(await fs.readFile(input,'utf8'));
-   if(preview)raw.output={width:432,height:540,fps:12};
+   if(preview)raw.output=previewOutput(raw.output);
    job=await createJob(raw,{outputRoot,inputRoot:path.dirname(input),voice:entry.voice??voice});
    progress(`[${index+1}/${entries.length}] Run ${job.id}`);
    const finished=await processJob(job.id,{outputRoot,progress:message=>progress(`[${index+1}/${entries.length}] ${message}`)});

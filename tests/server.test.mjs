@@ -17,6 +17,7 @@ test('local GUI rejects cross-origin mutations and exposes only approved source 
   assert.equal(video.status,200);assert.equal(video.headers.get('content-type'),'video/mp4');
   assert.equal((await video.arrayBuffer()).byteLength,Number(video.headers.get('content-length')));
   assert.equal((await fetch(s.url+'/src/endcard-video.mjs')).status,200);
+  assert.equal((await fetch(s.url+'/src/stunts.mjs')).status,200);
   assert.equal((await fetch(s.url+'/src/editor-selection.mjs')).status,200);
   for(const name of ['blank-book-duet.json','book-duet.example.json','fireside.example.json','page-tour.example.json','astronaut.example.json']){
    const template=await fetch(s.url+'/templates/'+name);assert.equal(template.status,200);assert.equal((await template.json()).version,1);

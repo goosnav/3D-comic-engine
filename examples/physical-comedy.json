@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "A Brief Disagreement",
+  "comics": [
+    "book2-020"
+  ],
+  "seed": 23,
+  "scene": "library",
+  "characters": {
+    "reader": "cowboy",
+    "friend": "glasses"
+  },
+  "output": {
+    "preset": "instagram_reels",
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  },
+  "lines": [
+    {
+      "speaker": "reader",
+      "text": "He has a plan. I respect that.",
+      "gaze": {
+        "reader": "book",
+        "friend": "partner"
+      },
+      "shot": "two-shot"
+    },
+    {
+      "action": "hold"
+    },
+    {
+      "speaker": "friend",
+      "text": "I am looking for the part where the plan works.",
+      "gaze": {
+        "reader": "book",
+        "friend": "ceiling"
+      },
+      "shot": "book"
+    },
+    {
+      "action": "throw",
+      "seconds": 2
+    },
+    {
+      "action": "open"
+    },
+    {
+      "speaker": "reader",
+      "text": "Perhaps a stronger argument.",
+      "gesture": "fist_shake",
+      "gaze": {
+        "reader": "partner",
+        "friend": "away"
+      }
+    },
+    {
+      "action": "punch",
+      "actor": "reader",
+      "target": "friend",
+      "seconds": 3
+    },
+    {
+      "speaker": "friend",
+      "text": "That was not a stronger argument.",
+      "gaze": {
+        "reader": "partner",
+        "friend": "camera"
+      },
+      "shot": "two-shot"
+    },
+    {
+      "action": "explode",
+      "actor": "reader",
+      "seconds": 3
+    },
+    {
+      "action": "slam"
+    },
+    {
+      "action": "open"
+    },
+    {
+      "speaker": "reader",
+      "text": "Let us try the book again.",
+      "gaze": {
+        "reader": "book",
+        "friend": "book"
+      },
+      "shot": "two-shot"
+    }
+  ]
+}

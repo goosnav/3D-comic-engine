@@ -62,7 +62,7 @@ Each queued script is copied before rendering. Its dialogue, page/source locks,
 scene, character choices, seed, performance instructions, timing, end card, and
 **output width, height and fps** go through the production renderer unchanged.
 Omitted settings use the engine's normal defaults. Batch export does not apply
-the browser editor's 432×540 / 12 fps preview preset or its attached music.
+the browser editor's attached music. Single exports also honor the selected video size.
 Files with the same name get distinct numbered MP4 filenames.
 
 Invalid JSONs stay visible with an explanation and are excluded from selection.
@@ -95,7 +95,10 @@ node bin/theatre.mjs resume RUN_ID --json
 ```
 
 See **[CLI.txt](CLI.txt)** for manifest format, exit codes and output directories.
-Desktop default is 1080×1350 / 24 fps; preview is 432×540 / 12 fps.
+The default is Instagram Reels, 1080×1920 (9:16) at 24 fps. The Video size control
+also offers portrait 1080×1350 (4:5), landscape 1920×1080 (16:9), square
+1080×1080, and custom dimensions. CLI previews preserve the aspect ratio at
+12 fps, with the short edge up to 432 px and the long edge up to 768 px.
 Measured dialogue and reactions determine duration. Preview retains the whole film.
 One job runs at a time within a shared output queue; independent output roots can
 run independently when your hardware can handle it.
@@ -178,3 +181,12 @@ Safari/physical phones require native-device validation; supplying launchers is
 not proof of testing there. GPU outputs need not be byte-identical across devices.
 Acting, natural finger contact, humor and sales effectiveness are not guaranteed.
 This app produces local files; it does not publish or upload to Google Drive.
+
+Character gaze is editable for each beat: automatic, partner, away, book, ceiling,
+or camera. Add action offers book slam/throw and character punch/explode.
+Punch launches the target into a cartoon tumble; explosion briefly scatters
+colored pieces. Both restore the characters at the end of the beat and seek
+reproducibly. They do not simulate persistent injuries or physical collisions.
+Try `examples/physical-comedy.json`; the dialogue is invented commentary.
+The corrected hats, glasses and folding book are bundled GLBs; editable Blender
+sources and rebuild scripts are saved in the companion `goosnav-3D-assets` library.

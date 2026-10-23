@@ -1,0 +1,64 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import { readFile, mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
+const root = fileURLToPath(new URL('../',import.meta.url));
+test('fitted assets, supported hands and cartoon actions render and seek', {timeout:120000}, async t=>{
+ const catalog=JSON.parse(await readFile(resolve(root,'assets/catalog.json')));
+ const server=createServer(async(req,res)=>{try{
+  if(req.url==='/'){res.setHeader('Content-Type','text/html');return res.end('<style>body{margin:0}</style><script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script><canvas></canvas>');}
+  const path=resolve(root,'.'+req.url);if(!path.startsWith(root))throw Error('path');
+  res.setHeader('Content-Type',/\.m?js$/.test(path)?'text/javascript':'application/octet-stream');res.end(await readFile(path));
+ }catch{res.writeHead(404);res.end();}});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>{server.closeAllConnections();server.close();});
+ const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});t.after(()=>browser.close());
+ const page=await browser.newPage({viewport:{width:540,height:960}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(`http://127.0.0.1:${server.address().port}`);
+ const geometry=await page.evaluate(async catalog=>{
+  const T=await import('three'),{GLTFLoader}=await import('three/addons/loaders/GLTFLoader.js');
+  const {createActor}=await import('/src/actor.mjs'),{createBook}=await import('/src/book.mjs');
+  const actor=createActor((await new GLTFLoader().loadAsync('/assets/actor-crooked.glb')).scene,'reader');
+  actor.root.position.set(-.64,0,-.02);actor.root.rotation.y=.3;
+  const book=createBook(await new GLTFLoader().loadAsync('/assets/book.glb'),{sources:['book2-020'],events:[{type:'action',rail:'hold',start:0,end:1,bookState:'held-open'}]},new Map(catalog.comics.map(c=>[c.id,c])));
+  const samples=[];
+  for(const time of [.25,.5,.75,1,2]){
+   const state=book.evaluate(time);actor.apply({time,held:state.held});book.apply(time,actor);actor.root.updateMatrixWorld(true);
+   const inverse=book.root.matrixWorld.clone().invert();let max=-Infinity,count=0;
+   actor.root.traverse(o=>{if(!o.isSkinnedMesh)return;o.skeleton.update();const indices=o.geometry.attributes.skinIndex,weights=o.geometry.attributes.skinWeight;
+    for(let i=0;i<indices.count;i++){
+     let hand=0;for(let j=0;j<4;j++)if(/^(hand|f\d|thumb)/.test(o.skeleton.bones[indices.getComponent(i,j)].name))hand+=weights.getComponent(i,j);
+     if(hand<.5)continue;const p=o.getVertexPosition(i,new T.Vector3()).applyMatrix4(o.matrixWorld).applyMatrix4(inverse);
+     if(Math.abs(p.x)<.235&&Math.abs(p.z)<.078){max=Math.max(max,p.y);count++;}
+    }
+   });samples.push({time,max,count,errors:book.diagnostics().gripErrors});
+  }
+  book.root.updateMatrixWorld(true);let spineTop=-Infinity;
+  const inverse=book.root.matrixWorld.clone().invert();
+  book.root.getObjectByName('Spine').traverse(o=>{if(o.isMesh)for(let i=0;i<o.geometry.attributes.position.count;i++)spineTop=Math.max(spineTop,o.getVertexPosition(i,new T.Vector3()).applyMatrix4(o.matrixWorld).applyMatrix4(inverse).y);});
+  return {samples,spineTop};
+ },catalog);
+ t.diagnostic(JSON.stringify(geometry));
+ assert.ok(geometry.spineTop<-.003,'folded binding remains below the printed pages');
+ for(const sample of geometry.samples.filter(s=>s.time>=1)){assert.ok(sample.max<-.008,`hand vertices stay below paper: ${sample.max}`);assert.ok(sample.errors.every(e=>e<.065));}
+ const timeline={version:1,width:540,height:960,fps:24,duration:15,frames:360,seed:12,scene:'library',cast:['reader','friend'],characters:{reader:'crooked',friend:'glasses'},sources:['book2-020'],endCard:{enabled:false},events:[
+  {id:'hold',type:'action',rail:'hold',start:0,end:1,bookState:'held-open'},
+  {id:'book',type:'line',speaker:'reader',comic:'book2-020',shot:'book',start:1,end:3,mouth:[]},
+  {id:'held',type:'line',speaker:'reader',comic:'book2-020',shot:'two-shot',start:3,end:5,mouth:[]},
+  {id:'throw',type:'action',rail:'throw',start:5,end:7,bookState:'table-closed'},
+  {id:'punch',type:'action',rail:'punch',actor:'reader',target:'friend',start:7,end:10},
+  {id:'explode',type:'action',rail:'explode',actor:'reader',start:10,end:13},
+  {id:'open',type:'action',rail:'open',comic:'book2-020',start:13,end:15,bookState:'table-open'},
+ ]};
+ await page.evaluate(async({timeline,catalog})=>{const {createPlayer}=await import('/src/player.mjs');window.player=await createPlayer(document.querySelector('canvas'),{timeline,catalog});},{timeline,catalog});
+ const render=async time=>page.evaluate(async time=>{await window.player.renderAt(Math.round(time*24));return window.player.diagnostics();},time);
+ await mkdir(resolve(root,'.local/review'),{recursive:true});
+ for(const [name,time] of [['held-page',2],['accessories',4],['throw',6],['punch',8.7],['strike',7.9],['explode',11.5],['open',14.9]]){const d=await render(time);await page.screenshot({path:resolve(root,`.local/review/${name}.png`)});assert.ok(d.book.position.every(Number.isFinite));}
+ const first=await render(8.7);
+ const pixels=await page.locator('canvas').screenshot();
+ await render(10.9);assert.deepEqual(await render(8.7),first);
+ assert.deepEqual(await page.locator('canvas').screenshot(),pixels,'invisible burst fragments cannot affect later camera framing');
+ assert.equal((await render(11.5)).stunt.action,'explode');assert.deepEqual(errors,[]);
+});
