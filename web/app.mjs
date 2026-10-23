@@ -1,6 +1,7 @@
 import { EMOTIONS, GESTURES } from '../src/contracts.mjs';
 import { editorDefaults } from '../src/editor-defaults.mjs';
 import { comicReplacements, replaceComic, randomComic } from '../src/editor-selection.mjs';
+import { createBatchUI } from './batch.mjs';
 
 const $ = id => document.getElementById(id);
 const browserMode=document.querySelector('meta[name="theatre-runtime"]')?.content==='browser';
@@ -31,6 +32,15 @@ const shots = [
 ];
 const exampleFiles = new Set(['book-duet.example.json', 'fireside.example.json', 'page-tour.example.json', 'astronaut.example.json']);
 const uploadInputs = ['upload-json-top', 'upload-json'];
+const batchUI = createBatchUI({
+  api,
+  isReady: () => Boolean(state.token && state.catalog),
+  getEditorScript: () => { requireReady(); return clone(state.script); },
+  browserMode,
+  ownsURL: value => Boolean(browserAPI?.ownsURL(value)),
+  localPath,
+  onRun: () => { if (browserMode) $('device-canvas').hidden = false; },
+});
 
 // The writer changes dialogue, not the author's presentation.
 // Keep server-resolved defaults for omitted fields and preserve advanced keys.
@@ -60,6 +70,7 @@ function controls() {
   $('example-script').disabled = paused || state.busy;
   $('load-example').disabled = paused || state.busy;
   for (const id of uploadInputs) $(id).disabled = !state.catalog;
+  batchUI.controls();
 }
 function requireReady() {
   if (!state.token || !state.catalog || !state.script) throw new Error('Connect to the local theatre first. Use Retry connection.');
@@ -476,7 +487,7 @@ $('load-example').addEventListener('click', () => operate('Load example', async 
   } finally { clearTimeout(timer); }
   unchanged(revision); check(completeErrors(script));
   if (!confirmReplacement('Load this example')) { message('Example not loaded. Your script is unchanged.'); return; }
-  install(script); message('Example loaded. Review the pages and dialogue, then validate or generate.');
+  install(script); batchUI.register(script, filename); message('Example loaded. Review the pages and dialogue, then validate or generate.');
 }));
 
 $('template').addEventListener('change', () => {
@@ -538,6 +549,7 @@ async function uploadJSON(event) {
     unchanged(revision); check(structureErrors(script));
     if (!confirmReplacement('Upload this JSON')) { message('Upload cancelled. Your script is unchanged.'); return; }
     install(script);
+    batchUI.register(script, file.name);
     message('JSON uploaded. Review selected pages, then validate the script.');
   } catch (error) { if (operation === state.operation) message(`Upload not applied: ${error.message}`, true); }
   finally { if (operation === state.operation) input.value = ''; }
@@ -642,6 +654,7 @@ async function refreshJobs() {
     renderJobs(result.jobs); $('jobs-status').textContent = ''; $('jobs-status').classList.remove('error');
   } catch (error) { $('jobs-status').textContent = `${error.message} Use Refresh jobs to retry. Editor contents are safe.`; $('jobs-status').classList.add('error'); }
   finally { state.polling = false; }
+  await batchUI.refresh();
 }
 $('refresh-jobs').addEventListener('click', refreshJobs);
 async function connect() {
@@ -653,6 +666,7 @@ async function connect() {
     if (typeof session?.token !== 'string' || !session.token) throw new Error('No session token returned. Check the server and retry.');
     if (!object(catalog) || !Array.isArray(catalog.comics) || !Array.isArray(catalog.templates) || !catalog.templates.length || !Array.isArray(catalog.scenes)) throw new Error('Catalog is missing comics, templates or scenes. Check the server catalog.');
     state.token = session.token; state.catalog = catalog;
+    batchUI.setCatalog(catalog);
     if (!state.script) {
       install(editorDefaults(catalog).script);
     } else { renderForm(); }

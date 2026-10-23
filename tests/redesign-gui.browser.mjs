@@ -35,7 +35,7 @@ async function fixture(t, { staticMode = false } = {}) {
         res.setHeader('Content-Type', 'application/json');
         return res.end(await readFile(new URL(`templates/${req.url.split('/').at(-1)}`, root)));
       }
-      if (/^\/(?:nested\/)?src\/(contracts|book-pages|editor-defaults|editor-selection|gesture-performance|facial-performance)\.mjs$/.test(req.url)) {
+      if (/^\/(?:nested\/)?src\/(zip|contracts|book-pages|editor-defaults|editor-selection|gesture-performance|facial-performance)\.mjs$/.test(req.url)) {
         res.setHeader('Content-Type', 'text/javascript'); return res.end(await readFile(new URL(`src/${req.url.split('/').at(-1)}`, root)));
       }
       // Stub only the on-device runtime boundary: no GPU, speech, or export work.
@@ -55,7 +55,7 @@ async function fixture(t, { staticMode = false } = {}) {
         state.assets.push(req.url); res.setHeader('Content-Type', 'image/png');
         return res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfRcAAAAASUVORK5CYII=', 'base64'));
       }
-      const files = { [prefix]: 'index.html', [`${prefix}app.mjs`]: 'app.mjs', [`${prefix}style.css`]: 'style.css' };
+      const files = { [prefix]: 'index.html', [`${prefix}app.mjs`]: 'app.mjs', [`${prefix}batch.mjs`]: 'batch.mjs', [`${prefix}style.css`]: 'style.css' };
       if (files[req.url]) {
         const name = files[req.url]; let text = await readFile(new URL(`web/${name}`, root), 'utf8');
         if (staticMode && name === 'index.html') text = text.replace('content="desktop"', 'content="browser"');

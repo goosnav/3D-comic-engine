@@ -12,7 +12,7 @@ shots and timing. The desktop and browser share the same animation engine.
 | Mode | Requirements | Speech and export |
 | --- | --- | --- |
 | Desktop GUI / CLI | Node 22.12+, FFmpeg + ffprobe, installed Chromium | Free Flite by default; optional Kokoro or recordings; verified MP4 |
-| Static website | Modern browser with WebGL2, WASM, Web Audio and MediaRecorder | Free Flite on device; H.264/AAC MP4 preferred, WebM fallback; lower-resolution real-time capture |
+| Static website | Modern browser with WebGL2, WASM, Web Audio and MediaRecorder | Free Flite on device; single-video preview supports WebM fallback; batch requires H.264/AAC MP4 and uses each JSON's output settings |
 
 Browser mode needs **no local server installation**. Hosting only serves static
 files. Keep the tab visible and phone unlocked during recording; interruptions
@@ -42,6 +42,46 @@ checks tools, then opens the loopback GUI. Keep the terminal open.
 Flite works immediately after setup, with no Python or voice model download.
 Optional higher-quality local voice: Python 3.10–3.12,
 `python tools/setup_voice.py`, then select Kokoro. No voice service charges.
+
+## Batch JSON → MP4 in the app
+
+Use **Batch render JSON scripts** near the top of the app:
+
+1. Choose **Add JSON files** to select several files, **Add folder** to include the
+   JSONs in a folder and its subfolders, or **Load page 1–25 scripts** for the
+   [25-page example set](examples/README.md).
+2. Select scripts from the **Script library**, or use **Select all**. Scripts
+   uploaded into the editor are also kept in this library. **Add current editor
+   script** saves a separate copy of your current draft for batch selection.
+3. Click **Render selected scripts to MP4** once. The app renders each selection
+   in order, generates speech, and exports its MP4 automatically.
+4. Click **Download completed MP4s (.zip)** for one download containing the separate
+   videos. Individual MP4 download links are also available as jobs finish.
+
+Each queued script is copied before rendering. Its dialogue, page/source locks,
+scene, character choices, seed, performance instructions, timing, end card, and
+**output width, height and fps** go through the production renderer unchanged.
+Omitted settings use the engine's normal defaults. Batch export does not apply
+the browser editor's 432×540 / 12 fps preview preset or its attached music.
+Files with the same name get distinct numbered MP4 filenames.
+
+Invalid JSONs stay visible with an explanation and are excluded from selection.
+CLI batch-manifest arrays are skipped when importing a folder. A render failure
+is reported beside that script; the queue continues with the remaining scripts,
+and the ZIP contains the completed videos. **Stop after current** finishes the
+active video and cancels the waiting items. Up to 100 scripts can be selected per
+batch, with a 2 MiB limit per imported JSON.
+
+The script library is saved in browser storage when available; a visible warning
+appears if storage is full or unavailable. Keep the source JSONs as your backup.
+Desktop batches continue through a GUI refresh while the local server stays
+running; batch summaries last for that server session and rendered jobs remain
+on disk. Browser batches run in the open, visible tab, use one audio activation
+for the whole queue, and require a browser with H.264/AAC recording support.
+If that support is missing, the app explains the requirement before starting;
+batch export never substitutes WebM. Download browser videos before closing or
+reloading the tab. Use desktop for frame-exact rendering or work that should
+continue while you use another tab.
 
 ## Automation
 
@@ -111,8 +151,9 @@ node bin/theatre.mjs render templates/book-duet.example.json --preview --json
 ```
 
 MP4 requires the browser to expose an H.264/AAC encoder. A generic MP4 container
-with unusual codecs is not substituted. Where compatible encoding is unavailable,
-the download is clearly labeled WebM; desktop always exports MP4. Browser background
+with unusual codecs is not substituted. For a single-video preview, unsupported
+MP4 encoding can fall back to a clearly labeled WebM. Batch rendering requires
+MP4 support; desktop always exports MP4. Browser background
 music accepts supported audio files up to 15 MiB and three minutes, uses only the
 part that fits the film, and never uploads the file. Attachments are session-only
 and are not embedded in portable JSON.

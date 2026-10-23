@@ -43,6 +43,100 @@ test('MP4 start exceptions and asynchronous startup errors retry with a complete
   assert.equal(result.lines, 2); assert.ok(result.bytes > 10000);
 });
 
+test('strict MP4 export retries both H.264 profiles and rejects without recording WebM', { timeout: 120000 }, async t => {
+  const { page, catalog } = await browserFixture(t, entries);
+  const result = await page.evaluate(async ({ script, catalog }) => {
+    const { exportFilm } = await import('/browser/export.mjs');
+    const NativeRecorder = MediaRecorder, attempts = [], tracks = [];
+    const canvas = document.querySelector('canvas'), capture = canvas.captureStream.bind(canvas), context = new AudioContext();
+    canvas.captureStream = (...args) => { const stream = capture(...args); tracks.push(...stream.getTracks()); return stream; };
+    window.MediaRecorder = class {
+      static isTypeSupported() { return true; }
+      constructor(stream, options) {
+        attempts.push(options.mimeType);
+        if (!options.mimeType.startsWith('video/mp4')) return new NativeRecorder(stream, options);
+        const synchronous = attempts.length === 1;
+        return new class extends EventTarget {
+          mimeType = options.mimeType; state = 'inactive';
+          start() {
+            if (synchronous) throw new DOMException('Encoder unavailable', 'NotSupportedError');
+            this.state = 'recording';
+            setTimeout(() => { const event = new Event('error'); event.error = new Error('Encoder startup failed'); this.dispatchEvent(event); }, 10);
+          }
+          stop() { this.state = 'inactive'; this.dispatchEvent(new Event('stop')); }
+        }();
+      }
+    };
+    try {
+      await exportFilm({ canvas, script, catalog, audioContext: context, format: 'mp4' });
+      return { error: 'unexpected success', attempts };
+    } catch (error) {
+      return { error: error.message, attempts, state: context.state, tracks: tracks.map(track => track.readyState) };
+    } finally { window.MediaRecorder = NativeRecorder; canvas.captureStream = capture; await context.close(); }
+  }, { script: shortScript, catalog });
+  assert.equal(result.attempts.length, 2);
+  assert.ok(result.attempts.every(type => type.startsWith('video/mp4;codecs=avc1')));
+  assert.match(result.error, /H\.264\/AAC MP4.*desktop/i);
+  assert.equal(result.state, 'running', 'retries preserve the batch-owned audio context');
+  assert.deepEqual(result.tracks, ['ended', 'ended']);
+});
+
+test('browser batch records distinct authored MP4s from one click, or preflights unsupported codecs before starting', { timeout: 180000 }, async t => {
+  const { page, catalog } = await browserFixture(t, [...entries, 'browser/backend.mjs']);
+  const scripts = [shortScript, { ...shortScript, title: 'Second film', seed: 34, output: { width: 192, height: 256, fps: 24 },
+    characters: { reader: 'blue-beady', friend: 'rust' } }];
+  await page.evaluate(async ({ scripts, catalog }) => {
+    const { createBrowserBackend } = await import('/browser/backend.mjs');
+    const NativeAudio = AudioContext;
+    window.batchAudio = { created: 0, closed: 0, active: false };
+    window.AudioContext = class extends NativeAudio {
+      constructor(...args) { super(...args); window.batchAudio.created++; window.batchAudio.active = navigator.userActivation.isActive; }
+      close() { window.batchAudio.closed++; return super.close(); }
+    };
+    window.batchSupported = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2'].some(type => MediaRecorder.isTypeSupported(type));
+    window.batchAPI = createBrowserBackend({ catalog, canvas: document.querySelector('canvas'), onChange: () => {
+      void window.batchAPI('/api/batches').then(({ batches }) => {
+        if (batches[0] && batches[0].status !== 'running') window.batchResult = { batch: batches[0] };
+      });
+    } });
+    const button = document.createElement('button'); button.textContent = 'Start batch';
+    button.onclick = () => {
+      void window.batchAPI('/api/batch', { entries: scripts.map((script, index) => ({ name: index ? 'same.json' : '../same.json', script })) })
+        .catch(error => { window.batchResult = { error: error.message }; });
+    };
+    document.body.prepend(button);
+  }, { scripts, catalog });
+  await page.getByRole('button', { name: 'Start batch' }).click();
+  await page.waitForFunction(() => window.batchResult, null, { timeout: 150000 });
+  const result = await page.evaluate(async () => ({ ...window.batchResult, supported: window.batchSupported, audio: window.batchAudio,
+    jobs: (await window.batchAPI('/api/jobs')).jobs,
+    files: await Promise.all((window.batchResult.batch?.items ?? []).filter(item => item.video).map(async item => ({
+      filename: item.filename, bytes: Array.from(new Uint8Array(await (await fetch(item.video)).arrayBuffer())),
+    }))),
+  }));
+  if (!result.supported) {
+    assert.match(result.error, /H\.264\/AAC MP4.*desktop/i);
+    assert.equal(result.audio.created, 0); assert.deepEqual(result.jobs, []);
+    t.diagnostic('This browser lacks H.264/AAC recording. Verified preflight rejects before audio or jobs start; desktop batch provides MP4 export.');
+    return;
+  }
+  assert.equal(result.batch.status, 'complete'); assert.equal(result.batch.completed, 2);
+  assert.equal(result.audio.created, 1); assert.equal(result.audio.closed, 1); assert.equal(result.audio.active, true);
+  assert.deepEqual(result.files.map(file => file.filename), ['001-same.mp4', '002-same.mp4']);
+  const dir = await mkdtemp(join(tmpdir(), 'comic-batch-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  for (const [index, file] of result.files.entries()) {
+    const filename = join(dir, file.filename);
+    await writeFile(filename, new Uint8Array(file.bytes));
+    const probe = JSON.parse((await exec('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', filename])).stdout);
+    const video = probe.streams.find(stream => stream.codec_type === 'video'), audio = probe.streams.find(stream => stream.codec_type === 'audio');
+    assert.equal(video.codec_name, 'h264'); assert.equal(audio.codec_name, 'aac');
+    assert.equal(video.width, scripts[index].output.width); assert.equal(video.height, scripts[index].output.height);
+    assert.deepEqual(result.jobs[index].script.output, scripts[index].output);
+  }
+  await page.evaluate(() => window.batchAPI.dispose());
+});
+
 test('real browser export includes both voices, complete duration, and real video with no external requests', { timeout: 90000 }, async t => {
   const { page, catalog } = await browserFixture(t, entries);
   const result = await page.evaluate(async ({ script, catalog }) => {

@@ -48,6 +48,40 @@
       </div>
       <p id="start-status" class="status">Loading the editor…</p>
     </section>
+    <section class="panel batch-panel" aria-labelledby="batch-heading">
+      <div class="batch-heading">
+        <div><h2 id="batch-heading">Batch render JSON scripts</h2><p class="hint">Select scripts once, render them in a queue, then download the MP4s together. Each film uses its own JSON dialogue, scene, cast, timing, resolution and frame rate.</p></div>
+        <span class="batch-format">JSON → MP4</span>
+      </div>
+      <div class="toolbar batch-imports">
+        <label class="file-label primary" for="batch-files">Add JSON files<input id="batch-files" type="file" accept=".json,application/json" multiple disabled></label>
+        <label class="file-label" for="batch-folder">Add folder<input id="batch-folder" type="file" accept=".json,application/json" webkitdirectory directory multiple disabled></label>
+        <button id="batch-load-pages" type="button" disabled>Load page 1–25 scripts</button>
+        <button id="batch-add-editor" type="button" disabled>Add current editor script</button>
+      </div>
+      <p class="hint">Add several files or a folder, or choose from scripts already in your library below. Up to 100 scripts per batch; 2 MiB per JSON. Folder imports include JSON files in subfolders.</p>
+      <p id="batch-import-status" class="status" role="status" aria-live="polite"></p>
+      <p id="batch-storage-status" class="status" role="status"></p>
+      <div class="batch-library-heading">
+        <h3>Script library</h3><p id="batch-selection-count" class="muted">0 selected · 0 in library</p>
+      </div>
+      <div class="toolbar batch-selection-actions">
+        <button id="batch-select-all" type="button" disabled>Select all</button>
+        <button id="batch-clear-selection" type="button" disabled>Clear selection</button>
+        <button id="batch-remove-selected" type="button" disabled>Remove selected</button>
+      </div>
+      <p id="batch-library-empty" class="batch-empty">No scripts added yet. Your uploaded JSONs will appear here with their original settings.</p>
+      <ul id="batch-library" class="batch-library" aria-label="Uploaded script library"></ul>
+      <div class="batch-start">
+        <div><label for="batch-voice">Batch voice</label><select id="batch-voice" disabled><option value="flite">On-device Flite (no model needed)</option><option value="kokoro">Local Kokoro (optional install)</option><option value="recorded">Recorded audio paths in JSON</option></select></div>
+        <button id="batch-render" class="primary" type="button" disabled>Render selected scripts to MP4</button>
+      </div>
+      <p id="batch-device-note" class="hint" hidden>Keep this tab visible and your device awake until the queue finishes. Download your videos before closing the tab. Batch rendering requires MP4 support in your browser.</p>
+      <div class="batch-results-heading"><h3>Batch results</h3><button id="batch-refresh" type="button">Refresh batches</button></div>
+      <p id="batch-runs-status" class="status" role="status"></p>
+      <p id="batch-runs-empty" class="batch-empty">Start a batch to see progress and download completed MP4s as one ZIP.</p>
+      <div id="batch-runs" class="batch-runs" aria-label="Batch render results"></div>
+    </section>
     <div class="workspace">
       <section class="panel sources" aria-labelledby="sources-heading">
         <div class="section-heading"><span class="step">01</span><h2 id="sources-heading">Choose your pages</h2></div>

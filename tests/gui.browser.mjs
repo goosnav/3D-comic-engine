@@ -103,8 +103,8 @@ async function fixture(t, { clock = false, extraComics = [] } = {}) {
         res.writeHead(200, { 'Content-Type': 'image/png' });
         return res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfRcAAAAASUVORK5CYII=', 'base64'));
       }
-      const files = { '/': 'web/index.html', '/app.mjs': 'web/app.mjs', '/style.css': 'web/style.css', '/web/app.mjs': 'web/app.mjs', '/web/style.css': 'web/style.css' };
-      if (['/src/contracts.mjs', '/src/book-pages.mjs', '/src/editor-defaults.mjs', '/src/editor-selection.mjs', '/src/gesture-performance.mjs', '/src/facial-performance.mjs'].includes(path)) {
+      const files = { '/': 'web/index.html', '/app.mjs': 'web/app.mjs', '/batch.mjs': 'web/batch.mjs', '/web/batch.mjs': 'web/batch.mjs', '/style.css': 'web/style.css', '/web/app.mjs': 'web/app.mjs', '/web/style.css': 'web/style.css' };
+      if (['/src/zip.mjs', '/src/contracts.mjs', '/src/book-pages.mjs', '/src/editor-defaults.mjs', '/src/editor-selection.mjs', '/src/gesture-performance.mjs', '/src/facial-performance.mjs'].includes(path)) {
         res.writeHead(200, { 'Content-Type': 'text/javascript' }); return res.end(await readFile(new URL(path.slice(1), root)));
       }
       if (files[path]) {

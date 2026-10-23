@@ -2,7 +2,7 @@ import { resolveScript } from '../src/contracts.mjs';
 import { compileTimeline } from '../src/timeline.mjs';
 import { createPlayer } from '../src/player.mjs';
 import { prepareSpeech } from './voice.mjs';
-import { createRecorder, supportedRecordingTypes } from './recording.mjs';
+import { createRecorder, supportedRecordingTypes, supportedMP4RecordingTypes, isCompatibleMP4Type } from './recording.mjs';
 import { prepareMusic } from './music.mjs';
 
 /** Catalog bytes must already be verified by the browser asset adapter.
@@ -13,7 +13,9 @@ class RecorderStartupError extends Error {}
 
 export async function exportFilm(options = {}) {
   options.signal?.throwIfAborted();
-  const types = supportedRecordingTypes();
+  const mp4Only = options.format === 'mp4';
+  const types = mp4Only ? supportedMP4RecordingTypes() : supportedRecordingTypes();
+  if (mp4Only && !types.length) throw new Error('Batch export requires H.264/AAC MP4 recording, which this browser does not support. Open the desktop app to batch export these JSON scripts as MP4.');
   // Snapshot once across fallback attempts; never consume later editor edits.
   const frozen = { ...options, script: structuredClone(options.script), catalog: structuredClone(options.catalog) };
   if (!types.length) return recordFilm(frozen);
@@ -29,11 +31,13 @@ export async function exportFilm(options = {}) {
       }
     }
   }
-  throw new Error(`No supported video encoder could start: ${lastError.message}`);
+  throw new Error(mp4Only
+    ? `No H.264/AAC MP4 encoder could start. Use the desktop app to batch export MP4. ${lastError.message}`
+    : `No supported video encoder could start: ${lastError.message}`);
 }
 
 async function recordFilm({ canvas, script: input, catalog: inputCatalog, assetBase = '',
-  onProgress = () => {}, signal, audioContext, music } = {}, requestedMime) {
+  onProgress = () => {}, signal, audioContext, music, format } = {}, requestedMime) {
   signal?.throwIfAborted();
   if (document.hidden) throw new Error('Keep the export tab visible; background recording is unsupported');
   if (!canvas?.captureStream || !globalThis.MediaRecorder || !globalThis.AudioContext) {
@@ -215,8 +219,15 @@ async function recordFilm({ canvas, script: input, catalog: inputCatalog, assetB
     await guard(stopped, 10000);
     const mimeType = recorder.mimeType || chunks[0]?.type || requestedMime;
     if (!/^video\/(webm|mp4)(;|$)/i.test(mimeType)) throw new Error(`Unexpected recorded container: ${mimeType}`);
+    if (format === 'mp4' && (!isCompatibleMP4Type(mimeType) || chunks.some(chunk => chunk.type && !isCompatibleMP4Type(chunk.type)))) {
+      throw new Error(`The browser did not produce the requested H.264/AAC MP4 (${mimeType}). Use the desktop app for batch MP4 export.`);
+    }
     const blob = new Blob(chunks, { type: mimeType });
     if (!blob.size) throw new Error('Browser produced an empty film');
+    if (format === 'mp4') {
+      const header = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+      if (String.fromCharCode(...header.slice(4, 8)) !== 'ftyp') throw new Error('The browser returned an invalid MP4 container. Use the desktop app for batch MP4 export.');
+    }
     report('complete', 1, 'Film ready to download');
     return { blob, mimeType, extension: mimeType.toLowerCase().startsWith('video/mp4') ? 'mp4' : 'webm', timeline };
   } finally {

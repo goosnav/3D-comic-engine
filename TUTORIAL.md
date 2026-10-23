@@ -44,8 +44,9 @@ package. You can also use recordings with `--voice recorded` (section 6).
 `doctor` checks browser, assets and video tools; optional Kokoro setup is separate.
 
 For the static website, open its HTTPS URL: no installation or backend needed.
-Choose pages, write dialogue, validate and Generate. It uses local Flite at a
-432×540 / 12 fps preset. Keep the tab visible and the screen unlocked. Download
+Choose pages, write dialogue, validate and Generate. Single-video Generate uses
+local Flite at a 432×540 / 12 fps preset; batch rendering uses the output settings
+in each JSON. Keep the tab visible and the screen unlocked. Download
 the video before closing the page; browser jobs are session-only. Draft JSON is
 saved in browser storage when available, but download it for a durable backup.
 An interrupted export can be restarted from the script, not resumed mid-recording.
@@ -99,6 +100,55 @@ duration; disabling the card never removes dialogue.
 The AI draft action is optional, requires explicit configuration (section 7), and
 sends only the selected comic images and source packet to that configured provider.
 It does not silently replace manual work or activate while rendering.
+
+### Render several JSON scripts without opening them one by one
+
+Open **Batch render JSON scripts** near the top of the app. **Add JSON files**
+accepts a multiple-file selection. **Add folder** reads JSON files throughout the
+chosen folder and its subfolders. Non-JSON files and CLI manifest arrays are
+skipped, so you can choose the repository's `examples/` folder directly.
+Alternatively, **Load page 1–25 scripts** adds the complete page set in order.
+
+The **Script library** keeps imported scripts separate from the current editor.
+Select any combination with the checkboxes, or click **Select all**. Files
+uploaded through the editor also appear here; **Add current editor script**
+adds an independent snapshot of a draft you have edited. Invalid files show their
+validation error and cannot be selected. You can remove a file, fix its original
+JSON, and add it again. The library and selection survive a page reload when
+browser storage is available. Videos in browser mode are session-only.
+
+Choose a **Batch voice**, then click **Render selected scripts to MP4**. Flite
+works on device without a model download. Desktop also offers installed Kokoro
+or recorded audio paths already specified in the JSON. Recorded paths follow
+the desktop renderer's existing project-relative path rules; selecting a JSON
+folder does not grant the browser access to separate audio files.
+
+The queue copies the selected scripts and renders them sequentially. Each film
+keeps its own scene, cast, pages, dialogue, acting instructions, output dimensions,
+fps, seed and end card. Editing your draft afterward does not change the queue.
+Missing fields receive the usual engine defaults. The single-video browser
+preview preset and editor music attachment are not added to a batch.
+
+You can leave the queue to finish without further render prompts. Each row shows
+whether its script is waiting, rendering, completed, failed or cancelled. The
+existing Jobs section also shows the current rendering stage. A failed item
+does not stop later items. **Stop after current** lets the active video finish
+and cancels the rest. At the end, **Download completed MP4s (.zip)** downloads all
+successful videos together with unique numbered filenames; individual MP4 links
+are available too. The ZIP contains the original MP4 bytes without recompression.
+
+One batch accepts up to 100 scripts. Imported JSONs may be at most 2 MiB each;
+the library holds up to 200 files / 32 MiB, subject to browser storage capacity.
+If an archive would exceed the classic ZIP 4 GiB limit, download individual
+MP4s or render a smaller selection.
+
+For browser batches, keep the tab visible and your device awake until completion.
+The app activates audio once for the entire queue. A browser without H.264/AAC
+MP4 encoding is rejected before the queue starts; use the desktop app in that
+case. Browser capture runs in real time and can drop frames on slow devices.
+For exact per-frame capture, use desktop. Desktop processing continues through
+a GUI reload while its server stays running. Restarting that server clears the
+batch summary; completed desktop videos remain available in Jobs and on disk.
 
 ## 3. Choose a template
 

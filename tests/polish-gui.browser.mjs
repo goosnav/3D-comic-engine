@@ -76,8 +76,8 @@ async function fixture(t, { legacy = false, expansion = false } = {}) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         return res.end(await readFile(new URL(path.slice(1), root)));
       }
-      const files = { '/': ['index.html', 'text/html'], '/app.mjs': ['app.mjs', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
-      if (['/src/contracts.mjs', '/src/book-pages.mjs', '/src/editor-defaults.mjs', '/src/editor-selection.mjs', '/src/gesture-performance.mjs', '/src/facial-performance.mjs'].includes(path)) { res.writeHead(200, { 'Content-Type': 'text/javascript' }); return res.end(await readFile(new URL(path.slice(1), root))); }
+      const files = { '/': ['index.html', 'text/html'], '/app.mjs': ['app.mjs', 'text/javascript'], '/batch.mjs': ['batch.mjs', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
+      if (['/src/zip.mjs', '/src/contracts.mjs', '/src/book-pages.mjs', '/src/editor-defaults.mjs', '/src/editor-selection.mjs', '/src/gesture-performance.mjs', '/src/facial-performance.mjs'].includes(path)) { res.writeHead(200, { 'Content-Type': 'text/javascript' }); return res.end(await readFile(new URL(path.slice(1), root))); }
       if (files[path]) { const [file, type] = files[path]; res.writeHead(200, { 'Content-Type': type }); return res.end(await readFile(new URL(`web/${file}`, root))); }
       res.writeHead(404); res.end('Not found');
     } catch (error) { json(res, 500, { error: error.message }); }
