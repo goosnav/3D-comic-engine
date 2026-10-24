@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Physics Was Optional",
+  "comics": ["book2-095"],
+  "seed": 4242,
+  "scene": "backrooms",
+  "characters": {"reader": "rust-beady", "friend": "cowboy"},
+  "extras": ["glove-bot", "walker"],
+  "output": {"preset": "instagram_reels", "fps": 24},
+  "lines": [
+    {"speaker": "reader", "text": "Something is wrong with the animations in here.", "emotion": "curious", "shot": "two-shot"},
+    {"action": "t_pose", "actor": "friend", "seconds": 2.2, "shot": "wide"},
+    {"speaker": "friend", "text": "I feel completely normal.", "emotion": "dry", "shot": "medium"},
+    {"action": "jitter", "actor": "reader", "seconds": 2.2, "shot": "wide"},
+    {"speaker": "friend", "text": "Did he clip into the table again?", "emotion": "exasperated", "gesture": "rubber_hose", "shot": "medium"},
+    {"action": "noclip", "actor": "friend", "seconds": 2.6, "shot": "wide"},
+    {"speaker": "reader", "text": "I am back. I have seen the inside of the floor.", "emotion": "brain_static", "shot": "close-up"},
+    {"action": "ragdoll", "actor": "reader", "seconds": 2.4, "shot": "two-shot"},
+    {"speaker": "friend", "text": "Good book though.", "emotion": "pleased", "shot": "extreme-wide"}
+  ]
+}

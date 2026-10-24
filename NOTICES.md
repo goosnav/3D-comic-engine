@@ -45,6 +45,15 @@ page. These are portable snapshots, not runtime links to the source checkouts.
   decoded on demand without video playback permission. Its hash and original
   source hash are in the catalog; regenerate with `tools/build-endcard-frames.mjs`.
 
+- Comic cast: `assets/actor-billy.glb` (Little Billy), `assets/actor-gooby.glb`
+  (gooby-hat guy), and the cameos `assets/extras/glove-bot.glb`, `walker.glb` and
+  `shoe-hat.glb` are unchanged GLB exports from Goosnav-3D-assets commit
+  `7095a4d` (`exports/little_billy.glb`, `gooby_hat_guy.glb`, `glove_bot.glb`,
+  `two_legged_walker.glb`, `shoe_hat_creature.glb`). Editable Blender sources stay in
+  that library. Each catalog entry records its source path and hash.
+- The goose cameo is built at runtime from primitives in `src/goose.mjs`; there
+  is no goose asset file.
+
 New source additions require an exact edition and embedded book-page match.
 Transcripts require separate manual review. See the tutorial. Changing a file without reviewing its catalog
 entry causes a deliberate validation error.

@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createActor } from './actor.mjs';
 import { createCaptions } from './captions.mjs';
 import { createStunts } from './stunts.mjs';
+import { createExtras } from './extras.mjs';
 import { createBook } from './book.mjs';
 import { createEndcard, endCardFields, loadEndcardVideo } from './endcard.mjs';
 import { loadEndcardFrames } from './endcard-frames.mjs';
@@ -63,10 +64,13 @@ export function headgearFraming(actor) {
     if (!o.isSkinnedMesh) return;
     o.skeleton.update();
     const head = o.skeleton.bones.indexOf(actor.bones.head);
+    // Hat bones (the gooby stalk) ride on the head and count as headgear.
+    const hat = new Set(o.skeleton.bones.flatMap((b, k) => /^hat_/.test(b.name) ? [k] : []));
+    if (hat.size) accessory = true;
     const indices = o.geometry.attributes.skinIndex, weights = o.geometry.attributes.skinWeight;
     for (let i = 0; i < indices.count; i++) {
       let weight = 0;
-      for (let j = 0; j < 4; j++) if (indices.getComponent(i, j) === head) weight += weights.getComponent(i, j);
+      for (let j = 0; j < 4; j++) if (indices.getComponent(i, j) === head || hat.has(indices.getComponent(i, j))) weight += weights.getComponent(i, j);
       if (weight < .5) continue;
       const p = o.getVertexPosition(i, new THREE.Vector3()).applyMatrix4(o.matrixWorld);
       bounds.expandByPoint(p); points.push(p.applyMatrix4(inverse));
@@ -100,6 +104,9 @@ export function frameCamera(camera, { shot, focusId, actors, book, bookState }) 
   camera.up.set(0, 1, 0);
   const focused = actors.find(a => a.root.name === `actor-${focusId}`) || actors[0];
   const x = focused.root.position.x, z = focused.root.position.z, side = focused.root.name === 'actor-reader' ? -1 : 1;
+  // Short characters move the eye line down (zero for every v10-height actor).
+  const eye = a => (a.headShift?.y || 0) + a.root.position.y;
+  const lift = eye(focused), groupLift = Math.max(...actors.map(eye)) * .7;
   if (shot === 'book') {
     const page = pageCenter(book, bookState.selectedPdfPage);
     const target = page;
@@ -113,8 +120,8 @@ export function frameCamera(camera, { shot, focusId, actors, book, bookState }) 
   } else if (['speaker', 'close-up', 'medium'].includes(shot)) {
     camera.fov = 32;
     const distance = (camera.aspect < 1 ? Math.max(2.0, 1.38 / camera.aspect) : 1.9) * (shot === 'close-up' ? .68 : 1);
-    camera.position.set(x + side * .65, 1.69, z + distance);
-    camera.lookAt(x, 1.43, z + .05);
+    camera.position.set(x + side * .65, 1.69 + lift, z + distance);
+    camera.lookAt(x, 1.43 + lift, z + .05);
   } else if (shot === 'over-shoulder' && actors.length > 1) {
     const listener = actors.find(a => a !== focused);
     camera.fov = 38;
@@ -129,14 +136,15 @@ export function frameCamera(camera, { shot, focusId, actors, book, bookState }) 
       camera.position.y += .12;
       camera.position.z -= .10;
     }
-    camera.lookAt(THREE.MathUtils.lerp(x, listener.root.position.x, .12), 1.44, z + .06);
+    camera.position.y += lift;
+    camera.lookAt(THREE.MathUtils.lerp(x, listener.root.position.x, .12), 1.44 + lift, z + .06);
   } else {
     camera.fov = 38;
     const middle = actors.reduce((sum, a) => sum + a.root.position.x, 0) / actors.length;
     const halfWidth = actors.length > 1 ? .66 : .45;
     const distance = Math.max(2.5, halfWidth / (Math.tan(THREE.MathUtils.degToRad(19)) * camera.aspect)) * (shot === 'extreme-wide' ? 4.5 : shot === 'wide' ? 1.65 : 1);
-    camera.position.set(middle + .06, 1.77, distance);
-    camera.lookAt(middle, 1.08, .03);
+    camera.position.set(middle + .06, 1.77 + groupLift, distance);
+    camera.lookAt(middle, 1.08 + groupLift, .03);
   }
   if (shot !== 'book' && shot !== 'source') {
     fitHeadgear(camera, ['speaker', 'close-up', 'medium'].includes(shot) || shot === 'over-shoulder' ? [focused] : actors);
@@ -229,6 +237,10 @@ function validate(timeline, catalog) {
   if (!catalog?.assets?.book?.path) throw new Error('Catalog must supply book GLB');
   if (!Array.isArray(timeline.cast) || !timeline.cast.includes('reader') || timeline.cast.some(id => !['reader', 'friend'].includes(id)) || new Set(timeline.cast).size !== timeline.cast.length) throw new Error('Cast must contain reader and optionally friend');
   timeline.cast.forEach(id => actorAsset(catalog, timeline, id));
+  for (const id of timeline.extras ?? []) {
+    const extra = catalog.extras?.find(e => e.id === id);
+    if (!extra || (!extra.procedural && !catalog.assets?.[extra.asset]?.path)) throw new Error(`Unknown or unavailable extra: ${id}`);
+  }
   const comics = new Map(catalog.comics.map(c => [c.id, c]));
   const selected = new Set(timeline.sources || []);
   for (const id of [...selected, ...timeline.events.map(e => e.comic).filter(Boolean)]) {
@@ -265,7 +277,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
   const textures = new Map(), loadedRoots = [];
   const endcards = new Map(), fonts = [];
   let renderRequest = 0;
-  let renderer, actors, book, stunts, captions, sourcePlane, endcardVideo, disposed = false, frame = null, active = null, source = null, shot = 'two-shot', endcard = null;
+  let renderer, actors, book, stunts, extras, captions, sourcePlane, endcardVideo, disposed = false, frame = null, active = null, source = null, shot = 'two-shot', endcard = null;
   try {
     // Load sequentially so every fulfilled allocation is owned even if a later load fails.
     const manager = new THREE.LoadingManager();
@@ -288,6 +300,14 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       loading('Loading actor model');
       const gltf = await loader.loadAsync(assetURL(assetBase, asset.path));
       actorModels.set(asset.path, gltf.scene); loadedRoots.push(gltf.scene);
+    }
+    const extraModels = new Map();
+    for (const id of timeline.extras ?? []) {
+      const entry = catalog.extras.find(e => e.id === id);
+      if (entry.procedural) continue;
+      loading(`Loading cameo ${entry.label ?? id}`);
+      const gltf = await loader.loadAsync(assetURL(assetBase, catalog.assets[entry.asset].path));
+      extraModels.set(id, gltf); loadedRoots.push(gltf.scene);
     }
     loading('Loading book');
     const bookGLTF = await loader.loadAsync(assetURL(assetBase, catalog.assets.book.path));
@@ -344,8 +364,17 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       actor.root.position.set(id === 'reader' ? -.64 : .08, 0, -.02);
       actor.root.rotation.y = id === 'reader' ? .30 : -.30;
       actor.headgearFrame = headgearFraming(actor);
+      if (actor.stature < .8) {
+        // Short characters stand on a crate: the reader can reach the table and
+        // hold the book, and nobody's face hides behind the table edge.
+        const height = .45, crate = new THREE.Mesh(new THREE.BoxGeometry(.5, height, .42), material(0x8a6239));
+        crate.name = `${id}-crate`; crate.castShadow = crate.receiveShadow = true;
+        crate.position.set(actor.root.position.x, height / 2, actor.root.position.z); crate.rotation.y = actor.root.rotation.y;
+        scene.add(crate); actor.root.position.y = height;
+      }
       scene.add(actor.root); return actor;
     });
+    extras = createExtras({ scene, timeline, catalog, models: extraModels, actors });
     stunts = createStunts(actors);
     captions = createCaptions(timeline.width, timeline.height, timeline.captions);
     book = createBook(bookGLTF, timeline, comics); scene.add(book.root);
@@ -390,6 +419,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       reading: sourceEvent?.shot === 'book' || (timeline.cast[i] === 'reader' && bookState.rail === 'read' && bookState.progress < 1),
       seed: timeline.seed || 0 }));
     stunts.apply(action, time);
+    extras.apply(time, action, camera);
     book.apply(time, reader);
     scene.updateMatrixWorld(true);
     captions.draw(active, time);
@@ -423,7 +453,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       scene: timeline.scene, shot, activeEvent: active?.id || null,
       source: source ? { id: source.id, path: source.path, sha256: source.sha256, pdfPage: source.pdfPage, fit: shot === 'source' ? 'contain' : 'physical-page' } : null,
       endCard: endcard?.diagnostics() || null,
-      stunt: stunts.diagnostics(), captions: captions.diagnostics(),
+      stunt: stunts.diagnostics(), extras: extras.diagnostics(), captions: captions.diagnostics(),
       independentSkeletons: actors.every((a, i) => actors.slice(i + 1).every(b =>
         a.skeletons.every(s => b.skeletons.every(t => s !== t && s.bones.every(bone => !t.bones.includes(bone)))))),
       actors: actors.map(a => ({ ...a.diagnostics(), variant: a.variant })), book: book.diagnostics(),

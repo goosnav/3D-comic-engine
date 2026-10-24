@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { clamp, ease } from './actor.mjs';
 import { sampleGesture } from './gesture-performance.mjs';
-import { ACTOR_ACTIONS } from './contracts.mjs';
+import { ACTOR_ACTIONS, GMOD_ACTIONS } from './contracts.mjs';
+const GMOD = new Set(GMOD_ACTIONS);
 
 // shortcut: deterministic cartoon trajectories; use physics only for persistent collisions.
 export function createStunts(actors) {
@@ -16,6 +17,76 @@ export function createStunts(actors) {
     actor.root.add(group);return group;
   });
   let state=null;
+  // Stable per-event randomness: same event, same frame, same pose.
+  const hash=(a,b=0,c=0)=>{let n=Math.imul((a|0)^0x9e3779b9,0x85ebca6b)^Math.imul((b|0)+0x632be5ab,0xc2b2ae35)^Math.imul(c|0,0x27d4eb2f);n=Math.imul(n^(n>>>15),0x2c1b3c6d);n^=n>>>12;return((n>>>0)/4294967295)*2-1;};
+  const limbs=['upper_armL','upper_armR','forearmL','forearmR','thighL','thighR','shinL','shinR','head','chest'];
+  function gmod(actor,i,event,age,p,tick){
+    const key=Math.round(event.start*1000)+i*7919,direction=i===0?-1:1;
+    const arms=(lift,bend=0)=>{offset(actor,'upper_armL',0,0,lift);offset(actor,'upper_armR',0,0,-lift);offset(actor,'forearmL',bend-.1);offset(actor,'forearmR',bend-.1);};
+    if(event.rail==='t_pose'){
+      // The classic missing-animation glide: rigid T, sliding, snapping 90 degrees.
+      arms(1.45);
+      actor.root.rotation.y=Math.floor(p*5)*Math.PI/2*(hash(key)>0?1:-1)+(p<.2?actor.root.rotation.y:0);
+      actor.root.position.x+=Math.sin(p*Math.PI*2)*.9;actor.root.position.z+=Math.sin(p*Math.PI)*.45;
+      actor.root.position.y+=.06+(tick%11===0?.18:0);
+      return;
+    }
+    if(event.rail==='ragdoll'){
+      // Limp collapse with one bounce, then a stepped death twitch.
+      const fall=ease((p-.04)/.1),bounce=Math.max(0,Math.sin(clamp((p-.14)/.12)*Math.PI))*.35*(1-ease((p-.26)/.05));
+      const back=hash(key,1)>0?-1:1;
+      actor.root.rotateX(back*(Math.PI/2*fall-bounce));actor.root.position.y+=.13*fall;
+      for(const [j,bone] of limbs.entries())offset(actor,bone,hash(key,j,1)*1.2*fall,hash(key,j,2)*.6*fall,hash(key,j,3)*1.3*fall);
+      if(p>.4&&tick%7<2){const bone=limbs[Math.floor((hash(key,tick,9)+1)*4.99)];offset(actor,bone,hash(key,tick,4)*.5,0,hash(key,tick,5)*.5);}
+      return;
+    }
+    if(event.rail==='noclip'){
+      // Sinks through the floor, pops up and drifts out through the back wall.
+      const sink=ease(p/.3)*(1-ease((p-.38)/.12)),rise=ease((p-.42)/.2),drift=Math.max(0,p-.55)/.45;
+      actor.root.position.y+=-1.25*sink+1.1*rise+drift*drift*2.5;actor.root.position.z-=drift*7;
+      actor.root.rotation.y+=Math.sin(age*1.3)*.3*rise;
+      arms(.18+.08*Math.sin(age*3));offset(actor,'head',-.15*rise,0,0);
+      return;
+    }
+    if(event.rail==='big_head'){
+      // Bone-scale editing: the head snaps huge in steps, hands follow, then it snaps back.
+      const grow=Math.floor(ease(p/.3)*4)/4,shrink=p>.9?0:1,size=1+(2.4+.25*Math.sin(tick*1.3))*grow*shrink;
+      actor.bones.head.scale.setScalar(size);
+      for(const side of ['L','R'])actor.bones[`hand${side}`].scale.setScalar(1+.9*grow*shrink);
+      offset(actor,'head',Math.sin(tick*.7)*.12*grow,Math.sin(tick*.45)*.3*grow,0);
+      return;
+    }
+    if(event.rail==='jitter'){
+      // Stuck in a prop: violent vibration, then the physics engine flings it away.
+      const launch=clamp((p-.72)/.28),shake=launch>0?0:.06+.04*ease(p/.7);
+      actor.root.position.add(new THREE.Vector3(hash(key,tick,1)*shake,Math.abs(hash(key,tick,2))*shake,hash(key,tick,3)*shake));
+      actor.root.rotation.x+=hash(key,tick,4)*shake*3;actor.root.rotation.z+=hash(key,tick,5)*shake*3;
+      for(const [j,bone] of limbs.entries())offset(actor,bone,hash(key,tick,10+j)*.35*(launch?2:1),0,hash(key,tick,30+j)*.35);
+      if(launch){actor.root.position.y+=45*Math.pow(launch,1.3);actor.root.position.x+=direction*-22*launch;actor.root.rotation.z+=tick*.9;actor.root.rotation.x+=tick*.6;}
+      return;
+    }
+    if(event.rail==='helicopter'){
+      // Arms become rotor blades: spin up, lift off, leave through the ceiling.
+      arms(1.5,0);offset(actor,'head',.2,0,0);
+      actor.root.rotation.y+=40*p*p;
+      const lift=Math.max(0,p-.35)/.65;actor.root.position.y+=14*lift*lift+Math.sin(tick*.9)*.03*(p>.2?1:0);
+      if(actor.bones.propeller)actor.bones.propeller.rotateY(tick*2.1);
+      return;
+    }
+    if(event.rail==='goose_chase'){
+      // Startled hop, then a flailing sprint off-frame with the goose on its heels.
+      const startle=Math.sin(clamp(p/.14)*Math.PI),run=Math.max(0,p-.14)/.86,stride=tick*3.1;
+      actor.root.position.y+=startle*.3+(run?Math.abs(Math.sin(stride))*.09:0);
+      if(run){actor.root.rotation.y=direction*Math.PI/2;actor.root.position.x+=direction*(run*run*3+run*5);}
+      offset(actor,'upper_armL',2.6*startle+(run?Math.sin(stride)*1.6:0),0,.6+.8*startle);
+      offset(actor,'upper_armR',2.6*startle-(run?Math.sin(stride)*1.6:0),0,-.6-.8*startle);
+      for(const [side,sign] of [['L',1],['R',-1]]){
+        offset(actor,`thigh${side}`,run?sign*Math.sin(stride)*1.1:0);offset(actor,`shin${side}`,run?Math.max(0,sign*Math.sin(stride))*1.3:0);
+      }
+      offset(actor,'head',-.3*startle,run?direction*-.8:0,0);
+      return;
+    }
+  }
   function reset() {
     actors.forEach((actor,i)=>{
       actor.root.position.copy(homes[i].position);actor.root.quaternion.copy(homes[i].quaternion);actor.root.scale.setScalar(1);
@@ -39,6 +110,7 @@ export function createStunts(actors) {
         actor.bones[`forearm${side}`].scale.y=1+Math.abs(Math.sin(tick*29+sign))*.7;
       }return;
     }
+    if(GMOD.has(event.rail)){gmod(actor,i,event,age,p,tick);return;}
     if(event.rail==='flatten') {
       const squash=ease((p-.18)/.055);
       actor.root.scale.set(1+squash*.8,1-squash*.94,1+squash*.55);
@@ -122,7 +194,29 @@ export function createStunts(actors) {
       } else {
         const meeting=homes[i].position.clone().add(homes[j].position).multiplyScalar(.5);
         meeting.y=event.rail==='high_five'?1.6:1.06+Math.sin(tick*13)*.12;
+        // Short characters (Little Billy) meet lower and hop for the rest.
+        const low=Math.min(actor.headShift?.y||0,target.headShift?.y||0);
+        meeting.y+=low*(event.rail==='high_five'?.6:.35);
+        // Long arms do most of the reaching: meet nearer the short partner.
+        if(low&&actor.reach&&target.reach){
+          const share=actor.reach.arm/(actor.reach.arm+target.reach.arm);
+          meeting.x=homes[i].position.x+(homes[j].position.x-homes[i].position.x)*share;
+          meeting.z=homes[i].position.z+(homes[j].position.z-homes[i].position.z)*share;
+        }
         meeting.z+=.07;
+        if(low)for(const who of [actor,target])if(who.reach){
+          // Hop just high enough that the hand can reach the meeting point.
+          who.root.updateMatrixWorld(true);
+          const shoulder=who.bones.upper_armR.getWorldPosition(new THREE.Vector3()),r=who.reach.arm*.92;
+          let flat=Math.hypot(meeting.x-shoulder.x,meeting.z-shoulder.z);
+          if(flat>r*.8){
+            // Step in close enough first; short arms cannot reach across.
+            const step=new THREE.Vector3(meeting.x-shoulder.x,0,meeting.z-shoulder.z).setLength((flat-r*.8)*contact);
+            who.root.position.add(step);shoulder.add(step);flat=Math.hypot(meeting.x-shoulder.x,meeting.z-shoulder.z);
+          }
+          const short=meeting.y-shoulder.y-(flat<r?Math.sqrt(r*r-flat*flat):0);
+          if(short>0)who.root.position.y+=short*contact;
+        }
         actor.root.position.addScaledVector(direction,.1*contact);target.root.position.addScaledVector(direction,-.1*contact);
         for(const who of [actor,target]) {
           who.root.updateMatrixWorld(true);

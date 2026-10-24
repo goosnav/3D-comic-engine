@@ -170,6 +170,31 @@
       "path": "assets/environments/theatre-starter-overgrown-courtyard.glb",
       "sha256": "f630b538be2c1ce5f0f8e8d15d395415b5a41fba6ff30131dbeca8febb17c683",
       "derivedFrom": "environments/theatre-starter-overgrown-courtyard/scene.glb"
+    },
+    "actor-billy": {
+      "path": "assets/actor-billy.glb",
+      "sha256": "219ee960af26451d385ce711391b43e86830ee4d48754cdfc7db77c7dc173a98",
+      "sourcePath": "exports/little_billy.glb"
+    },
+    "actor-gooby": {
+      "path": "assets/actor-gooby.glb",
+      "sha256": "82aa4fcb0f7c8e79d3fb4142ffa43d2c1bdf44b54c1ee4c27f6c1816cc4370e0",
+      "sourcePath": "exports/gooby_hat_guy.glb"
+    },
+    "extra-glove-bot": {
+      "path": "assets/extras/glove-bot.glb",
+      "sha256": "ea8353eb7781e13ee864ca05437061b42254711073e2e55eefc9b1d764ec7ba0",
+      "sourcePath": "exports/glove_bot.glb"
+    },
+    "extra-walker": {
+      "path": "assets/extras/walker.glb",
+      "sha256": "8338320d4b8fc0e1dbcbb32cf4ffebcfde68bd1edd273a964c36f68540a306fd",
+      "sourcePath": "exports/two_legged_walker.glb"
+    },
+    "extra-shoe-hat": {
+      "path": "assets/extras/shoe-hat.glb",
+      "sha256": "ae99543eda5d571201c882a735eb1cf84eea0bc187c05d4114823cc39ecf0208",
+      "sourcePath": "exports/shoe_hat_creature.glb"
     }
   },
   "variants": [
@@ -260,6 +285,16 @@
         "backrooms",
         "starter-overgrown-courtyard"
       ]
+    },
+    {
+      "id": "billy",
+      "label": "Little Billy · propeller cap",
+      "asset": "actor-billy"
+    },
+    {
+      "id": "gooby",
+      "label": "Gooby hat guy · beady eyes",
+      "asset": "actor-gooby"
     }
   ],
   "comics": [
@@ -2428,6 +2463,51 @@
       "label": "Red Mesas — Canyon Overlook",
       "asset": "scene-red-mesas",
       "default": false
+    }
+  ],
+  "extras": [
+    {
+      "id": "goose",
+      "label": "Orange-billed goose",
+      "procedural": true
+    },
+    {
+      "id": "glove-bot",
+      "label": "Glove Bot",
+      "asset": "extra-glove-bot",
+      "walk": "walk",
+      "idle": "idle",
+      "tricks": [
+        "wave",
+        "grasp",
+        "crouch"
+      ],
+      "speed": 0.9
+    },
+    {
+      "id": "walker",
+      "label": "Two-legged walker",
+      "asset": "extra-walker",
+      "walk": "walk",
+      "idle": "idle",
+      "tricks": [
+        "crouch",
+        "power_up"
+      ],
+      "speed": 1.1
+    },
+    {
+      "id": "shoe-hat",
+      "label": "Shoe-hat creature",
+      "asset": "extra-shoe-hat",
+      "walk": "walk",
+      "idle": "idle",
+      "tricks": [
+        "stomp",
+        "tip_hat",
+        "speech"
+      ],
+      "speed": 0.55
     }
   ]
 }

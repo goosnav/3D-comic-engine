@@ -11,10 +11,17 @@ export const gestures = Object.freeze({
   despair: Object.freeze({ arms: true }),
   windmill: Object.freeze({ arms: true }),
   rubber_hose: Object.freeze({ arms: true }),
+  snap_pose: Object.freeze({ arms: true }),
 });
 export const ARM_GESTURES = Object.freeze(['explain', 'shrug', 'point', 'offer', ...Object.keys(gestures).filter(id => gestures[id].arms)]);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const ease = v => { const x = clamp(v, 0, 1); return x * x * (3 - 2 * x); };
+// Integer hash in [-1, 1]: the same (step, channel, seed) always gives the same value.
+const yankAt = (step, channel, seed) => {
+  let n = Math.imul((step ^ (seed >>> 0)) + channel * 374761393, 668265263);
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967295 * 2 - 1;
+};
 export function sampleGesture(opts = {}) {
   const { gesture = 'none', time = 0, start = 0, duration = 0, seed = 0, amplitude = 1, attack = .025, release = 0 } = opts;
   const result = { upper_armL: [0,0,0], forearmL: [0,0,0], upper_armR: [0,0,0], forearmR: [0,0,0], chest: [0,0,0], head: [0,0,0] };
@@ -34,6 +41,20 @@ export function sampleGesture(opts = {}) {
     n = Math.imul(n ^ (n >>> 13), 1274126177);
     return ((n ^ (n >>> 16)) >>> 0) / 4294967295 * 2 - 1;
   };
+  if (gesture === 'snap_pose') {
+    // Posed-ragdoll look: a random pose snaps in and is held for 4 or 8 frames.
+    const block = Math.floor(tick / 4), held = yankAt(block, 99, seed) > .2 ? block - 1 : block;
+    const r = channel => yankAt(held, channel, seed);
+    for (const [side, sign] of [['L',1],['R',-1]]) {
+      const k = side === 'L' ? 0 : 6;
+      result[`upper_arm${side}`] = [.65 + 2.1 * r(k), .9 * r(k+1), sign * (.8 + .8 * r(k+2))];
+      result[`forearm${side}`] = [1.1 + 1.1 * r(k+3), .5 * r(k+4), sign * .4 * r(k+5)];
+    }
+    result.chest = [.22 * r(20), .3 * r(21), .25 * r(22)];
+    result.head = [.4 * r(23), .55 * r(24), .45 * r(25)];
+    for (const [bone, xyz] of Object.entries(result)) result[bone] = xyz.map(v => clamp(v * weight, -7.6, 7.6) || 0);
+    return result;
+  }
   if (gesture === 'head_spin') {result.head[1]=Math.floor((age%60)*15)*Math.PI*.62*weight;return result;}
   if (gesture === 'head_jerk') {result.head=[Math.sin(phase*3)*1.2,Math.sin(phase*7)*2.5,Math.sin(phase*11)*1.4].map(v=>v*weight);return result;}
   for (const [side, sign] of [['L',1],['R',-1]]) {

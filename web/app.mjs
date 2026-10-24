@@ -71,6 +71,7 @@ function controls() {
   $('new-video').disabled = !state.catalog;
   $('example-script').disabled = paused || state.busy;
   $('load-example').disabled = paused || state.busy;
+  $('chaos-intensity').disabled = $('generate-chaos').disabled = !state.catalog || state.busy || state.dirtyJSON;
   for (const id of uploadInputs) $(id).disabled = !state.catalog;
   batchUI.controls();
 }
@@ -445,6 +446,25 @@ function renderCharacters() {
     }
   }
 }
+// Cameo toggles mirror script.extras; a goose_chase line keeps the goose on.
+function renderExtras() {
+  const box = $('extras-fields'), list = state.catalog?.extras ?? [];
+  box.hidden = !list.length;
+  box.querySelectorAll('label').forEach(node => node.remove());
+  const chosen = Array.isArray(state.script.extras) ? state.script.extras : [];
+  for (const extra of list) {
+    const label = el('label', undefined, 'check-label'), input = el('input');
+    input.type = 'checkbox'; input.id = `extra-${extra.id}`; input.value = extra.id; input.checked = chosen.includes(extra.id);
+    label.htmlFor = input.id; label.append(input, extra.label ?? extra.id);
+    input.addEventListener('change', () => {
+      const next = list.map(e => e.id).filter(id => id === extra.id ? input.checked : chosen.includes(id));
+      if (next.length > 4) { input.checked = false; message('Choose at most four background cameos.', true); return; }
+      if (next.length) state.script.extras = next; else delete state.script.extras;
+      changed(); renderExtras();
+    });
+    box.append(label);
+  }
+}
 function renderOutput() {
   const captions=state.script.captions;
   $('captions-enabled').checked=captions?.enabled??true;
@@ -465,7 +485,7 @@ function renderForm() {
   choose($('scene'), state.catalog.scenes, state.script.scene, 'Template default');
   $('seed').value = state.script.seed ?? '';
   $('title').value = state.script.title;
-  renderCharacters();
+  renderCharacters(); renderExtras();
   renderOutput();
   $('product').value = state.script.product ?? 'book2';
   const endCard = { ...endCardDefaults, ...state.script.endCard };
@@ -547,6 +567,19 @@ $('load-example').addEventListener('click', () => operate('Load example', async 
   install(script); batchUI.register(script, filename); message('Example loaded. Review the pages and dialogue, then validate or generate.');
 }));
 
+$('generate-chaos').addEventListener('click', async () => {
+  if (!state.catalog || state.busy || state.dirtyJSON) return;
+  try {
+    // Loaded on demand; the static build inlines it.
+    const { generateChaos } = await import('../src/chaos.mjs');
+    const seed = crypto.getRandomValues(new Uint32Array(1))[0] >>> 1;
+    const script = generateChaos(state.catalog, { seed, intensity: $('chaos-intensity').value });
+    if (!confirmReplacement('Generate a chaos script')) { message('Chaos script not generated. Your script is unchanged.'); return; }
+    state.operation++;
+    install(script); batchUI.register(script, `chaos-${seed}.json`);
+    message(`Chaos script ready: "${script.title}" (seed ${seed}). Review it, then validate or generate the video.`);
+  } catch (error) { message(`Chaos generator: ${error.message}`, true); }
+});
 $('template').addEventListener('change', () => {
   const blankLines = stringify(state.script.lines) === stringify(editorDefaults(state.catalog, state.script.template).script.lines);
   state.script.template = $('template').value;

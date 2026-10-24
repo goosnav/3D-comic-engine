@@ -37,6 +37,18 @@
             <button id="load-example" type="button" disabled>Load example</button>
           </div>
         </div>
+        <div class="chaos-generator">
+          <label for="chaos-intensity">Chaos generator</label>
+          <div class="example-controls">
+            <select id="chaos-intensity" disabled>
+              <option value="mild">Mild · small stunts</option>
+              <option value="wild" selected>Wild · escalating mayhem</option>
+              <option value="unhinged">Unhinged · everything at once</option>
+            </select>
+            <button id="generate-chaos" type="button" disabled>Generate chaos script</button>
+          </div>
+          <p class="hint">A random cast, scene, cameos, stunts and dialogue from a new seed. No AI. Review it, then render.</p>
+        </div>
       </div>
       <p id="start-status" class="status">Loading the editor…</p>
     </section>
@@ -117,6 +129,7 @@
             <div><label for="reader-clothing">Reader character</label><select id="reader-clothing"></select></div>
             <div><label for="friend-clothing">Friend character</label><select id="friend-clothing"></select></div>
           </div>
+          <div id="extras-fields" class="extras-fields" role="group" aria-labelledby="extras-heading"><p id="extras-heading" class="hint">Background cameos (up to 4)</p></div>
           <div class="end-card-fields">
             <h3>End card</h3>
             <label class="check-label" for="end-card-enabled"><input id="end-card-enabled" type="checkbox">Show end card</label>

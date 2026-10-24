@@ -28,6 +28,13 @@ export async function verifyAssetCatalog(input,{script,onProgress=()=>{},baseURL
    if(!key||!catalog.assets[key])throw Error(`Missing actor asset: ${id}`);
    keys.add(key);
   }
+  for(const id of resolved.extras??[]){
+   const extra=catalog.extras?.find(e=>e.id===id);
+   if(!extra)throw Error(`Missing extra: ${id}`);
+   if(extra.procedural)continue;
+   if(!catalog.assets[extra.asset])throw Error(`Missing extra asset: ${id}`);
+   keys.add(extra.asset);
+  }
   const scene=catalog.scenes?.find(s=>s.id===resolved.scene);
   if(scene?.asset!==undefined||!['library','fireside'].includes(resolved.scene)){
    if(!scene?.asset||!catalog.assets[scene.asset]?.path)throw Error(`Missing scene asset: ${resolved.scene}`);

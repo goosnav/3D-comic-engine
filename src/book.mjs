@@ -98,7 +98,10 @@ export function createBook(gltf, timeline, comics) {
       });
     });
     const table = new THREE.Vector3(-.48, .823, .32);
-    const heldPoint = new THREE.Vector3(0, 1.08, .38).applyQuaternion(reader.root.quaternion).add(reader.root.position);
+    // Re-proportioned readers hold the book at their own shoulder and arm length.
+    const short = reader.headShift?.y ? reader.reach : null;
+    const heldLocal = short ? new THREE.Vector3(0, short.shoulder - .22 * short.arm / .5, .38 * short.arm / .5) : new THREE.Vector3(0, 1.08, .38);
+    const heldPoint = heldLocal.applyQuaternion(reader.root.quaternion).add(reader.root.position);
     root.position.copy(table).lerp(heldPoint, state.held);
     // Page top is local -Z: turn it away from the readers, not the audience.
     root.rotation.set(mix(0, -.35, state.held), Math.PI + mix(-.12, reader.root.rotation.y, state.held), 0);

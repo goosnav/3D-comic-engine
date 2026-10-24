@@ -68,6 +68,13 @@ JSON download if you prefer writing in your own editor. Imports and examples are
 checked before replacing your draft, and replacing authored work asks for confirmation.
 The lower JSON section also has an upload control with the same behavior.
 
+**Generate chaos script** writes a whole film for you from a fresh random seed:
+cast (including Little Billy and the gooby-hat guy), scene, background cameos
+(the goose, Glove Bot, the walker, the shoe-hat creature), gmod-style stunts and
+dialogue from built-in phrase banks. No AI is involved. Pick **Mild**, **Wild** or
+**Unhinged** first. The result loads into the form like an example, so you can
+edit any line before rendering. The CLI equivalent is `node bin/theatre.mjs chaos`.
+
 Choose a template, then open a **Page** dropdown and scroll through book order,
 or use **Random comic** beside that row. Each click picks a different verified
 comic without duplicating another selected page. It keeps your dialogue, title,

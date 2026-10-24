@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "The Goose Was Not Invited",
+  "comics": ["book2-036"],
+  "seed": 1207,
+  "scene": "starter-overgrown-courtyard",
+  "characters": {"reader": "billy", "friend": "gooby"},
+  "extras": ["goose", "shoe-hat"],
+  "output": {"preset": "instagram_reels", "fps": 24},
+  "captions": {"enabled": true, "position": "top"},
+  "lines": [
+    {"speaker": "reader", "text": "I found a comic. I am reading it very responsibly.", "emotion": "pleased", "shot": "two-shot"},
+    {"speaker": "friend", "text": "Billy, there is a goose behind you.", "emotion": "concerned", "gesture": "double_point", "shot": "medium"},
+    {"speaker": "reader", "text": "Geese cannot read. It is fine.", "emotion": "dry", "gesture": "shrug", "shot": "close-up"},
+    {"action": "goose_chase", "actor": "reader", "seconds": 2.6, "shot": "wide"},
+    {"speaker": "friend", "text": "He will be back. Probably.", "emotion": "thoughtful", "shot": "medium"},
+    {"action": "helicopter", "actor": "reader", "seconds": 2.4, "shot": "extreme-wide"},
+    {"speaker": "reader", "text": "I have learned to fly. Page thirty four did this.", "emotion": "manic", "gesture": "snap_pose", "shot": "close-up"},
+    {"action": "big_head", "actor": "friend", "seconds": 2, "shot": "two-shot"},
+    {"speaker": "friend", "text": "Five stars. Keep it away from geese.", "emotion": "pleased", "shot": "wide"}
+  ]
+}

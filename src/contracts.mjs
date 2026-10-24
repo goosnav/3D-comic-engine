@@ -8,7 +8,10 @@ export const GESTURES=['none','explain','nod','head_tilt','shrug','page_glance',
 export const SHOTS=['auto','speaker','two-shot','over-shoulder','book','source','close-up','medium','wide','extreme-wide'];
 export const BOOK_ACTIONS=['open','turn','hold','read','place','close','slam','throw'];
 export const PARTNER_ACTIONS=['punch','nose_touch','high_five','handshake','ascend'];
-export const ACTOR_ACTIONS=['punch','explode','flatten','nose_off','head_spin','head_jerk','walk_away','nose_touch','high_five','handshake','dance','ascend'];
+// Solo gmod-style stunts are appended; existing ids and order stay stable.
+export const GMOD_ACTIONS=['t_pose','ragdoll','noclip','big_head','jitter','helicopter','goose_chase'];
+export const ACTOR_ACTIONS=['punch','explode','flatten','nose_off','head_spin','head_jerk','walk_away','nose_touch','high_five','handshake','dance','ascend',...GMOD_ACTIONS];
+export const MAX_EXTRAS=4;
 export const ACTIONS=[...BOOK_ACTIONS,...ACTOR_ACTIONS];
 export const GAZES=['auto','partner','away','book','ceiling','camera'];
 export const OUTPUT_PRESETS=Object.freeze({
@@ -37,6 +40,19 @@ const keys=(v,allowed,label)=>{object(v,label);for(const k of Object.keys(v))if(
 const number=(v,lo,hi,label)=>{if(typeof v!=='number'||!Number.isFinite(v)||v<lo||v>hi)fail(`${label} must be ${lo}–${hi}`);return v;};
 const choice=(v,options,label)=>{if(!options.includes(v))fail(`${label}: choose ${options.join(', ')}`);return v;};
 export function seeded(seed){let x=seed>>>0;return()=>{x=(Math.imul(x,1664525)+1013904223)>>>0;return x/4294967296;};}
+// Background cameos. Undeclared catalogs (old installs, test fixtures) have none.
+// A goose chase brings its own goose so the action can never render without one.
+function resolveExtras(raw,lines,catalog){
+ const ids=catalog.extras?.map(e=>e.id)??[];
+ if(raw!==undefined&&(!Array.isArray(raw)||raw.length>MAX_EXTRAS||new Set(raw).size!==raw.length))fail(`extras must be a list of up to ${MAX_EXTRAS} different cameo IDs`);
+ const extras=(raw??[]).map((id,i)=>choice(id,ids,`extras[${i}]`));
+ if(lines.some(line=>line.action==='goose_chase')&&!extras.includes('goose')){
+  if(!ids.includes('goose'))fail('goose_chase needs a catalog with the goose cameo');
+  if(extras.length>=MAX_EXTRAS)fail(`goose_chase adds the goose; list at most ${MAX_EXTRAS-1} other extras`);
+  extras.push('goose');
+ }
+ return extras;
+}
 function face(v,label){if(v===undefined)return {};keys(v,['brow_left','brow_right','eye_open','mouth_curve','blink'],label);for(const [k,n]of Object.entries(v)){if(k==='blink')choice(n,['auto','once','off'],label+'.blink');else number(n,k==='eye_open'?0:-1,1,label+'.'+k);}return {...v};}
 function selection(template,ids,catalog){
  const t=catalog.templates.find(t=>t.id===template);if(!t)fail(`template: choose ${catalog.templates.map(t=>t.id).join(', ')}`);
@@ -67,7 +83,7 @@ function selectScene(requested,template,characters,catalog,seed){
  return pool[Math.floor(seeded(seed)()*pool.length)];
 }
 export function resolveScript(raw,catalog){
- keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard','captions'], 'script');
+ keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard','captions','extras'], 'script');
  if((raw.version??1)!==1)fail('version must be 1');
  if(typeof raw.title!=='string'||!raw.title.trim()||raw.title.length>160)fail('title must contain 1–160 characters');
  const {t,selected}=selection(raw.template,raw.comics,catalog);
@@ -133,7 +149,8 @@ export function resolveScript(raw,catalog){
  });
  if(!used.size)fail('At least one dialogue line is required');for(const c of raw.comics)if(!used.has(c))fail(`Selected comic ${c} needs a dialogue line`);
  const output=resolveOutput(raw.output);
- return {version:1,template:t.id,title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,captions,cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
+ const extras=resolveExtras(raw.extras,lines,catalog);
+ return {version:1,template:t.id,title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,captions,...(extras.length?{extras}:{}),cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
 }
 export function selectScript(template,seed=randomInt(0,2147483647),catalog){
  const t=catalog.templates.find(t=>t.id===template);if(!t)fail('Unknown template');number(seed,0,4294967295,'seed');const rand=seeded(seed);

@@ -16,6 +16,17 @@ AUTHOR
   node bin/theatre.mjs select book-duet --seed 42 --out script.json
   node bin/theatre.mjs validate script.json --json
 Templates: book-duet (1 comic), fireside-reader (1), page-tour (2–3).
+
+AUTOMATIC CHAOS SCRIPTS (no writer model)
+  node bin/theatre.mjs chaos --seed 42 --intensity wild --out chaos.json
+  node bin/theatre.mjs chaos --count 20 --out-dir chaos-films [--seed FIRST]
+  node bin/theatre.mjs batch chaos-films/batch.json --preview --json
+Each seed gives one complete, valid script: random cast (including Little Billy
+and the gooby-hat guy), scene, background cameos (goose, Glove Bot, walker,
+shoe-hat creature), gmod-style stunts and dialogue from built-in phrase banks.
+Same seed, same script. --intensity: mild, wild (default) or unhinged.
+--template: book-duet, fireside-reader or page-tour (default: random).
+--count writes chaos-SEED.json files and batch.json; existing files are not overwritten.
 Selected scripts contain placeholders: replace the dialogue before publishing.
 --out refuses to overwrite an existing file. The GUI also edits/downloads JSON.
 

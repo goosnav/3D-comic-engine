@@ -11,6 +11,8 @@ const help=`Comic Theatre — local JSON-driven book cutscenes
 
   node bin/theatre.mjs gui [--port 8777] [--no-open] [--output-dir DIR]
   node bin/theatre.mjs select TEMPLATE [--seed NUMBER] [--out script.json]
+  node bin/theatre.mjs chaos [--seed NUMBER] [--template T] [--intensity mild|wild|unhinged] [--out script.json]
+  node bin/theatre.mjs chaos --count N --out-dir DIR [--seed FIRST] [--template T] [--intensity LEVEL]
   node bin/theatre.mjs validate script.json
   node bin/theatre.mjs render script.json [--voice flite|kokoro|recorded] [--preview] [--output-dir DIR]
   node bin/theatre.mjs batch manifest.json [--voice flite|kokoro|recorded] [--preview] [--output-dir DIR]
@@ -28,6 +30,7 @@ Inputs resolve beneath the manifest directory; recordings resolve beside each sc
 Exit codes: 0 success; 1 production/runtime failure (including any failed batch item);
 2 invalid command, input JSON/contract or manifest; Ctrl+C normally exits 130.
 Flite is free bundled speech with no model/Python. Kokoro is optional local speech.
+'chaos' writes complete seeded scripts (dialogue, stunts, cast, cameos) with no model.
 Rendering calls no paid service. 'draft' explicitly enables an optional local model.
 --preview preserves aspect ratio normally at up to 768 px / 12 fps. Default: Reels 1080×1920 / 24 fps.
 Default output: ${OUTPUT}. Reuse --output-dir for status/resume of custom outputs.
@@ -47,7 +50,7 @@ const readJSON=async(file,maxBytes=256000)=>{
 };
 try{
  const command=args.shift()??'help',positional=[],options={};
- const allowed={gui:['port','no-open','output-dir'],select:['seed','out'],validate:[],render:['voice','preview','output-dir'],batch:['voice','preview','output-dir'],resume:['output-dir'],status:['output-dir'],draft:['out','template','seed'],assets:[],doctor:[],help:[]};
+ const allowed={gui:['port','no-open','output-dir'],select:['seed','out'],chaos:['seed','out','template','intensity','count','out-dir'],validate:[],render:['voice','preview','output-dir'],batch:['voice','preview','output-dir'],resume:['output-dir'],status:['output-dir'],draft:['out','template','seed'],assets:[],doctor:[],help:[]};
  if(command==='--help'||command==='-h'||command==='help'){emit({help},help);}
  else{
   if(!Object.hasOwn(allowed,command))invalid(`Unknown command '${command}'`);
@@ -86,6 +89,28 @@ try{
    }else if(command==='select'){
     if(!positional[0])invalid('Supply a template: book-duet, fireside-reader, page-tour');
     const catalog=await loadCatalog();let selected;try{selected=selectScript(positional[0],options.seed===undefined?undefined:Number(options.seed),catalog);}catch(e){invalid(e.message);}await save(selected);
+   }else if(command==='chaos'){
+    const catalog=await loadCatalog(),{generateChaos,INTENSITIES}=await import('../src/chaos.mjs');
+    if(positional.length)invalid('chaos takes options only');
+    if(options.intensity&&!INTENSITIES.includes(options.intensity))invalid(`--intensity: choose ${INTENSITIES.join(', ')}`);
+    if(options.template&&!catalog.templates.some(t=>t.id===options.template))invalid(`--template: choose ${catalog.templates.map(t=>t.id).join(', ')}`);
+    const make=seed=>generateChaos(catalog,{seed,template:options.template,intensity:options.intensity??'wild'});
+    const first=options.seed===undefined?globalThis.crypto.getRandomValues(new Uint32Array(1))[0]>>>1:Number(options.seed);
+    if(options.count===undefined){if(options['out-dir'])invalid('--out-dir needs --count');await save(make(first));}
+    else{
+     const count=Number(options.count);
+     if(!Number.isInteger(count)||count<1||count>MAX_BATCH_JOBS)invalid(`--count must be 1–${MAX_BATCH_JOBS}`);
+     if(!options['out-dir']||options.out)invalid('--count writes files: use --out-dir DIR (not --out)');
+     const dir=path.resolve(options['out-dir']);await fs.mkdir(dir,{recursive:true});
+     const files=[];
+     for(let i=0;i<count;i++){
+      const seed=(first+i)%4294967296,name=`chaos-${seed}.json`;
+      await fs.writeFile(path.join(dir,name),JSON.stringify(make(seed),null,2)+'\n',{flag:'wx'});files.push(name);
+     }
+     const manifest=path.join(dir,'batch.json');
+     await fs.writeFile(manifest,JSON.stringify(files.map(input=>({input})),null,2)+'\n',{flag:'wx'});
+     emit({ok:true,dir,files,manifest},`Wrote ${count} chaos scripts and ${manifest}\nRender: node bin/theatre.mjs batch ${manifest} --preview`);
+    }
    }else if(command==='validate'){
     await verifyCatalog(await loadCatalog());const script=await validate(await readJSON(positional[0]));emit({ok:true,script},`Valid: ${script.title}; ${script.lines.length} beats; seed ${script.seed}.`);
    }else if(command==='draft'){

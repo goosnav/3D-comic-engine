@@ -87,6 +87,7 @@ continue while you use another tab.
 ```sh
 node bin/theatre.mjs render examples/parasite.json --preview --json
 node bin/theatre.mjs select page-tour --seed 42 --out my-script.json
+node bin/theatre.mjs chaos --seed 42 --intensity unhinged --out chaos.json
 node bin/theatre.mjs validate my-script.json --json
 node bin/theatre.mjs batch examples/batch.json --preview --json
 node bin/theatre.mjs status --json
@@ -140,6 +141,10 @@ free dependency downloads; rendering does not contact external services.
 - Static cameras with close-up, medium, wide, extremely wide, and physical book shots.
 - Character-colored phrase captions, enabled by default, with top/bottom placement.
 - Jerky gestures, rocket punches, explosions, flattening, nose removal, head spins, and walk-offs.
+- Garry's Mod-style stunts: T-pose glide, ragdoll, noclip, big head, prop jitter, helicopter, goose chase.
+- Comic cast: Little Billy (spinning propeller cap) and the gooby-hat guy as castable characters.
+- Background cameos: an orange-billed goose, Glove Bot, the two-legged walker and the shoe-hat creature.
+- Automatic chaos scripts from a seed (`chaos` command / **Generate chaos script** button), no AI.
 - Editable retro end card using the actual spinning-book video.
 - Exact source hashes and embedded-book page checks; no silent page substitutions.
 - Optional local image-capable writer; remote providers are rejected.

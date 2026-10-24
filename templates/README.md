@@ -64,6 +64,7 @@ JSON has no comments. Put notes in a separate file; fields such as `notes`,
 | `captions` | No | Enabled by default; `position` is `top` or `bottom`, with `colors.reader` and `colors.friend` as six-digit hex colors. |
 | `output` | No | `{ "width": 1080, "height": 1920, "fps": 24 }` by default. Width/height must be even integers from 128 through 1920. FPS is 12, 24, or 30. |
 | `endCard` | No | Optional final product card. See below. |
+| `extras` | No | Up to four background cameos: `goose`, `glove-bot`, `walker`, `shoe-hat`. See below. |
 
 ### Format, source count, and cast
 
@@ -74,7 +75,11 @@ JSON has no comments. Put notes in a separate file; fields such as `notes`,
 | `page-tour` | 2-3 | `reader`, `friend` | `library`, `fireside`, `diner`, `basement`, `moon-base`, `tv-studio`, `space`, `black-pyramids`, `red-mesas`, `backrooms`, `starter-overgrown-courtyard` |
 
 Appearance variants are `blue`, `rust`, `olive`, `cowboy`, `glasses`, `crooked`,
-and `astronaut`, plus a `-beady` version of each. `astronaut` and
+and `astronaut`, plus a `-beady` version of each. The comic cast adds `billy`
+(Little Billy: about half height, rainbow propeller cap that always spins) and
+`gooby` (beady-eyed guy with a slime-green goo hat whose stalk always wobbles).
+Short characters such as Billy stand on a wooden crate so they can reach the
+table, hold the book and stay above the table edge in close-ups. `astronaut` and
 `astronaut-beady` support `moon-base`, `tv-studio`, `space`, `black-pyramids`, `red-mesas`, `backrooms`, and `starter-overgrown-courtyard`. Their clear helmets enclose noses squashed against the glass. The solo format has no
 `friend`, so it cannot use listener reactions. Avoid adding inactive cast entries.
 
@@ -112,8 +117,11 @@ Supported gestures:
 
 ```text
 none explain nod head_tilt shrug page_glance
-arm_flail fist_shake double_point despair windmill rubber_hose cry head_spin head_jerk
+arm_flail fist_shake double_point despair windmill rubber_hose snap_pose cry head_spin head_jerk
 ```
+
+`snap_pose` is the posed-ragdoll look: a random full-arm pose snaps in, holds
+for four or eight frames, then snaps to the next.
 
 Big arm gestures are optional performance controls, not physical simulations.
 Poses jump at 24 Hz for abrupt, erratic cartoon acceleration. While the
@@ -264,7 +272,32 @@ the beat's explicit actor gaze takes priority.
 - `{"action":"dance","actor":"friend"}` jerks, spins, hops and overextends the arms.
 - `{"action":"ascend","actor":"reader","target":"friend"}` rockets upward while the friend tracks him with his head. No return before the cut.
 
+Garry's Mod-style stunts (one actor, no target):
+
+- `{"action":"t_pose","actor":"friend"}` locks into a rigid T and glides around the floor, snapping 90° at a time.
+- `{"action":"ragdoll","actor":"reader"}` collapses limp with one bounce, limbs splayed, then twitches.
+- `{"action":"noclip","actor":"friend"}` sinks through the floor, pops up, and drifts out through the back wall.
+- `{"action":"big_head","actor":"reader"}` scales the head up in snapping steps (hands grow too), then snaps back.
+- `{"action":"jitter","actor":"friend"}` vibrates like a prop stuck in a wall, then gets flung into the sky.
+- `{"action":"helicopter","actor":"friend"}` spins up with rotor arms and lifts off through the ceiling. Billy's propeller goes wild.
+- `{"action":"goose_chase","actor":"reader"}` startles the actor, who sprints off-frame with the goose honking on their heels. Adds the `goose` extra automatically.
+
 Place the book before character actions. They accept 0.8–8 seconds, `actor`, optional `gaze`, and `shot`. `punch`, `nose_touch`, `high_five`, `handshake`, and `ascend` accept `target`, defaulting to the other character. For ascent, `actor` rises and `target` watches. Partner actions require a two-character template. Book actions use the reader. These are repeatable cartoon poses, not a physics simulation. Characters reset at the next beat with no return animation; the missing book resets when the next book action starts. Deliberate continuity cuts are part of the effect.
+
+### Background cameos (`extras`)
+
+`"extras": ["goose", "glove-bot"]` adds characters who live in the background for
+the whole film, following a seeded schedule (the script `seed` picks it):
+
+- `goose`: a white goose with an orange bill. It waddles, honks, flaps, pecks,
+  stares at the camera, spins, T-pose glides, noclips half into the floor,
+  zooms across the set, and ragdolls over. It also performs `goose_chase`.
+- `glove-bot`, `walker`, `shoe-hat`: Glove Bot, the two-legged walker and the
+  shoe-hat creature from the comic cast walk across the back of the set, play
+  their own takes (wave, stomp, tip hat, power up…) and wander off again.
+
+Cameos never steer the camera. If a camera ends up inside one (over-shoulder
+shots sit behind the cast), that cameo hides for the frame.
 
 `cry`, `head_spin`, and `head_jerk` are also dialogue/listener gestures, so they can run during speech. Crying adds tears and frantic arm movement. The head gestures work while holding the book.
 

@@ -154,3 +154,21 @@ characters reappear at the next cut without a return animation.
 `cursor-chaos.json` combines cosmic rage, nose contact, high fives, handshakes, dancing, rocket punches and tracked ascent in the black-pyramid desert. Change `scene` to `space` or `red-mesas` to use the other library worlds. In space, try `astronaut` and `astronaut-beady` for the glass helmets and squashed noses. Every action holds its outcome until the cut.
 
 `space-chaos.json` showcases the glass helmets. `backrooms-reading.json` and `courtyard-reading.json` start in the Backrooms and `starter-overgrown-courtyard` settings. All five library worlds are available in the Scene dropdown.
+
+### Comic cast, cameos and gmod stunts
+
+[billy-and-the-goose.json](billy-and-the-goose.json) casts Little Billy and the
+gooby-hat guy in the overgrown courtyard, with the goose and the shoe-hat creature
+in the background: a goose chase, a propeller-powered helicopter exit, a snap-pose
+close-up and a big head. [gmod-physics-test.json](gmod-physics-test.json) runs the
+T-pose glide, prop jitter, noclip and ragdoll in the Backrooms while Glove Bot and
+the walker wander past.
+
+### Automatic chaos scripts
+
+No writing needed: `node bin/theatre.mjs chaos --seed 42 --out chaos.json` makes a
+complete script (cast, scene, cameos, stunts, dialogue) from a seed. Use
+`--intensity mild|wild|unhinged` and `--template`, or
+`chaos --count 20 --out-dir chaos-films` for a folder of scripts plus a
+`batch.json` to render them all. The GUI's **Generate chaos script** button does
+the same with a fresh seed.

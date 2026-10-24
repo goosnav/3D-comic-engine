@@ -7,6 +7,7 @@ export { clamp, ease, sampleMouth } from './facial-performance.mjs';
 // Provenance: Homunculus web/room.js (rest-relative bone poses), browser-room.js
 // (sealed-face overlay coordinates and head.attach). No runtime checkout imports.
 const number = (n, fallback = 0) => Number.isFinite(n) ? n : fallback;
+const V10_HEAD = new THREE.Vector3(0, 1.487, -.006);
 
 export function createActor(source, id, index = 0, config = {}) {
   const root = new THREE.Group();
@@ -51,11 +52,21 @@ export function createActor(source, id, index = 0, config = {}) {
     throw new Error('Actor GLB must contain the Homunculus head and arm skeleton');
   }
   const variant = config?.variant ?? authoredVariant ?? null;
+  // Face props were authored against the v10 head. Re-proportioned rigs (Little
+  // Billy) carry the same head shape at another height; v10 actors stay exact.
+  root.updateMatrixWorld(true);
+  const headRest = bones.head.getWorldPosition(new THREE.Vector3());
+  const headShift = headRest.clone().sub(V10_HEAD);
+  if (headShift.length() < .01) headShift.set(0, 0, 0);
+  const stature = headShift.y ? headRest.y / V10_HEAD.y : 1;
+  const shoulderRest = bones.upper_armL.getWorldPosition(new THREE.Vector3());
+  const reach = { shoulder: shoulderRest.y, arm: shoulderRest.distanceTo(bones.forearmL.getWorldPosition(new THREE.Vector3())) +
+    bones.forearmL.getWorldPosition(new THREE.Vector3()).distanceTo(bones.handL.getWorldPosition(new THREE.Vector3())) };
   const faceMode = mouthMeshes.length ? 'oral-cavity' : 'legacy-overlay';
   const dark = new THREE.MeshStandardMaterial({ color: 0x372722, roughness: .95 });
   const face = new THREE.Group();
   face.name = 'head-attached-expression';
-  face.position.set(0, 1.525, .147);
+  face.position.set(0, 1.525, .147).add(headShift);
   // Only old sealed exports need an overlay. New skins use the recessed cavity;
   // never layer a floating mouth over genuine lip/cavity geometry.
   let mouth, lip;
@@ -76,7 +87,7 @@ export function createActor(source, id, index = 0, config = {}) {
   const brows = [-1, 1].map(sign => {
     const brow = new THREE.Mesh(new THREE.CapsuleGeometry(.007, .077, 4, 8), dark);
     const anchor = new THREE.Group();
-    anchor.position.set(sign * .095, 1.659, .083);
+    anchor.position.set(sign * .095, 1.659, .083).add(headShift);
     brow.rotation.z = Math.PI / 2;
     anchor.add(brow);
     root.add(anchor); root.updateMatrixWorld(true); bones.head.attach(anchor);
@@ -87,7 +98,9 @@ export function createActor(source, id, index = 0, config = {}) {
   let nose;
   root.updateMatrixWorld(true);
   body.traverse(mesh => {
-    if (!mesh.isSkinnedMesh || nose || !(mesh.name==='guy_nose' || mesh.parent.name==='guy_body')) return;
+    // v10 bodies are guy_body; comic-cast bodies are <name>_body with a skin part.
+    const skinPart = /_body$/.test(mesh.parent?.name) && /skin/.test(mesh.material?.name);
+    if (!mesh.isSkinnedMesh || nose || !(mesh.name==='guy_nose' || mesh.parent.name==='guy_body' || skinPart)) return;
     const geometry=mesh.geometry, indices=geometry.index, skin=geometry.attributes.skinIndex, weights=geometry.attributes.skinWeight;
     const head=mesh.skeleton.bones.indexOf(bones.head);
     if (!indices || head < 0) return;
@@ -191,6 +204,15 @@ export function createActor(source, id, index = 0, config = {}) {
         }
       }
     }
+    // Comic-cast headgear: the propeller always turns and the goo stalk always
+    // wobbles, faster when the character is frantic. Pure functions of time.
+    const fizz = 1 + 2.5 * frenzy + (speaking ? .6 : 0);
+    if (bones.propeller) pose('propeller', 0, time * (14 + index * 3) * fizz % (Math.PI * 2), 0);
+    for (const [k, lag] of [[1, 0], [2, .7], [3, 1.4]]) {
+      if (!bones[`hat_stalk${k}`]) continue;
+      const wobble = (.08 + .05 * k) * (1 + frenzy);
+      pose(`hat_stalk${k}`, Math.sin(phase * 2.3 * fizz - lag) * wobble, 0, Math.cos(phase * 1.7 * fizz - lag) * wobble);
+    }
     for (const mesh of mouthMeshes) {
       const weights = { ...visemes, smile: Math.max(0, exp.smile), frown: Math.max(0, -exp.smile) };
       for (const [name, value] of Object.entries(weights)) {
@@ -287,5 +309,5 @@ export function createActor(source, id, index = 0, config = {}) {
   function diagnostics() {
     return { ...state, head: bones.head.quaternion.toArray(), hands: ['L', 'R'].map(s => bones[`hand${s}`].getWorldPosition(new THREE.Vector3()).toArray()) };
   }
-  return { root, bones, skeletons, nose, apply, grip, diagnostics };
+  return { root, bones, skeletons, nose, apply, grip, diagnostics, stature, headShift, reach };
 }
