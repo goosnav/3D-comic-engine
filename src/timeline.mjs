@@ -1,3 +1,4 @@
+import {captionCues} from './speech-timing.mjs';
 import {seeded} from './contracts.mjs';
 const RATE=48000;
 const ticks=s=>Math.round(s*RATE);
@@ -24,13 +25,13 @@ export function compileTimeline(script,takes){
   }
   if(line.shot&&line.shot!=='auto')finishCoverage();
   const shot=shotFor(line);
-  add({...line,shot,type:'line',mouth:take.mouth??[],bookState:line.bookState??'table-open'},take.duration);
-  const pause=Math.max(line.pause??.4,line.reaction?.at==='line_end'?line.reaction.duration:0);
+  add({...line,shot,type:'line',mouth:take.mouth??[],captions:captionCues(line.text,take),bookState:line.bookState??'table-open'},take.duration);
+  const pause=Math.max(line.pause??0,line.reaction?.at==='line_end'?line.reaction.duration:0);
   if(pause)add({...line,shot,id:`hold-${line.id}`,type:'hold',mouth:[],bookState:line.bookState??'table-open'},pause);
  }
  finishCoverage();
  // An explicit first shot may cancel a zero-length automatic reveal.
  for(let i=events.length-1;i>=0;i--)if(events[i].end<=events[i].start)events.splice(i,1);
  if(script.endCard?.enabled)add({...script.endCard,id:'end-card',type:'endcard'},script.endCard.seconds);
- return {version:1,...script.output,duration:cursor/RATE,frames:Math.ceil(cursor/RATE*script.output.fps),seed:script.seed,scene:script.scene,template:script.template,cast:script.cast.map(c=>c.id),characters:script.characters,product:script.product,endCard:script.endCard,sources:script.comics,events};
+ return {version:1,...script.output,duration:cursor/RATE,frames:Math.ceil(cursor/RATE*script.output.fps),seed:script.seed,scene:script.scene,template:script.template,cast:script.cast.map(c=>c.id),characters:script.characters,captions:script.captions,product:script.product,endCard:script.endCard,sources:script.comics,events};
 }

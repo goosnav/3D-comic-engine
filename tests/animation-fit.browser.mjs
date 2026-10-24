@@ -60,5 +60,26 @@ test('fitted assets, supported hands and cartoon actions render and seek', {time
  const pixels=await page.locator('canvas').screenshot();
  await render(10.9);assert.deepEqual(await render(8.7),first);
  assert.deepEqual(await page.locator('canvas').screenshot(),pixels,'invisible burst fragments cannot affect later camera framing');
- assert.equal((await render(11.5)).stunt.action,'explode');assert.deepEqual(errors,[]);
+ assert.equal((await render(11.5)).stunt.action,'explode');
+ for(const [start,end] of [[5.2,6.9],[7.1,9.9],[10.1,12.9]])assert.deepEqual((await render(start)).camera,(await render(end)).camera,'camera stays fixed throughout each stunt');
+ assert.ok((await render(6.95)).book.position[0]>20,'thrown book stays outside the frame');
+ await page.evaluate(async ({catalog})=>{
+  const {createPlayer}=await import('/src/player.mjs');window.player.dispose();
+  const events=[
+   {type:'line',id:'flail',speaker:'reader',text:'These captions should stay readable while the arms go completely wild.',gesture:'arm_flail',shot:'medium',start:0,end:3,mouth:[],captions:[{text:'These captions should stay readable',start:0,end:1.5},{text:'while the arms go wild.',start:1.5,end:3}]},
+   {type:'line',id:'cry',speaker:'friend',gesture:'cry',shot:'close-up',start:3,end:5,mouth:[],captions:[{text:'My entire argument is gone.',start:0,end:2}]},
+   ...['flatten','nose_off','head_spin','head_jerk','walk_away'].map((rail,i)=>({type:'action',id:rail,rail,actor:'reader',shot:'medium',start:5+i*2,end:7+i*2})),
+   {type:'line',id:'wide',speaker:'reader',shot:'wide',start:15,end:16,mouth:[]},
+   {type:'line',id:'far',speaker:'reader',shot:'extreme-wide',start:16,end:17,mouth:[]}
+  ];
+  window.player=await createPlayer(document.querySelector('canvas'),{catalog,timeline:{width:540,height:960,fps:24,frames:408,duration:17,seed:12,scene:'library',cast:['reader','friend'],characters:{reader:'cowboy',friend:'glasses'},sources:['book2-020'],captions:{enabled:true,position:'bottom',colors:{reader:'#ffe35b',friend:'#6ee7ff'}},events}});
+ },{catalog});
+ for(const [name,time]of [['captions-flail',1],['captions-cry',4],['flatten',6.5],['nose-off',8],['head-spin',10],['head-jerk',12],['walk-away',14],['wide',15.5],['extreme-wide',16.5]]){
+  await render(time);await page.screenshot({path:resolve(root,`.local/review/${name}.png`)});
+ }
+ assert.deepEqual((await render(.2)).camera,(await render(2.8)).camera,'wild arms never move the camera');
+ assert.equal((await render(1)).captions.color,'#ffe35b');assert.equal((await render(4)).captions.color,'#6ee7ff');assert.equal((await render(6)).captions,null);
+ assert.ok((await render(16.5)).camera.position[2]>(await render(15.5)).camera.position[2]*2);
+ const late=await render(8);await render(14);assert.deepEqual(await render(8),late);
+ assert.deepEqual(errors,[]);
 });

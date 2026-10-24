@@ -131,7 +131,7 @@ test('physical selected-page reveal, portrait conversations and reverse seeks us
   assert.equal(reading.unlit,true,'original page ink is not washed out by room lights');
   assert.equal(reading.toneMapped,false);
   const pushed = await render(32);
-  assert.notDeepEqual(pushed.camera.position, start.camera.position, 'book reveal moves slowly toward the selected page');
+  assert.deepEqual(pushed.camera, start.camera, 'book reveal stays static throughout the shot');
   assert.equal(pushed.book.selectedPdfPage, 40);
   await capture('book-push');
   // Raycast the center of the real frame; labels alone cannot prove the page is visible.
@@ -203,7 +203,7 @@ test('physical selected-page reveal, portrait conversations and reverse seeks us
   await render(42); await capture('landscape-two');
   const concurrent = compileTimeline({ ...timeline, output:{width:432,height:540,fps:12},
     comics:[catalog.comics[1].id],cast:[{id:'reader'},{id:'friend'}],lines:[
-      {id:'narration',speaker:'reader',comic:catalog.comics[1].id,shot:'auto',pause:0},
+      {id:'narration',speaker:'reader',text:'Read this page while I explain it.',comic:catalog.comics[1].id,shot:'auto',pause:0},
     ] }, { narration:{duration:7,mouth:[{t:0,value:0},{t:.5,value:.8},{t:7,value:0}]} });
   await load(concurrent);
   const opening=await render(6);

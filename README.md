@@ -138,7 +138,9 @@ free dependency downloads; rendering does not contact external services.
 - Exact page hashes throughout. Three reviewed transcripts; other pages are explicitly not transcribed.
 - Six clothing/eye variants (blue/rust/olive; white or beady eyes).
 - Emotions, mouth motion, listening reactions and reusable book-animation rails.
-- Seeded camera compositions, including both readers and physical page close-ups.
+- Static cameras with close-up, medium, wide, extremely wide, and physical book shots.
+- Character-colored phrase captions, enabled by default, with top/bottom placement.
+- Jerky gestures, rocket punches, explosions, flattening, nose removal, head spins, and walk-offs.
 - Editable retro end card using the actual spinning-book video.
 - Exact source hashes and embedded-book page checks; no silent page substitutions.
 - Optional local image-capable writer; remote providers are rejected.
@@ -184,10 +186,11 @@ Acting, natural finger contact, humor and sales effectiveness are not guaranteed
 This app produces local files; it does not publish or upload to Google Drive.
 
 Character gaze is editable for each beat: automatic, partner, away, book, ceiling,
-or camera. Add action offers book slam/throw and character punch/explode.
-Punch launches the target into a cartoon tumble; explosion briefly scatters
-colored pieces. Both restore the characters at the end of the beat and seek
-reproducibly. They do not simulate persistent injuries or physical collisions.
-Try `examples/physical-comedy.json`; the dialogue is invented commentary.
+or camera. Actions include slam, throw, punch, explode, flatten, nose removal,
+head spinning, head jerking, and walking away. Punches, throws and explosions
+leave the frame without returning during that beat. The next beat can restore
+the cast with a hard cut. Motion is deterministic rather than a collision simulation.
+Try `examples/chaotic-comedy.json` for the new actions and captions; its dialogue
+is invented commentary.
 The corrected hats, glasses and folding book are bundled GLBs; editable Blender
 sources and rebuild scripts are saved in the companion `goosnav-3D-assets` library.

@@ -5,9 +5,9 @@ import {emotions} from './facial-performance.mjs';
 import {gestures,ARM_GESTURES} from './gesture-performance.mjs';
 export const EMOTIONS=Object.keys(emotions);
 export const GESTURES=['none','explain','nod','head_tilt','shrug','page_glance',...Object.keys(gestures)];
-export const SHOTS=['auto','speaker','two-shot','over-shoulder','book','source'];
+export const SHOTS=['auto','speaker','two-shot','over-shoulder','book','source','close-up','medium','wide','extreme-wide'];
 export const BOOK_ACTIONS=['open','turn','hold','read','place','close','slam','throw'];
-export const ACTOR_ACTIONS=['punch','explode'];
+export const ACTOR_ACTIONS=['punch','explode','flatten','nose_off','head_spin','head_jerk','walk_away'];
 export const ACTIONS=[...BOOK_ACTIONS,...ACTOR_ACTIONS];
 export const GAZES=['auto','partner','away','book','ceiling','camera'];
 export const OUTPUT_PRESETS=Object.freeze({
@@ -66,10 +66,17 @@ function selectScene(requested,template,characters,catalog,seed){
  return pool[Math.floor(seeded(seed)()*pool.length)];
 }
 export function resolveScript(raw,catalog){
- keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard'], 'script');
+ keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard','captions'], 'script');
  if((raw.version??1)!==1)fail('version must be 1');
  if(typeof raw.title!=='string'||!raw.title.trim()||raw.title.length>160)fail('title must contain 1–160 characters');
  const {t,selected}=selection(raw.template,raw.comics,catalog);
+ const captions={enabled:true,position:'bottom',colors:{reader:'#ffe35b',friend:'#6ee7ff'},...raw.captions};
+ if(raw.captions!==undefined)keys(raw.captions,['enabled','position','colors'],'captions');
+ if(typeof captions.enabled!=='boolean')fail('captions.enabled must be true or false');
+ choice(captions.position,['top','bottom'],'captions.position');
+ if(raw.captions?.colors!==undefined)keys(raw.captions.colors,['reader','friend'],'captions.colors');
+ captions.colors={reader:'#ffe35b',friend:'#6ee7ff',...raw.captions?.colors};
+ for(const [id,color] of Object.entries(captions.colors))if(typeof color!=='string'||!/^#[0-9a-f]{6}$/i.test(color))fail(`captions.colors.${id} must be a six-digit hex color`);
  const product=choice(raw.product??'book2',['book2'],'product');
  const variants=catalog.variants?.map(v=>v.id)??['blue','rust','olive'];
  const characters={};if(raw.characters!==undefined)keys(raw.characters,[...new Set(catalog.templates.flatMap(t=>t.speakers))],'characters');
@@ -90,14 +97,15 @@ export function resolveScript(raw,catalog){
  const lines=raw.lines.map((line,i)=>{
   const label=`lines[${i}]`;object(line,label);
   if(line.action!==undefined){
-   keys(line,['action','comic','seconds','id','bookState','actor','target','gaze'],label);choice(line.action,ACTIONS,label+'.action');
+   keys(line,['action','comic','seconds','id','bookState','actor','target','gaze','shot'],label);choice(line.action,ACTIONS,label+'.action');
    gaze(line.gaze,label+'.gaze',t.speakers);
+   if(line.shot!==undefined)choice(line.shot,SHOTS,label+'.shot');
    if(ACTOR_ACTIONS.includes(line.action)){
     if(state==='held-open')fail(`${label}: place the book before a character action`);
     const actor=choice(line.actor??t.speakers[0],t.speakers,label+'.actor');
     const target=line.action==='punch'?choice(line.target??t.speakers.find(id=>id!==actor),t.speakers,label+'.target'):undefined;
     if(target===actor)fail(`${label}: punch needs a different target actor`);
-    if(line.action==='explode'&&line.target!==undefined)fail(`${label}: explode has no target`);
+    if(line.action!=='punch'&&line.target!==undefined)fail(`${label}: ${line.action} has no target`);
     if(line.comic!==undefined&&line.comic!==current)fail(`${label}: character actions cannot change the comic`);
     return {...line,actor,...(target?{target}:{}),id:`beat-${i}`,seconds:number(line.seconds??2.4,.8,8,label+'.seconds'),comic:current,bookState:state};
    }
@@ -116,15 +124,15 @@ export function resolveScript(raw,catalog){
   if(state==='table-closed')fail(`${label}: open the book before reading dialogue`);
   if(comic!==current&&state==='held-open')fail(`${label}: place the held book before switching comic`);
   current=comic;used.add(comic);const gesture=choice(line.gesture??'none',GESTURES,label+'.gesture');
-  if(state==='held-open'&&line.speaker==='reader'&&ARM_GESTURES.includes(gesture))fail(`${label}: held book reserves the reader's hands; choose nod, head_tilt, page_glance or none`);
-  let reaction;if(line.reaction){keys(line.reaction,['actor','emotion','gesture','face','at','duration','gaze'],label+'.reaction');reaction={...line.reaction,actor:line.reaction.actor??t.speakers.find(s=>s!==line.speaker),emotion:choice(line.reaction.emotion??'neutral',EMOTIONS,label+'.reaction.emotion'),gesture:choice(line.reaction.gesture??'none',GESTURES,label+'.reaction.gesture'),face:face(line.reaction.face,label+'.reaction.face'),at:choice(line.reaction.at??'line_end',['line_start','line_end'],label+'.reaction.at'),duration:number(line.reaction.duration??.8,.1,5,label+'.reaction.duration')};if(reaction.gaze!==undefined)choice(reaction.gaze,GAZES,label+'.reaction.gaze');if(!t.speakers.includes(reaction.actor)||reaction.actor===line.speaker)fail(`${label}: reaction needs a different cast actor`);}
+  if(state==='held-open'&&line.speaker==='reader'&&ARM_GESTURES.includes(gesture))fail(`${label}: held book reserves the reader's hands; choose a head gesture or none`);
+  let reaction;if(line.reaction){keys(line.reaction,['actor','emotion','gesture','face','at','duration','gaze'],label+'.reaction');reaction={...line.reaction,actor:line.reaction.actor??t.speakers.find(s=>s!==line.speaker),emotion:choice(line.reaction.emotion??'neutral',EMOTIONS,label+'.reaction.emotion'),gesture:choice(line.reaction.gesture??'none',GESTURES,label+'.reaction.gesture'),face:face(line.reaction.face,label+'.reaction.face'),at:choice(line.reaction.at??'line_start',['line_start','line_end'],label+'.reaction.at'),duration:number(line.reaction.duration??.8,.1,5,label+'.reaction.duration')};if(reaction.gaze!==undefined)choice(reaction.gaze,GAZES,label+'.reaction.gaze');if(!t.speakers.includes(reaction.actor)||reaction.actor===line.speaker)fail(`${label}: reaction needs a different cast actor`);}
   if(line.audio!==undefined&&(typeof line.audio!=='string'||!line.audio||line.audio.includes('\0')))fail(`${label}.audio must be a relative filename`);
   if(state==='held-open'&&reaction?.actor==='reader'&&ARM_GESTURES.includes(reaction.gesture))fail(`${label}: held book reserves the reader's hands during reactions too`);
-  return {...line,id:`beat-${i}`,comic,emotion:choice(line.emotion??'neutral',EMOTIONS,label+'.emotion'),gesture,face:face(line.face,label+'.face'),pause:number(line.pause??.4,0,5,label+'.pause'),shot:choice(line.shot??'auto',SHOTS,label+'.shot'),...(reaction?{reaction}:{}),bookState:state};
+  return {...line,id:`beat-${i}`,comic,emotion:choice(line.emotion??'neutral',EMOTIONS,label+'.emotion'),gesture,face:face(line.face,label+'.face'),pause:number(line.pause??0,0,5,label+'.pause'),shot:choice(line.shot??'auto',SHOTS,label+'.shot'),...(reaction?{reaction}:{}),bookState:state};
  });
  if(!used.size)fail('At least one dialogue line is required');for(const c of raw.comics)if(!used.has(c))fail(`Selected comic ${c} needs a dialogue line`);
  const output=resolveOutput(raw.output);
- return {version:1,template:t.id,title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
+ return {version:1,template:t.id,title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,captions,cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
 }
 export function selectScript(template,seed=randomInt(0,2147483647),catalog){
  const t=catalog.templates.find(t=>t.id===template);if(!t)fail('Unknown template');number(seed,0,4294967295,'seed');const rand=seeded(seed);

@@ -1,30 +1,15 @@
 /**
- * PURPOSE Sample exaggerated gestures as bounded, rest-relative bone offsets.
- * KIND CORE
- * CONTRACT IN: optional gesture ID, absolute time/start/duration, seed, amplitude,
- * attack and release seconds. OUT: fresh named [x,y,z] Euler-offset arrays.
- * RAISES No intentional errors for unsupported IDs or invalid numeric timing;
- * those inputs return rest offsets. Callers must pass an options object.
- * GUARANTEES Pure, deterministic, no I/O, no accumulation or input mutation.
- * TUNING Amplitude 0..2, arm limit 2.6 radians, head/chest .5 radians.
- * DECISIONS D1: authored waves rather than the alternative of physics/ragdolls
- * provide repeatable seeking and bounded motion. Revisit if: physics becomes a requirement.
- * LIMITS No collision avoidance or prop solving; caller suppresses held arms.
- * TESTBENCH tests/gesture-performance.test.mjs — node --test tests/gesture-performance.test.mjs
- */
-/**
- * Reusable gesture performance v1; canonical exports/theatre-gestures.mjs.
- * sampleGesture({gesture='none', time=0, start=0, duration=0, seed=0,
- *   amplitude=1, attack=.18, release=.24}) -> bone-name: [x,y,z] radians.
- * Offsets are relative to rest, not accumulated rotations. Apply once after
- * restoring rest. L/R use the authored handed rig, with opposite lateral signs.
- * Absolute seconds; deterministic, pure, no physics, AI, clock or frame history.
- * Amplitude clamps to [0,2]; each arm component <=2.6 rad, chest/head <=.5 rad.
- * Unknown IDs or invalid/outside timing return zero. Invalid seed becomes zero;
- * invalid amplitude becomes zero; invalid/nonpositive ramps become defaults.
- * Caller must suppress arm gestures when holding a prop (held > .5).
+ * Deterministic rest-relative poses, sampled at 15 Hz for abrupt cartoon motion.
+ * Restore the rig each frame before applying these offsets. Arms clamp to 2.6
+ * radians and ordinary head/chest offsets to .5; head_spin/head_jerk deliberately
+ * exceed head limits. No collision solving. Suppress ARM_GESTURES while holding.
+ * Outside the beat or with invalid timing, return fresh zero offsets.
+ * Canonical portable copy: goosnav-3D-assets/exports/theatre-gestures.mjs.
  */
 export const gestures = Object.freeze({
+  cry: Object.freeze({ arms: true }),
+  head_spin: Object.freeze({ arms: false }),
+  head_jerk: Object.freeze({ arms: false }),
   arm_flail: Object.freeze({ arms: true }),
   fist_shake: Object.freeze({ arms: true }),
   double_point: Object.freeze({ arms: true }),
@@ -32,7 +17,7 @@ export const gestures = Object.freeze({
   windmill: Object.freeze({ arms: true }),
   rubber_hose: Object.freeze({ arms: true }),
 });
-export const ARM_GESTURES = Object.freeze(['explain', 'shrug', 'point', 'offer', ...Object.keys(gestures)]);
+export const ARM_GESTURES = Object.freeze(['explain', 'shrug', 'point', 'offer', ...Object.keys(gestures).filter(id => gestures[id].arms)]);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const ease = v => { const x = clamp(v, 0, 1); return x * x * (3 - 2 * x); };
 export function sampleGesture(opts = {}) {
@@ -45,22 +30,27 @@ export function sampleGesture(opts = {}) {
   const weight = (Number.isFinite(amplitude) ? clamp(amplitude, 0, 2) : 0) *
     ease(age / ramp(attack, .18)) * ease((duration - age) / ramp(release, .24));
   // Modulo before multiplication keeps even extreme finite inputs finite.
-  const phase = (age % (Math.PI * 2)) * 12 + ((seed >>> 0) % 997) / 997 * Math.PI * 2;
+  const phase = (Math.floor((age % (Math.PI * 2)) * 15) / 15) * 26 + ((seed >>> 0) % 997) / 997 * Math.PI * 2;
   const wave = Math.sin(phase), slow = Math.sin(phase * .5);
+  if (gesture === 'head_spin') {result.head[1]=Math.floor((age%60)*15)*Math.PI*.62*weight;return result;}
+  if (gesture === 'head_jerk') {result.head=[Math.sin(phase*3)*1.2,Math.sin(phase*7)*2.5,Math.sin(phase*11)*1.4].map(v=>v*weight);return result;}
   for (const [side, sign] of [['L',1],['R',-1]]) {
     const w = Math.sin(phase + (side === 'L' ? 0 : 1.7));
     if (gesture === 'arm_flail') {
-      result[`upper_arm${side}`] = [1.1 + .8 * w, .35 * slow, sign * (.65 + .65 * Math.cos(phase))];
-      result[`forearm${side}`] = [.8 + .7 * Math.sin(phase + 1), 0, sign * .25 * w];
+      result[`upper_arm${side}`] = [1.2 + 1.2 * w, 1.1 * slow, sign * (1.1 + 1.1 * Math.cos(phase))];
+      result[`forearm${side}`] = [1.2 + 1.1 * Math.sin(phase + 1), 0, sign * .25 * w];
+    } else if (gesture === 'cry') {
+      result[`upper_arm${side}`] = [1.8 + .22*w, sign*.25, sign*.18];
+      result[`forearm${side}`] = [2.1 + .25*w, 0, sign*.25];
     } else if (gesture === 'fist_shake') {
-      result[`upper_arm${side}`] = [side === 'R' ? 1.1 + .2 * w : .15, 0, sign * .22];
-      result[`forearm${side}`] = [side === 'R' ? 1.45 + .45 * w : .3, 0, 0];
+      result[`upper_arm${side}`] = [side === 'R' ? 1.3 + .8 * w : .15, 0, sign * .22];
+      result[`forearm${side}`] = [side === 'R' ? 1.4 + .9 * w : .3, 0, 0];
     } else if (gesture === 'double_point') {
       result[`upper_arm${side}`] = [1.25 + .18 * wave, sign * .15, sign * .3];
       result[`forearm${side}`] = [.18 + .12 * wave, 0, 0];
     } else if (gesture === 'windmill') {
-      // Circular Euler excursions, not an accumulating rotation or a wrap jump.
-      result[`upper_arm${side}`] = [1.15 * Math.sin(phase * .5 + sign * .8), .3 * w, sign * 1.15 * Math.cos(phase * .5 + sign * .8)];
+      // Stepped windmill poses intentionally jump between frames.
+      result[`upper_arm${side}`] = [2.2 * Math.sin(phase * .5 + sign * .8), .3 * w, sign * 2.2 * Math.cos(phase * .5 + sign * .8)];
       result[`forearm${side}`] = [.3 + .2 * w, sign * .25 * slow, 0];
     } else if (gesture === 'rubber_hose') {
       // Phase-lagged joints create a noodle-like wave without deforming the rig.

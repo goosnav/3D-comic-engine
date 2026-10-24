@@ -33,6 +33,7 @@ export async function verifyAssetCatalog(input,{script,onProgress=()=>{},baseURL
    if(!scene?.asset||!catalog.assets[scene.asset]?.path)throw Error(`Missing scene asset: ${resolved.scene}`);
    keys.add(scene.asset);
   }
+  if(resolved.captions.enabled&&catalog.assets.sansFont)keys.add('sansFont');
   if(resolved.endCard.enabled){
    if(!catalog.assets.endCardFrames)throw Error('Endcard frame asset is missing. Reload the updated application.');
    keys.add('endCardFrames');

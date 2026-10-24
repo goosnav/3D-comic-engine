@@ -357,3 +357,17 @@ test('size, gaze and action controls round-trip JSON and browser exports keep th
   await page.waitForFunction(()=>!!window.submittedRender);
   assert.deepEqual(await page.evaluate(()=>window.submittedRender.script.output),authored.output);
 });
+
+
+test('caption settings and shot sizes round trip through the form and JSON',async t=>{
+ const {page}=await fixture(t);await load(page);
+ assert.equal(await page.locator('#captions-enabled').isChecked(),true);
+ await page.locator('#captions-position').selectOption('top');
+ await page.locator('#captions-reader').fill('#123456');await page.locator('#captions-reader').dispatchEvent('change');
+ await page.locator('#captions-friend').fill('#abcdef');await page.locator('#captions-friend').dispatchEvent('change');
+ await page.locator('#line-0-shot').selectOption('extreme-wide');
+ const saved=await current(page);assert.deepEqual(saved.captions,{enabled:true,position:'top',colors:{reader:'#123456',friend:'#abcdef'}});assert.equal(saved.lines[0].shot,'extreme-wide');
+ await page.locator('#captions-enabled').uncheck();assert.equal((await current(page)).captions.enabled,false);
+ await load(page,saved);assert.equal(await page.locator('#captions-enabled').isChecked(),true);assert.equal(await page.locator('#captions-position').inputValue(),'top');
+ await page.locator('#add-action').click();await page.locator('#line-1-action').selectOption('flatten');await page.locator('#line-1-shot').selectOption('wide');assert.equal((await current(page)).lines[1].shot,'wide');
+});

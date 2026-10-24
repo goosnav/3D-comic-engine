@@ -1,4 +1,7 @@
+import {speechBounds} from '../src/speech-timing.mjs';
 function measured(take) {
+  const [start,end]=speechBounds(take.samples,take.sampleRate);
+  take={...take,samples:take.samples.slice(start,end)};
   const { samples, sampleRate } = take, duration = samples.length / sampleRate, mouth = [];
   const step = Math.max(1, Math.round(sampleRate * .02));
   let level = 0, peak = 0;

@@ -1,3 +1,4 @@
+import {speechBounds} from './speech-timing.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
@@ -51,7 +52,7 @@ export async function prepareAudio(script,{mode='flite',inputRoot=ROOT,cacheRoot
   for(const line of lines){
    let source=null;if(line.audio){if(!/\.(wav|flac|mp3|ogg|m4a)$/i.test(line.audio))throw Error('Recorded audio needs WAV, FLAC, MP3, OGG or M4A');source=await safePath(inputRoot,line.audio);}
    const voice=script.cast.find(c=>c.id===line.speaker)?.voice;if(!source&&!voice)throw Error('Missing voice profile');
-   const key=digest(JSON.stringify({v:2,text:line.text,voice:source?null:voice,speaker:mode==='flite'&&!source?line.speaker:null,identity,source:source?digest(await fs.readFile(source)):null}));
+   const key=digest(JSON.stringify({v:3,text:line.text,voice:source?null:voice,speaker:mode==='flite'&&!source?line.speaker:null,identity,source:source?digest(await fs.readFile(source)):null}));
    const file=path.join(cacheRoot,key+'.pcm'),receipt=path.join(cacheRoot,key+'.json');let pcm;
    try{const meta=JSON.parse(await fs.readFile(receipt));const b=await fs.readFile(file);if(meta.sha256===digest(b))pcm=b;}catch{}
    if(pcm){result[line.id]={path:file,sha256:digest(pcm),...measure(pcm)};continue;}
@@ -68,6 +69,8 @@ export async function prepareAudio(script,{mode='flite',inputRoot=ROOT,cacheRoot
     const {synthesizeSpeech}=await import('./flite.mjs');
     pcm=speechPCM(await synthesizeSpeech(flite.module,p.line.text,{speaker:p.line.speaker}));
    }else pcm=await decode(p.native);
+   const samples=new Float32Array(pcm.length/2);for(let i=0;i<samples.length;i++)samples[i]=pcm.readInt16LE(i*2)/32768;
+   const [start,end]=speechBounds(samples,48000);pcm=pcm.subarray(start*2,end*2);
    const info=measure(pcm),nonce=randomUUID();await fs.writeFile(p.file+'.'+nonce,pcm);await fs.rename(p.file+'.'+nonce,p.file);await fs.writeFile(p.receipt+'.'+nonce,JSON.stringify({sha256:digest(pcm),identity}));await fs.rename(p.receipt+'.'+nonce,p.receipt);result[p.line.id]={path:p.file,sha256:digest(pcm),...info};
   }
   return result;

@@ -11,18 +11,18 @@ async function snapshotFor(catalog,options={}){
  return {snapshot,fetched,progress};
 }
 
-test('script snapshot fetches only its two actors, book and selected JPEG, preserving all other metadata',async()=>{
+test('script snapshot fetches only its two actors, book, caption font and selected JPEG, preserving all other metadata',async()=>{
  const catalog=await loadCatalog(),before=structuredClone(catalog);
  const {snapshot,fetched,progress}=await snapshotFor(catalog,{script:reading(catalog)});
  try{
-  assert.deepEqual(fetched.sort(),['assets/actor-blue.glb','assets/actor-rust.glb','assets/book.glb','assets/comics/book2-020.jpg'].sort());
+  assert.deepEqual(fetched.sort(),['assets/actor-blue.glb','assets/actor-rust.glb','assets/book.glb','assets/comics/book2-020.jpg','assets/fonts/LiberationSans-Bold.ttf'].sort());
   assert.deepEqual(catalog,before);assert.equal(snapshot.catalog.comics.length,catalog.comics.length);
   assert.equal(snapshot.catalog.assets.environment.path,catalog.assets.environment.path);
   assert.equal(snapshot.catalog.comics.find(c=>c.id==='book2-036').path,'assets/comics/book2-036.jpg');
   assert.match(snapshot.catalog.comics.find(c=>c.id==='book2-020').path,/^blob:/);
   assert.equal(progress.at(-1).progress,1);
   assert.ok(progress.every(p=>p.phase==='assets'&&p.message.includes('assets/')));
-  assert.deepEqual(progress.map(p=>p.progress),[1/4,2/4,3/4,1]);
+  assert.deepEqual(progress.map(p=>p.progress),[1/5,2/5,3/5,4/5,1]);
  }finally{snapshot.dispose();}
 });
 

@@ -23,7 +23,7 @@ test('real capture verifies full video, recovers missing delivery, and replaces 
   // A generated tone is a technical fixture only, never a purported voice demo.
   await run(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-f','lavfi','-i','sine=frequency=240:duration=0.2','-y',path.join(root,'take.wav')]);
   const job=await createJob({template:'book-duet',title:'Capture regression',comics:['book2-036'],seed:4,output:{width:128,height:128,fps:12},lines:[{speaker:'reader',text:'Fixture',audio:'take.wav'}]},{outputRoot:root,inputRoot:root,voice:'recorded'});
-  const done=await processJob(job.id,{outputRoot:root});assert.equal(done.status,'complete');assert.ok(done.verification.frames>=40);assert.equal(done.verification.width,128);
+  const done=await processJob(job.id,{outputRoot:root});assert.equal(done.status,'complete');assert.equal(done.verification.frames,39,'0.2 seconds of speech plus 3-second card, with no default hold');assert.equal(done.verification.width,128);
   const dir=path.join(root,job.id),video=path.join(dir,job.id+'.mp4');
   await fs.unlink(video);assert.equal((await readJob(job.id,root)).status,'interrupted');
   const reused=[];assert.equal((await processJob(job.id,{outputRoot:root,progress:s=>reused.push(s)})).status,'complete');

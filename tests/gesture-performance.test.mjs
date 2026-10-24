@@ -46,3 +46,17 @@ test('custom attack/release scale the pose and authored lateral arm signs oppose
   const samples = [0,.1,1,2,2.9,3].map(time=>sampleGesture({...opts,time}));
   assert.deepEqual([3,2.9,2,1,.1,0].map(time=>sampleGesture({...opts,time})).reverse(),samples);
 });
+
+
+test('chaotic gestures step sharply and head controls remain independent of held arms',()=>{
+ const opts={gesture:'arm_flail',start:0,duration:3,seed:4};
+ assert.deepEqual(module.sampleGesture({...opts,time:1.01}),module.sampleGesture({...opts,time:1.04}));
+ assert.notDeepEqual(module.sampleGesture({...opts,time:1.04}),module.sampleGesture({...opts,time:1.08}));
+ for(const gesture of ['head_spin','head_jerk']){
+  assert.ok(!module.ARM_GESTURES.includes(gesture));
+  const pose=module.sampleGesture({...opts,gesture,time:1});assert.ok(pose.head.some(v=>Math.abs(v)>.5));
+  assert.ok(pose.upper_armL.every(v=>v===0));
+  assert.ok(values(module.sampleGesture({...opts,gesture,time:1e307,duration:1e308})).every(Number.isFinite));
+ }
+ assert.ok(module.ARM_GESTURES.includes('cry'));
+});

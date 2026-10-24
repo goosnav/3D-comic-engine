@@ -262,23 +262,24 @@ Add only the fields you need:
 - Gestures: `none`, `explain`, `nod`, `head_tilt`, `shrug`, `page_glance`.
   Omitted means none, with restrained automatic talk/listening motion.
   For exaggeration: `arm_flail`, `fist_shake`, `double_point`, `despair`,
-  `windmill`, `rubber_hose`. Try `shot: "two-shot"` for the big arm movements.
-  These are bounded, repeatable caricatures, not physics or collision simulation.
+  `windmill`, `rubber_hose`, `cry`, `head_spin`, `head_jerk`. Try `shot: "two-shot"` for the big arm movements.
+  These are repeatable caricatures with stepped acceleration, not collision simulation.
   Put the book on the table before using arm gestures on its reader; the free
   partner can still gesture. Facial tags change the face, not the synthesized voice.
 - Face: `brow_left`, `brow_right`, `mouth_curve` from -1 to 1; `eye_open` from 0
   to 1; `blink`: `auto`, `once`, `off`. Unspecified channels use the emotion preset.
   Audio still controls speech-mouth opening. These settings control the visible
   face, not guaranteed emotional TTS delivery.
-- Reaction: the other actor, `line_start` or `line_end`, emotion, optional face/
+- Reaction: the other actor, `line_start` (default) or `line_end`, emotion, optional face/
   gesture, duration. A solo template has no listener, so omit reactions there.
-- `pause`: seconds after the spoken line, default 0.4. A longer line-end reaction
+- `pause`: seconds after the spoken line, default 0. A longer line-end reaction
   gets its full time. It is not cut short by a smaller pause.
-- `shot`: `auto` (default), `speaker`, `two-shot`, `over-shoulder`, `book`, or
+- `shot`: `auto` (default), `close-up`, `medium`, `wide`, `extreme-wide`,
+  `speaker`, `two-shot`, `over-shoulder`, `book`, or
   `source`. Auto chooses a repeatable varied sequence using the seed, starting
   with both readers after the opening page coverage when appropriate. Explicit
-  choices always win. `book` starts close to the real selected page and gently
-  pushes in; `source` shows the unchanged page flat for maximum reading clarity.
+  choices always win. `book` holds a fixed close view of the real selected page; `source` shows the unchanged page flat for maximum reading clarity.
+  All cameras remain static within a shot.
   Each new comic gets up to five seconds of physical-book coverage **during**
   narration, not before it. Speech starts immediately unless you author a leading
   action. Coverage ends at the next comic, explicit shot, action, or end of
@@ -503,3 +504,16 @@ The repeatable engine can remove production drudgery; it cannot prove a script i
 funny or persuasive. Keep good scripts, voice takes and reviewed performance
 presets as reusable examples. The card-hand format is recorded in
 `DEV/history/V2_CARD_GAME.md`; card selection/animation is not implemented in v1.
+
+
+## Captions and chaotic actions
+
+The Captions controls enable or disable short spoken phrases, place them in the
+screen's top or bottom quarter, and choose Reader/Friend colors. Defaults are
+bold Helvetica, yellow for Reader, cyan for Friend, and bottom placement.
+For JSON settings and the full action list, see the
+[field reference](templates/README.md#static-shots-and-captions). Try
+[the chaotic comedy example](examples/chaotic-comedy.json) to see the new stunts.
+Speech is trimmed at its edges and cuts straight into the next beat unless you
+request a pause or line-end reaction. Phrase timing is estimated from measured
+speech energy; it is not exact word alignment.

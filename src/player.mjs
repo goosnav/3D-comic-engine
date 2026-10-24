@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createActor } from './actor.mjs';
+import { createCaptions } from './captions.mjs';
 import { createStunts } from './stunts.mjs';
 import { createBook } from './book.mjs';
 import { createEndcard, endCardFields, loadEndcardVideo } from './endcard.mjs';
@@ -95,37 +96,23 @@ function fitHeadgear(camera, actors) {
   camera.position.addScaledVector(camera.getWorldDirection(new THREE.Vector3()), -retreat);
 }
 
-export function frameCamera(camera, { shot, focusId, actors, book, bookState, event, time }) {
+export function frameCamera(camera, { shot, focusId, actors, book, bookState }) {
   camera.up.set(0, 1, 0);
-  if (['punch', 'explode', 'throw'].includes(event?.rail)) {
-    const bounds = new THREE.Box3();
-    for (const root of [...actors.map(a => a.root), book.root]) root.traverseVisible(o => {
-      if (o.isMesh) bounds.expandByObject(o, true);
-    });
-    const center = bounds.getCenter(new THREE.Vector3()), size = bounds.getSize(new THREE.Vector3());
-    camera.fov = 38;
-    const tangent = Math.tan(THREE.MathUtils.degToRad(19));
-    const distance = Math.max(size.y, size.x / camera.aspect) / (2 * tangent * .82) + size.z / 2;
-    camera.position.set(center.x, center.y + .12, center.z + distance);
-    camera.lookAt(center); camera.updateProjectionMatrix(); return;
-  }
   const focused = actors.find(a => a.root.name === `actor-${focusId}`) || actors[0];
   const x = focused.root.position.x, z = focused.root.position.z, side = focused.root.name === 'actor-reader' ? -1 : 1;
   if (shot === 'book') {
-    const progress = event ? THREE.MathUtils.clamp((time - event.start) / (event.end - event.start), 0, 1) : 0;
-    const u = progress * progress * (3 - 2 * progress);
     const page = pageCenter(book, bookState.selectedPdfPage);
     const target = page;
     const q = book.root.getWorldQuaternion(new THREE.Quaternion());
     camera.fov = 38;
     const tangent = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const distance = THREE.MathUtils.lerp(Math.max(.72, .15 / (tangent * camera.aspect)), Math.max(.64, .14 / (tangent * camera.aspect)), u);
-    camera.position.copy(target).add(new THREE.Vector3(.025 * (1 - u), distance * .98, distance * .20).applyQuaternion(q));
+    const distance = Math.max(.72, .15 / (tangent * camera.aspect));
+    camera.position.copy(target).add(new THREE.Vector3(.025, distance * .98, distance * .20).applyQuaternion(q));
     camera.up.copy(new THREE.Vector3(0, 0, -1).applyQuaternion(q));
     camera.lookAt(target);
-  } else if (shot === 'speaker') {
+  } else if (['speaker', 'close-up', 'medium'].includes(shot)) {
     camera.fov = 32;
-    const distance = camera.aspect < 1 ? Math.max(2.0, 1.38 / camera.aspect) : 1.9;
+    const distance = (camera.aspect < 1 ? Math.max(2.0, 1.38 / camera.aspect) : 1.9) * (shot === 'close-up' ? .68 : 1);
     camera.position.set(x + side * .65, 1.69, z + distance);
     camera.lookAt(x, 1.43, z + .05);
   } else if (shot === 'over-shoulder' && actors.length > 1) {
@@ -147,12 +134,12 @@ export function frameCamera(camera, { shot, focusId, actors, book, bookState, ev
     camera.fov = 38;
     const middle = actors.reduce((sum, a) => sum + a.root.position.x, 0) / actors.length;
     const halfWidth = actors.length > 1 ? .66 : .45;
-    const distance = Math.max(2.5, halfWidth / (Math.tan(THREE.MathUtils.degToRad(19)) * camera.aspect));
+    const distance = Math.max(2.5, halfWidth / (Math.tan(THREE.MathUtils.degToRad(19)) * camera.aspect)) * (shot === 'extreme-wide' ? 4.5 : shot === 'wide' ? 1.65 : 1);
     camera.position.set(middle + .06, 1.77, distance);
     camera.lookAt(middle, 1.08, .03);
   }
   if (shot !== 'book' && shot !== 'source') {
-    fitHeadgear(camera, shot === 'speaker' || shot === 'over-shoulder' ? [focused] : actors);
+    fitHeadgear(camera, ['speaker', 'close-up', 'medium'].includes(shot) || shot === 'over-shoulder' ? [focused] : actors);
   }
   camera.updateProjectionMatrix();
 }
@@ -272,13 +259,13 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
   const loading = message => { signal?.throwIfAborted(); onProgress(message, { phase: 'loading', progress: null, message }); };
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0x192929);
   const insertScene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(38, timeline.width / timeline.height, .04, 30);
+  const camera = new THREE.PerspectiveCamera(38, timeline.width / timeline.height, .04, 500);
   const insertCamera = new THREE.OrthographicCamera(-camera.aspect, camera.aspect, 1, -1, .1, 5);
   insertCamera.position.z = 2;
   const textures = new Map(), loadedRoots = [];
   const endcards = new Map(), fonts = [];
   let renderRequest = 0;
-  let renderer, actors, book, stunts, sourcePlane, endcardVideo, disposed = false, frame = null, active = null, source = null, shot = 'two-shot', endcard = null;
+  let renderer, actors, book, stunts, captions, sourcePlane, endcardVideo, disposed = false, frame = null, active = null, source = null, shot = 'two-shot', endcard = null;
   try {
     // Load sequentially so every fulfilled allocation is owned even if a later load fails.
     const manager = new THREE.LoadingManager();
@@ -313,9 +300,13 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       texture.generateMipmaps = false; texture.minFilter = THREE.LinearFilter;
       textures.set(id, texture);
     }
+    if (timeline.captions?.enabled && catalog.assets.sansFont?.path) {
+      const font = new FontFace('ComicTheatreSans', `url(${JSON.stringify(assetURL(assetBase, catalog.assets.sansFont.path))})`, {weight:'700'});
+      await font.load(); document.fonts.add(font); fonts.push(font);
+    }
     if (timeline.events.some(e => e.type === 'endcard' && endCardFields(timeline, e).enabled)) {
       for (const [key, family, weight] of [['serifFont', 'ComicTheatreTimes', '400'], ['sansFont', 'ComicTheatreSans', '700']]) {
-        if (!catalog.assets[key]?.path) continue; // Old catalogs retain system Times-compatible fallback.
+        if (!catalog.assets[key]?.path || fonts.some(font => font.family === family)) continue; // Old catalogs retain system Times-compatible fallback.
         loading(`Loading endcard font ${family}`);
         const font = new FontFace(family, `url(${JSON.stringify(assetURL(assetBase, catalog.assets[key].path))})`, { weight });
         await font.load(); document.fonts.add(font); fonts.push(font);
@@ -356,12 +347,13 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       scene.add(actor.root); return actor;
     });
     stunts = createStunts(actors);
+    captions = createCaptions(timeline.width, timeline.height, timeline.captions);
     book = createBook(bookGLTF, timeline, comics); scene.add(book.root);
     sourcePlane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ toneMapped: false }));
     insertScene.background = new THREE.Color(0xeee9df); insertScene.add(sourcePlane);
   } catch (error) {
     endcardVideo?.dispose();
-    disposeObjects([scene, insertScene, ...loadedRoots], [...textures.values()]);
+    disposeObjects([scene, insertScene, captions?.scene, ...loadedRoots], [...textures.values()]);
     fonts.forEach(f => document.fonts.delete(f)); renderer?.dispose(); throw error;
   }
 
@@ -380,6 +372,15 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
     const reader = actors.find(a => a.root.name === 'actor-reader');
     const bookState = book.evaluate(time);
     const action = current.find(e => e.type === 'action');
+    shot = sourceEvent ? sourceEvent.shot || 'source' : active?.shot || action?.shot || 'two-shot';
+    if (shot === 'auto') shot = 'two-shot';
+    const reacting = active?.type === 'hold' && active.reaction?.at === 'line_end' && time-active.start < active.reaction.duration;
+    const focusId = reacting ? active.reaction.actor : active?.speaker || action?.actor;
+    const framingEvent = sourceEvent || active || action;
+    // Compose from the neutral cast at the cut. Stunts and head/arm poses never steer the camera.
+    stunts.reset(); actors.forEach(actor => actor.apply({time:framingEvent?.start ?? 0}));
+    book.apply(framingEvent?.start ?? 0, reader); scene.updateMatrixWorld(true);
+    frameCamera(camera, {shot,focusId,actors,book,bookState:book.diagnostics(),event:framingEvent,time:framingEvent?.start ?? 0});
     stunts.reset();
     actors.forEach((actor, i) => actor.apply({ time, line: active,
       listening: !!active && active.speaker !== timeline.cast[i],
@@ -391,11 +392,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
     stunts.apply(action, time);
     book.apply(time, reader);
     scene.updateMatrixWorld(true);
-    shot = sourceEvent ? sourceEvent.shot || 'source' : active?.shot || current.find(e => e.shot)?.shot || 'two-shot';
-    // Holds after speech favor the reacting listener, retaining a three-quarter angle.
-    const reacting = active?.type === 'hold' && active.reaction?.at === 'line_end' && time - active.start < active.reaction.duration;
-    const focusId = reacting ? active.reaction.actor : active?.speaker;
-    frameCamera(camera, { shot, focusId, actors, book, bookState: book.diagnostics(), event: action || sourceEvent || active || current.find(e => e.shot), time });
+    captions.draw(active, time);
     if (endEvent) {
       if (!endcards.has(endEvent)) endcards.set(endEvent, createEndcard({ width: timeline.width, height: timeline.height,
         card: endCardFields(timeline, endEvent), video: endcardVideo.video,
@@ -416,6 +413,9 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       sourcePlane.scale.set(h * ratio, h, 1);
       renderer.render(insertScene, insertCamera);
     } else renderer.render(scene, camera);
+    if (captions.diagnostics()) {
+      renderer.autoClear = false; renderer.clearDepth(); renderer.render(captions.scene, captions.camera); renderer.autoClear = true;
+    }
   }
 
   function diagnostics() {
@@ -423,7 +423,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       scene: timeline.scene, shot, activeEvent: active?.id || null,
       source: source ? { id: source.id, path: source.path, sha256: source.sha256, pdfPage: source.pdfPage, fit: shot === 'source' ? 'contain' : 'physical-page' } : null,
       endCard: endcard?.diagnostics() || null,
-      stunt: stunts.diagnostics(),
+      stunt: stunts.diagnostics(), captions: captions.diagnostics(),
       independentSkeletons: actors.every((a, i) => actors.slice(i + 1).every(b =>
         a.skeletons.every(s => b.skeletons.every(t => s !== t && s.bones.every(bone => !t.bones.includes(bone)))))),
       actors: actors.map(a => ({ ...a.diagnostics(), variant: a.variant })), book: book.diagnostics(),
@@ -436,7 +436,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
     if (disposed) return;
     disposed = true;
     endcardVideo?.dispose();
-    disposeObjects([scene, insertScene, ...loadedRoots, ...[...endcards.values()].map(c => c.scene)], [...textures.values()]);
+    disposeObjects([scene, insertScene, captions.scene, ...loadedRoots, ...[...endcards.values()].map(c => c.scene)], [...textures.values()]);
     fonts.forEach(f => document.fonts.delete(f));
     renderer.renderLists.dispose(); renderer.dispose();
   }

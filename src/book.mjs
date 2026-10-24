@@ -60,7 +60,7 @@ export function createBook(gltf, timeline, comics) {
       if (ACTOR_ACTIONS.includes(name)) continue;
       if (!rails.has(name)) throw new Error(`Unsupported book rail: ${name}`);
       const p = clamp((time - event.start) / (event.end - event.start || 1));
-      const u = ease(name === 'slam' ? clamp(p / .65) : p);
+      const u = name === 'slam' ? ease((p - .22) / .10) : ease(p);
       rail = name; progress = p;
       if (name === 'open') {
         // Choose the requested stack while closed, before revealing its pages.
@@ -102,11 +102,13 @@ export function createBook(gltf, timeline, comics) {
     root.position.copy(table).lerp(heldPoint, state.held);
     // Page top is local -Z: turn it away from the readers, not the audience.
     root.rotation.set(mix(0, -.35, state.held), Math.PI + mix(-.12, reader.root.rotation.y, state.held), 0);
-    const throwing = state.rail === 'throw' && state.progress < 1;
+    const throwing = state.rail === 'throw';
     const flight = throwing ? clamp((state.progress - .25) / .75) : 0;
     if (throwing) {
-      root.position.y += Math.sin(Math.PI * flight) * .75;
-      root.rotation.z += Math.PI * 2 * ease(flight);
+      root.position.copy(heldPoint);
+      root.position.x += flight * 28; root.position.y += flight * 12; root.position.z -= flight * 5;
+      root.rotation.z += Math.PI * 12 * flight;
+      root.rotation.x += Math.PI * 7 * flight;
     }
     root.updateMatrixWorld(true);
     const targets = [-1, 1].map(sign => root.localToWorld(new THREE.Vector3(sign * .23 - thickness / 2, -.048, .12)));

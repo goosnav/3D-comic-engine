@@ -26,7 +26,9 @@ const characterDefaults = { reader: 'blue', friend: 'rust' };
 const endCardDefaults = { enabled: true, title: 'Goosnav Book Two', text: 'A book of comics.', url: 'www.goosnav.shop', seconds: 3 };
 const variants = () => state.catalog?.variants ?? ['blue', 'rust', 'olive'].map(id => ({ id, label: id[0].toUpperCase() + id.slice(1) }));
 const shots = [
-  { id: 'auto', label: 'Auto' }, { id: 'speaker', label: 'Speaker' },
+  { id: 'close-up', label: 'Close-up' }, { id: 'medium', label: 'Medium shot' },
+  { id: 'wide', label: 'Wide shot' }, { id: 'extreme-wide', label: 'Extremely wide shot' },
+  { id: 'auto', label: 'Auto (static)' }, { id: 'speaker', label: 'Speaker' },
   { id: 'two-shot', label: 'Two-shot' }, { id: 'over-shoulder', label: 'Over-shoulder' },
   { id: 'book', label: 'Book' }, { id: 'source', label: 'Source' },
 ];
@@ -46,7 +48,7 @@ const batchUI = createBatchUI({
 // Keep server-resolved defaults for omitted fields and preserve advanced keys.
 function keepPresentation(result, original) {
   const next = clone(result);
-  for (const key of ['characters', 'endCard']) {
+  for (const key of ['characters', 'endCard', 'captions']) {
     if (original[key] !== undefined) next[key] = { ...(object(next[key]) ? next[key] : {}), ...clone(original[key]) };
   }
   if (original.product !== undefined) next.product = original.product;
@@ -165,6 +167,14 @@ function structureErrors(script) {
     }
     if (line.comic !== undefined && (typeof line.comic !== 'string' || !comicFor(line.comic))) errors.push(`${at}comic must be a known catalog ID.`);
   });
+  if(script.captions!==undefined){
+    if(!object(script.captions))errors.push('captions must be an object.');
+    else {
+      if(script.captions.enabled!==undefined&&typeof script.captions.enabled!=='boolean')errors.push('captions.enabled must be true or false.');
+      if(script.captions.position!==undefined&&!['top','bottom'].includes(script.captions.position))errors.push('captions.position must be top or bottom.');
+      if(script.captions.colors!==undefined&&(!object(script.captions.colors)||Object.entries(script.captions.colors).some(([id,color])=>!['reader','friend'].includes(id)||typeof color!=='string'||!/^#[0-9a-f]{6}$/i.test(color))))errors.push('captions.colors needs reader/friend six-digit hex colors.');
+    }
+  }
   if (script.output !== undefined) {
     if (!object(script.output)) errors.push('output must be an object.');
     else for (const key of ['width', 'height', 'fps']) if (script.output[key] !== undefined && (!Number.isInteger(script.output[key]) || script.output[key] <= 0)) errors.push(`output.${key} must be a positive integer.`);
@@ -408,12 +418,12 @@ function renderLines() {
         performance.append(field(key[0].toUpperCase() + key.slice(1), select));
       }
       card.append(performance);
-      const shot = el('select'); shot.id = `line-${index}-shot`; shot.setAttribute('aria-label', `Line ${index + 1} shot`);
-      choose(shot, shots, line.shot ?? 'auto');
-      shot.addEventListener('change', () => { line.shot = shot.value; changed(); });
-      card.append(field('Shot', shot));
       if (['face', 'reaction', 'pause', 'audio'].some(key => line[key] !== undefined)) card.append(el('p', 'Advanced fields present; edit them in JSON. Form edits preserve them.', 'hint'));
     }
+    const shot = el('select'); shot.id = `line-${index}-shot`; shot.setAttribute('aria-label', `Line ${index + 1} shot`);
+    choose(shot, shots, line.shot ?? 'auto');
+    shot.addEventListener('change', () => { line.shot = shot.value; changed(); });
+    card.append(field('Shot', shot));
     const gazes = el('div', undefined, 'field-pair');
     for (const role of templateFor(state.script)?.speakers ?? []) {
       const select = el('select'); select.id = `line-${index}-gaze-${role}`;
@@ -436,6 +446,13 @@ function renderCharacters() {
   }
 }
 function renderOutput() {
+  const captions=state.script.captions;
+  $('captions-enabled').checked=captions?.enabled??true;
+  $('captions-position').value=captions?.position??'bottom';
+  for(const id of ['reader','friend']){
+    $(`captions-${id}`).value=captions?.colors?.[id]??(id==='reader'?'#ffe35b':'#6ee7ff');
+    $(`captions-${id}`).disabled=!templateFor(state.script)?.speakers.includes(id);
+  }
   const output = state.script.output ?? {};
   const preset = output.preset ?? (output.width === undefined && output.height === undefined ? 'instagram_reels' : 'custom');
   choose($('output-preset'), [...Object.entries(OUTPUT_PRESETS).map(([id, item]) => ({id, label:item.label})), {id:'custom',label:'Custom dimensions'}], preset);
@@ -557,6 +574,9 @@ for (const key of ['title', 'text', 'url', 'seconds']) $(`end-card-${key}`).addE
   // default silently or serialize NaN as a valid duration.
   const value = key === 'seconds' ? (Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : null) : input.value;
   state.script.endCard = { ...state.script.endCard, [key]: value }; changed();
+});
+for(const key of ['enabled','position','reader','friend']) $(`captions-${key}`).addEventListener('change',()=>{
+  state.script.captions={enabled:$('captions-enabled').checked,position:$('captions-position').value,colors:{reader:$('captions-reader').value,friend:$('captions-friend').value}};changed();
 });
 $('output-preset').addEventListener('change', () => {
   const preset = $('output-preset').value, fps = Number($('output-fps').value);

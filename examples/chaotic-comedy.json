@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "A Completely Normal Reading",
+  "comics": ["book2-020"],
+  "seed": 31,
+  "scene": "library",
+  "characters": {"reader": "cowboy", "friend": "glasses"},
+  "output": {"preset": "instagram_reels", "fps": 24},
+  "captions": {"enabled": true, "position": "bottom", "colors": {"reader": "#ffe35b", "friend": "#6ee7ff"}},
+  "endCard": {"enabled": false},
+  "lines": [
+    {"speaker":"reader","text":"I have a perfectly normal opinion about this page.","gesture":"arm_flail","shot":"medium"},
+    {"speaker":"friend","text":"Please keep your opinion over there.","gesture":"head_jerk","shot":"close-up"},
+    {"action":"punch","actor":"reader","target":"friend","seconds":1.2,"shot":"wide"},
+    {"speaker":"friend","text":"I am taking this very well.","gesture":"cry","shot":"medium"},
+    {"action":"flatten","actor":"friend","seconds":1.2,"shot":"wide"},
+    {"speaker":"reader","text":"Let me remove the distraction.","shot":"close-up"},
+    {"action":"nose_off","actor":"reader","seconds":1.6,"shot":"two-shot"},
+    {"speaker":"friend","text":"That is somehow worse.","gesture":"head_spin","shot":"medium"},
+    {"action":"head_jerk","actor":"reader","seconds":0.8,"shot":"close-up"},
+    {"action":"head_spin","actor":"friend","seconds":0.8,"shot":"medium"},
+    {"action":"hold","seconds":0.7},
+    {"action":"throw","seconds":1,"shot":"medium"},
+    {"action":"open","seconds":0.5},
+    {"speaker":"reader","text":"The book has left the discussion.","gesture":"windmill","shot":"medium"},
+    {"action":"explode","actor":"reader","seconds":1.2,"shot":"wide"},
+    {"speaker":"friend","text":"I will be leaving as well.","shot":"medium"},
+    {"action":"walk_away","actor":"friend","seconds":1.2,"shot":"wide"},
+    {"speaker":"reader","text":"Anyway. Good book.","shot":"extreme-wide"}
+  ]
+}

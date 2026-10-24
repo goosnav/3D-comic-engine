@@ -35,7 +35,7 @@ test('selected scene is verified and snapshotted; unused scenes are never fetche
  const sceneURL=snapshot.catalog.assets['scene-diner'].path;
  try{
   assert.deepEqual(fetched.filter(p=>p.includes('/environments/')),['assets/environments/theatre-diner.glb']);
-  assert.equal(fetched.length,5);
+  assert.equal(fetched.length,6);
   assert.match(sceneURL,/^blob:/);
   assert.equal(snapshot.catalog.assets['scene-basement'].path,catalog.assets['scene-basement'].path);
   assert.deepEqual(catalog,before);
@@ -70,7 +70,7 @@ test('legacy scenes do not fetch any new environment',async()=>{
  const snapshot=await verifyAssetCatalog(catalog,{script,baseURL:'https://local.test/',fetchImpl:async url=>{
   fetched.push(url.pathname);return new Response(await readFile(root+url.pathname.slice(1)));
  }});
- try{assert.equal(fetched.length,4);assert.ok(fetched.every(p=>!p.includes('/environments/')));}
+ try{assert.equal(fetched.length,5);assert.ok(fetched.every(p=>!p.includes('/environments/')));}
  finally{snapshot.dispose();}
 });
 

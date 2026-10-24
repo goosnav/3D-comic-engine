@@ -115,6 +115,14 @@
             <div><label for="output-height">Height (pixels)</label><input id="output-height" type="number" min="128" max="1920" step="2"></div>
           </div>
           <label for="output-fps">Frames per second</label><select id="output-fps"><option>12</option><option>24</option><option>30</option></select>
+          <div class="subheading"><h3>Captions</h3></div>
+          <label class="check-label" for="captions-enabled"><input id="captions-enabled" type="checkbox">Show spoken captions</label>
+          <label for="captions-position">Caption placement</label><select id="captions-position"><option value="bottom">Bottom quarter</option><option value="top">Top quarter</option></select>
+          <div class="field-pair">
+            <div><label for="captions-reader">Reader caption color</label><input id="captions-reader" type="color" value="#ffe35b"></div>
+            <div><label for="captions-friend">Friend caption color</label><input id="captions-friend" type="color" value="#6ee7ff"></div>
+          </div>
+          <p class="hint">Bold Helvetica captions follow short spoken phrases. Each shot keeps a static camera. Dialogue cuts immediately unless you set a pause in JSON.</p>
           <div class="subheading"><h3>Characters</h3></div>
           <div class="field-pair">
             <div><label for="reader-clothing">Reader character</label><select id="reader-clothing"></select></div>

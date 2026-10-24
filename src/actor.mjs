@@ -81,6 +81,35 @@ export function createActor(source, id, index = 0, config = {}) {
     root.add(anchor); root.updateMatrixWorld(true); bones.head.attach(anchor);
     return { anchor, q: anchor.quaternion.clone(), p: anchor.position.clone(), sign };
   });
+  // The original nose is rigid head-weighted geometry inside the body mesh.
+  // Split those triangles once so the prop stays the exact authored shape.
+  let nose;
+  root.updateMatrixWorld(true);
+  body.traverse(mesh => {
+    if (!mesh.isSkinnedMesh || nose || !(mesh.name==='guy_nose' || mesh.parent.name==='guy_body')) return;
+    const geometry=mesh.geometry, indices=geometry.index, skin=geometry.attributes.skinIndex, weights=geometry.attributes.skinWeight;
+    const head=mesh.skeleton.bones.indexOf(bones.head);
+    if (!indices || head < 0) return;
+    const onHead = i => {let weight=0;for(let j=0;j<4;j++)if(skin.getComponent(i,j)===head)weight+=weights.getComponent(i,j);return weight>.99;};
+    const removed=[], kept=[];
+    for(let i=0;i<indices.count;i+=3) {
+      const triangle=[indices.getX(i),indices.getX(i+1),indices.getX(i+2)];
+      (triangle.every(onHead)?removed:kept).push(...triangle);
+    }
+    if(!removed.length)return;
+    const extracted=geometry.clone();extracted.setIndex(removed);
+    const prop=extracted.toNonIndexed();extracted.dispose();
+    prop.deleteAttribute('skinIndex');prop.deleteAttribute('skinWeight');
+    prop.applyMatrix4(bones.head.matrixWorld.clone().invert().multiply(mesh.matrixWorld));
+    prop.computeBoundingBox();const center=prop.boundingBox.getCenter(new THREE.Vector3());prop.translate(-center.x,-center.y,-center.z);
+    nose=new THREE.Mesh(prop,mesh.material);nose.name='detachable-original-nose';nose.position.copy(center);nose.castShadow=true;
+    bones.head.add(nose);mesh.geometry=geometry.clone();mesh.geometry.setIndex(kept);
+  });
+  const noseRest=nose?.position.clone();
+  const tears=new THREE.Group();tears.name='crying-tears';
+  const tearGeometry=new THREE.SphereGeometry(.012,6,4),tearMaterial=new THREE.MeshBasicMaterial({color:0x70d8ff});
+  for(let i=0;i<8;i++)tears.add(new THREE.Mesh(tearGeometry,tearMaterial));
+  root.add(tears);tears.visible=false;
   let state = {};
   function pose(name, x = 0, y = 0, z = 0) {
     if (bones[name]) bones[name].quaternion.copy(rest[name].q).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z)));
@@ -90,6 +119,8 @@ export function createActor(source, id, index = 0, config = {}) {
     for (const [key, bone] of Object.entries(bones)) {
       bone.position.copy(rest[key].p); bone.quaternion.copy(rest[key].q); bone.scale.copy(rest[key].s);
     }
+    if(nose){nose.position.copy(noseRest);nose.rotation.set(0,0,0);}
+    tears.visible=false;
     const ownsLine = line?.speaker === id;
     const speaking = ownsLine && line.type === 'line';
     const age = line ? time - line.start : 0;
@@ -184,6 +215,14 @@ export function createActor(source, id, index = 0, config = {}) {
       attr.needsUpdate = true;
     }
     root.updateMatrixWorld(true);
+    if(gesture==='cry' && age>0 && age<expressionDuration){
+      tears.visible=true;
+      tears.children.forEach((tear,i)=>{
+        const drop=(age*2.8+i/4)%1;
+        tear.position.set(i%2?.12:-.12,1.61-drop*.65,.12+drop*.18);
+        tear.scale.set(.8,2.2,1);
+      });
+    }
     state = { id, variant, faceMode, visemes, expressionWeight, smile: exp.smile,
       mode: speaking ? 'talk' : listening ? 'listen' : 'idle', emotion, gesture, mouth: mouthValue,
       gaze: yaw, gazeTarget, brows: browValues, eyeOpen, head: bones.head.quaternion.toArray(), faceAttachedToHead: face.parent === bones.head };
@@ -240,5 +279,5 @@ export function createActor(source, id, index = 0, config = {}) {
   function diagnostics() {
     return { ...state, head: bones.head.quaternion.toArray(), hands: ['L', 'R'].map(s => bones[`hand${s}`].getWorldPosition(new THREE.Vector3()).toArray()) };
   }
-  return { root, bones, skeletons, apply, grip, diagnostics };
+  return { root, bones, skeletons, nose, apply, grip, diagnostics };
 }

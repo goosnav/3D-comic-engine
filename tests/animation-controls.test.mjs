@@ -56,3 +56,29 @@ test('stunts seek exactly, launch the partner, burst into pieces and restore eve
  sample('explode',1.5);assert.equal(actors[0].root.getObjectByName('cartoon-explosion').visible,true);
  stunts.reset();assert.ok(actors.every(a=>a.root.children[0].visible));assert.deepEqual(actors[1].root.position.toArray(),[.72,0,0]);
 });
+
+test('chaos actions leave frame, remain squashed or exploded, and restore only on a cut',async()=>{
+ const actors=await cast(),stunts=createStunts(actors);
+ const sample=(rail,p)=>{stunts.reset();actors.forEach(a=>a.apply({time:p*2}));stunts.apply({rail,actor:'reader',target:'friend',start:0,end:2},p*2);};
+ sample('punch',.98);assert.ok(actors[1].root.position.x>25);
+ sample('explode',.99);assert.equal(actors[0].root.children[0].visible,false);assert.equal(actors[0].root.getObjectByName('cartoon-explosion').children.length,42);
+ sample('flatten',.99);assert.ok(actors[0].root.scale.y<.1);
+ sample('walk_away',.99);assert.ok(actors[0].root.position.x < -15);
+ assert.ok(actors[0].nose,'nose is extracted from the original mesh');
+ sample('nose_off',0);const rest=actors[0].nose.position.clone();
+ sample('nose_off',.5);assert.ok(actors[0].nose.position.distanceTo(rest)>.3);
+ sample('nose_off',.99);assert.ok(actors[0].nose.position.distanceTo(rest)<1e-9);
+ for(const action of ['flatten','nose_off','head_spin','head_jerk','walk_away'])assert.doesNotThrow(()=>resolve([raw.lines[0],{action,shot:'extreme-wide'}]));
+});
+
+
+test('every bundled character exposes the authored nose without changing the source geometry',async()=>{
+ for(const variant of catalog.variants){
+  const bytes=await readFile(new URL('../'+catalog.assets[variant.asset].path,import.meta.url));
+  const source=(await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'')).scene;
+  let before=0;source.traverse(o=>{if(o.isMesh)before+=o.geometry.index?.count??0;});
+  const actor=createActor(source,'reader');assert.ok(actor.nose,variant.id);
+  actor.nose.geometry.computeBoundingBox();assert.ok(actor.nose.geometry.boundingBox.getSize(new (await import('three')).Vector3()).length()>.1,variant.id);
+  let after=0;source.traverse(o=>{if(o.isMesh)after+=o.geometry.index?.count??0;});assert.equal(after,before,variant.id);
+ }
+});

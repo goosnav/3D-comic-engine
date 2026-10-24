@@ -7,6 +7,9 @@ import os from 'node:os';
 import {chromium} from 'playwright';
 import {run} from '../src/process.mjs';
 import {ROOT} from '../src/library.mjs';
+import {loadNodeFlite} from '../src/flite-node.mjs';
+import {synthesizeSpeech} from '../src/flite.mjs';
+import {speechBounds} from '../src/speech-timing.mjs';
 
 test('static GUI exports speech, music and spinning endcard even when video playback is denied', {timeout:180000},async t=>{
  const out=await fs.mkdtemp(path.join(os.tmpdir(),'comic-static-e2e-'));
@@ -83,12 +86,14 @@ test('static GUI exports speech, music and spinning endcard even when video play
  assert.ok(probe.streams.some(s=>s.codec_type==='video'));assert.ok(probe.streams.some(s=>s.codec_type==='audio'));
  await run(process.env.FFMPEG??'ffmpeg',['-v','error','-i',film,'-f','null','-'],{timeout:60000});
  const pcm=await run(process.env.FFMPEG??'ffmpeg',['-v','error','-i',film,'-vn','-f','s16le','-ac','1','-ar','8000','pipe:1']);
- assert.ok(pcm.length>4*8000*2,'complete speech and end card duration');
- assert.ok(pcm.length/16000<5.3,`browser recording padding must stay bounded around the 4.238-second script; got ${pcm.length/16000}s`);
+ let expected=script.endCard.seconds;const module=await loadNodeFlite();
+ for(const line of script.lines){const take=await synthesizeSpeech(module,line.text,{speaker:line.speaker});const [start,end]=speechBounds(take.samples,take.sampleRate);expected+=(end-start)/take.sampleRate;}
+ assert.ok(pcm.length/16000>=expected-.08,'complete trimmed speech and end card duration');
+ assert.ok(pcm.length/16000<expected+1,`browser recording padding stays bounded around ${expected}s; got ${pcm.length/16000}s`);
  let peak=0;for(let i=0;i<pcm.length;i+=2)peak=Math.max(peak,Math.abs(pcm.readInt16LE(i)));assert.ok(peak>1000,'audible captured speech');
- // Speech ends before the one-second end card in this fixed 4.238s script.
+ // Sample inside the one-second end card after measured speech ends.
  // Measure the attached 220Hz tone there; silence or an ignored File must fail.
- let sine=0,cosine=0;const start=Math.floor(3.6*8000),samples=1600;
+ let sine=0,cosine=0;const start=Math.floor((expected-.5)*8000),samples=1600;
  for(let i=0;i<samples;i++){const value=pcm.readInt16LE((start+i)*2),angle=2*Math.PI*220*i/8000;sine+=value*Math.sin(angle);cosine+=value*Math.cos(angle);}
  assert.ok(2*Math.hypot(sine,cosine)/samples>500,'attached music is audible during the end card');
  assert.deepEqual(unexpected,[]);assert.deepEqual(errors,[]);

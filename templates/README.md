@@ -61,6 +61,7 @@ JSON has no comments. Put notes in a separate file; fields such as `notes`,
 | `characters` | No | Maps cast IDs such as `reader` and `friend` to catalog variants. This chooses appearance, not voice. |
 | `product` | No | `book2` is the only supported product. |
 | `lines` | Yes | 1-200 ordered dialogue/action objects. At least one must be dialogue. |
+| `captions` | No | Enabled by default; `position` is `top` or `bottom`, with `colors.reader` and `colors.friend` as six-digit hex colors. |
 | `output` | No | `{ "width": 1080, "height": 1920, "fps": 24 }` by default. Width/height must be even integers from 128 through 1920. FPS is 12, 24, or 30. |
 | `endCard` | No | Optional final product card. See below. |
 
@@ -94,8 +95,8 @@ shows how the optional fields fit together.
 | `comic` | Optional selected comic ID. The first line inherits the first item in `comics`; subsequent lines inherit the last active comic. Explicitly set this when changing subject. |
 | `emotion` | Visible facial preset; default `neutral`. It does not guarantee emotional voice delivery. |
 | `gesture` | Visible body/head gesture; default `none`. |
-| `shot` | `auto`, `speaker`, `two-shot`, `over-shoulder`, `book`, or `source`; default `auto`. `source` shows the unchanged comic page flat, while `book` shows the physical book. |
-| `pause` | Silence after the spoken line, 0-5 seconds; default 0.4. A longer line-end reaction receives its full duration. |
+| `shot` | `auto`, `close-up`, `medium`, `wide`, `extreme-wide`, `speaker`, `two-shot`, `over-shoulder`, `book`, or `source`; default `auto`. `source` shows the unchanged comic page flat, while `book` shows the physical book. |
+| `pause` | Silence after the spoken line, 0-5 seconds; default 0. A longer line-end reaction receives its full duration. |
 | `face` | Optional overrides for individual facial channels; see below. |
 | `reaction` | Optional performance by the other actor; see below. |
 | `audio` | Optional relative recording filename, such as `takes/reader-01.wav`. See recorded audio below. |
@@ -111,12 +112,12 @@ Supported gestures:
 
 ```text
 none explain nod head_tilt shrug page_glance
-arm_flail fist_shake double_point despair windmill rubber_hose
+arm_flail fist_shake double_point despair windmill rubber_hose cry head_spin head_jerk
 ```
 
 Big arm gestures are optional performance controls, not physical simulations.
-Start with small gestures and let the spoken exchange carry the joke. While the
-reader holds the book, use `none`, `nod`, `head_tilt`, or `page_glance` for that
+Poses jump at 15 Hz for abrupt, erratic cartoon acceleration. While the
+reader holds the book, use `none`, `nod`, `head_tilt`, `page_glance`, `head_spin`, or `head_jerk` for that
 actor, including their listener reactions. The free partner can use arm gestures.
 
 ### Face and listener reaction
@@ -145,7 +146,7 @@ use the emotion preset. Mouth opening still follows audio.
 }
 ```
 
-`at` is `line_start` or `line_end` (default). `duration` is 0.1-5 seconds (default
+`at` is `line_start` (default) or `line_end`. `duration` is 0.1-5 seconds (default
 0.8). If omitted, `actor` selects the other cast member. A reaction cannot target
 the speaker or create a second actor in a solo episode.
 
@@ -247,15 +248,37 @@ A dialogue or action beat can set both characters' gaze:
 and holding poses for that beat. A listener reaction can also set `"gaze":"camera"`;
 the beat's explicit actor gaze takes priority.
 
-- `{"action":"throw","seconds":1.8}` closes and tosses a held book onto the table.
+- `{"action":"throw","seconds":1.8}` closes and rockets a held book out of frame.
   Use `hold` first and `open` before further dialogue.
 - `{"action":"slam"}` rapidly closes an open table book.
-- `{"action":"punch","actor":"reader","target":"friend","seconds":2.4}`
-  launches the target into an authored tumble. The target must be another cast member.
-- `{"action":"explode","actor":"friend","seconds":2.4}` briefly replaces that
-  character with a burst of colored pieces.
+- `{"action":"punch","actor":"reader","target":"friend","seconds":1.2}` launches the target off stage. There is no return flight.
+- `{"action":"explode","actor":"friend","seconds":1.2}` bursts into 42 rapidly spinning fragments. The body stays hidden for the rest of the beat.
+- `{"action":"flatten","actor":"reader"}` abruptly compresses the character toward the floor and holds the squash.
+- `{"action":"nose_off","actor":"reader"}` removes the original nose, holds it, and snaps it back on.
+- `{"action":"head_spin","actor":"reader"}` rotates the head around the neck axis in sharp steps.
+- `{"action":"head_jerk","actor":"friend"}` snaps the head in different directions.
+- `{"action":"walk_away","actor":"friend"}` strides off stage without returning.
 
-Place the book before punch/explode. Character actions accept 0.8–8 seconds and
-reset the cast at the end; there is no persistent damage, physics simulation or
-collision response. The camera widens to contain the action. Book actions use the
-reader. See `examples/physical-comedy.json` for a complete valid sequence.
+Place the book before character actions. They accept 0.8–8 seconds, `actor`, optional `gaze`, and `shot`. Only punch accepts `target`. Book actions use the reader. These are repeatable cartoon poses, not a physics simulation. Characters reset at the next beat with no return animation; the missing book resets when the next book action starts. Deliberate continuity cuts are part of the effect.
+
+`cry`, `head_spin`, and `head_jerk` are also dialogue/listener gestures, so they can run during speech. Crying adds tears and frantic arm movement. The head gestures work while holding the book.
+
+## Static shots and captions
+
+Every shot is fixed at the cut, including book shots and wild actions. `close-up` frames the speaker's head and shoulders, `medium` frames the speaker roughly from the waist up, `wide` includes more of the set, and `extreme-wide` places the camera far away. Existing shot IDs remain supported. Use the Shot dropdown on either a dialogue or action row.
+
+Captions are enabled by default, use bold Helvetica (Arial or bundled metric-compatible sans fallback), and render into exported video. The controls set placement and a separate color for each speaker:
+
+```json
+"captions": {
+  "enabled": true,
+  "position": "bottom",
+  "colors": { "reader": "#ffe35b", "friend": "#6ee7ff" }
+}
+```
+
+`position` accepts `top` or `bottom`; text stays within that quarter of the frame. Colors must be six-digit hex values. Captions show balanced phrases of 2–5 words (one word for a one-word line), with at most two displayed rows. Phrase timing follows measured speech energy and word length; it is approximate rather than forced word alignment. Captions appear only during speech, never on silent actions or end cards.
+
+Generated and recorded speech have leading/trailing silence trimmed with a 25 ms consonant margin. The default pause is zero and reactions default to `line_start`, so the next clip starts when speech ends. An explicit `pause` or `reaction.at: "line_end"` still creates the requested hold. Internal speech pauses are preserved.
+
+See [chaotic-comedy.json](../examples/chaotic-comedy.json) for all new actions, both caption colors, and shot sizes.

@@ -102,9 +102,9 @@ for the allowed values and their constraints.
 | Settings | All 6: library, fireside, diner, basement, moon base, TV studio. |
 | Appearance variants | All 14: blue, rust, olive, cowboy, glasses, crooked, astronaut, and each corresponding `-beady` variant. Astronauts use compatible moon-base scenes. |
 | Emotions | All 15 supported presets, including listener reactions. Compare restrained page 007, `furious` on 016, `brain_static` on 015/019/024, and `cosmic_rage` on 024. |
-| Gestures | All 12. Page 023 includes `rubber_hose`; 016/024 use large gestures; 006 keeps the held-book reader's hands occupied. |
-| Shots | All 6: `auto`, `speaker`, `two-shot`, `over-shoulder`, `book`, `source`. Every selected comic in every file receives an explicit source shot. |
-| Book actions | All 7: `open`, `turn`, `hold`, `read`, `place`, `close`, `slam`. Page 004 ends with a requested slam; the physical tour turns forward and backward. |
+| Gestures | The original 12. Page 023 includes `rubber_hose`; 016/024 use large gestures; 006 keeps the held-book reader's hands occupied. |
+| Shots | The original 6: `auto`, `speaker`, `two-shot`, `over-shoulder`, `book`, `source`. Every selected comic in every file receives an explicit source shot. |
+| Book actions | Seven: `open`, `turn`, `hold`, `read`, `place`, `close`, `slam`. Page 004 ends with a requested slam; the physical tour turns forward and backward. |
 | Held-book performance | Pages 003, 006, 010, 018, 023. Reader dialogue and listener reactions respect the occupied-hand restriction. |
 | Listener reactions | Both `line_start` and `line_end`, including reactions that continue through a pause. Solo files do not create a second actor. |
 | Face controls | Independent brows, eye openness, mouth curve, and `auto` / `once` / `off` blink settings. |
@@ -139,3 +139,12 @@ resolution. They do not constitute full MP4 export tests.
 
 The batch manifest is checked for all 25 pages exactly once, in order, with valid
 relative paths. There are no engine-code or catalog changes in this example set.
+
+
+## Chaotic comedy
+
+[chaotic-comedy.json](chaotic-comedy.json) adds static close/medium/wide/extreme-wide
+shots, colored phrase captions, abrupt arm gestures, crying, a rocket punch,
+flattening, nose removal and replacement, head spins/jerks, a flying book,
+explosion, and walking off stage. It uses zero default dialogue pauses and lets
+characters reappear at the next cut without a return animation.
