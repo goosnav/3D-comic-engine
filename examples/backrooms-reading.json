@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "The Exit Is Probably a Footnote",
+  "comics": [
+    "book2-020"
+  ],
+  "seed": 81,
+  "scene": "backrooms",
+  "characters": {
+    "reader": "cowboy",
+    "friend": "glasses"
+  },
+  "output": {
+    "preset": "instagram_reels",
+    "fps": 24
+  },
+  "captions": {
+    "enabled": true,
+    "position": "top",
+    "colors": {
+      "reader": "#FFE35B",
+      "friend": "#6EE7FF"
+    }
+  },
+  "endCard": {
+    "enabled": false
+  },
+  "lines": [
+    {
+      "speaker": "reader",
+      "text": "This library has too many hallways.",
+      "shot": "wide"
+    },
+    {
+      "speaker": "friend",
+      "text": "Try the index.",
+      "gesture": "head_jerk",
+      "shot": "medium"
+    },
+    {
+      "action": "walk_away",
+      "actor": "reader",
+      "seconds": 1,
+      "shot": "two-shot"
+    }
+  ]
+}

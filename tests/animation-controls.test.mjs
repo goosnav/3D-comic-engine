@@ -82,3 +82,35 @@ test('every bundled character exposes the authored nose without changing the sou
   let after=0;source.traverse(o=>{if(o.isMesh)after+=o.geometry.index?.count??0;});assert.equal(after,before,variant.id);
  }
 });
+
+
+test('partner actions validate targets, reach contact, track ascent and seek deterministically',async()=>{
+ const THREE=await import('three');
+ const actors=await cast(),stunts=createStunts(actors);
+ const sample=(rail,p)=>{stunts.reset();actors.forEach(a=>a.apply({time:p*2}));stunts.apply({rail,actor:'reader',target:'friend',start:0,end:2},p*2);actors.forEach(a=>a.root.updateMatrixWorld(true));};
+ for(const action of ['nose_touch','high_five','handshake','ascend']){
+  assert.equal(resolve([raw.lines[0],{action}]).lines[1].target,'friend');
+  assert.throws(()=>resolve([raw.lines[0],{action,target:'reader'}]),/different target/);
+  sample(action,.5);const first=actors.map(a=>a.root.position.toArray());sample(action,.9);sample(action,.1);sample(action,.5);
+  assert.deepEqual(actors.map(a=>a.root.position.toArray()),first);
+ }
+ for(const action of ['high_five','handshake'])for(const p of [.2,.5,.95]){
+  sample(action,p);
+  const wrists=actors.map(a=>a.bones.handR.getWorldPosition(new THREE.Vector3()));
+  assert.ok(wrists[0].distanceTo(wrists[1])<.035,`${action}: hands meet (${wrists[0].distanceTo(wrists[1])})`);
+ }
+ sample('nose_touch',.5);
+ const tips=actors.map(a=>{const b=a.nose.geometry.boundingBox,t=b.getCenter(new THREE.Vector3());t.z=b.max.z;return a.nose.localToWorld(t);});
+ assert.ok(tips[0].distanceTo(tips[1])<1e-6);
+ sample('ascend',.2);const early=stunts.diagnostics().trackingPitch;
+ sample('ascend',.95);assert.ok(actors[0].root.position.y>50);assert.ok(stunts.diagnostics().trackingPitch<early);assert.ok(stunts.diagnostics().trackingPitch<-1.5);
+ sample('punch',.13);assert.ok(actors[1].root.position.x>15,'victim rockets away within the first impact frames');
+ sample('dance',.99);assert.ok(actors[0].bones.forearmR.scale.y>1);
+});
+
+test('cosmic rage drives violent body poses but retains held-hand ownership',async()=>{
+ const [a]=await cast(),line={type:'line',speaker:'reader',start:0,end:3,emotion:'cosmic_rage',gesture:'none'};
+ a.apply({time:1,line});const q=a.bones.upper_armR.quaternion.clone();assert.ok(a.bones.forearmR.scale.y!==1);
+ a.apply({time:1.05,line});assert.ok(q.angleTo(a.bones.upper_armR.quaternion)>.5);
+ a.apply({time:1,line,held:1});assert.equal(a.bones.forearmR.scale.y,1);
+});

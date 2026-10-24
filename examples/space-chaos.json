@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "We Have Lost Contact With Gravity",
+  "comics": [
+    "book2-020"
+  ],
+  "seed": 81,
+  "scene": "space",
+  "characters": {
+    "reader": "astronaut",
+    "friend": "astronaut-beady"
+  },
+  "output": {
+    "preset": "instagram_reels",
+    "fps": 24
+  },
+  "captions": {
+    "enabled": true,
+    "position": "top",
+    "colors": {
+      "reader": "#FFE35B",
+      "friend": "#6EE7FF"
+    }
+  },
+  "endCard": {
+    "enabled": false
+  },
+  "lines": [
+    {
+      "speaker": "reader",
+      "text": "The helmet is working perfectly.",
+      "shot": "close-up"
+    },
+    {
+      "action": "high_five",
+      "seconds": 0.8,
+      "shot": "two-shot"
+    },
+    {
+      "action": "dance",
+      "actor": "friend",
+      "seconds": 1.2,
+      "shot": "two-shot"
+    },
+    {
+      "speaker": "reader",
+      "text": "Wait. Who turned gravity off?",
+      "emotion": "cosmic_rage",
+      "shot": "medium"
+    },
+    {
+      "action": "ascend",
+      "actor": "reader",
+      "target": "friend",
+      "seconds": 1.4,
+      "shot": "two-shot"
+    },
+    {
+      "speaker": "friend",
+      "text": "We are so qualified for this.",
+      "shot": "extreme-wide"
+    }
+  ]
+}

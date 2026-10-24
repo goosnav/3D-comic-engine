@@ -214,14 +214,11 @@ test('completed and failed items remain visible, one ZIP contains all successful
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
 });
 
-test('nested browser installation loads exactly 25 page examples and starts from the original click before downloading owned videos', async t => {
+test('nested browser installation imports chosen scripts and starts from the original click before downloading owned videos', async t => {
   const { page, state } = await fixture(t, { staticMode: true });
   const blank = await current(page);
-  await page.locator('#batch-load-pages').click();
-  await page.waitForFunction(() => document.querySelectorAll('#batch-library .batch-script').length === 25 && !document.querySelector('#batch-load-pages').disabled);
-  assert.ok(state.requests.includes('/nested/studio/examples/index.json'));
-  assert.equal(state.requests.filter(route => route.startsWith('/nested/studio/examples/page-')).length, 25);
-  assert.ok(!state.requests.some(route => route.endsWith('tour.json')));
+  assert.equal(await page.locator('#batch-load-pages').count(),0);
+  await upload(page,[file('page-01-joke.json',makeScript('Page 01 joke')),file('page-02-joke.json',makeScript('Page 02 joke'))]);
   assert.deepEqual(await current(page), blank);
   assert.equal(await page.locator('#batch-voice option').count(), 1);
   await page.locator('#batch-clear-selection').click();

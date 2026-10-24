@@ -7,7 +7,8 @@ export const EMOTIONS=Object.keys(emotions);
 export const GESTURES=['none','explain','nod','head_tilt','shrug','page_glance',...Object.keys(gestures)];
 export const SHOTS=['auto','speaker','two-shot','over-shoulder','book','source','close-up','medium','wide','extreme-wide'];
 export const BOOK_ACTIONS=['open','turn','hold','read','place','close','slam','throw'];
-export const ACTOR_ACTIONS=['punch','explode','flatten','nose_off','head_spin','head_jerk','walk_away'];
+export const PARTNER_ACTIONS=['punch','nose_touch','high_five','handshake','ascend'];
+export const ACTOR_ACTIONS=['punch','explode','flatten','nose_off','head_spin','head_jerk','walk_away','nose_touch','high_five','handshake','dance','ascend'];
 export const ACTIONS=[...BOOK_ACTIONS,...ACTOR_ACTIONS];
 export const GAZES=['auto','partner','away','book','ceiling','camera'];
 export const OUTPUT_PRESETS=Object.freeze({
@@ -103,9 +104,9 @@ export function resolveScript(raw,catalog){
    if(ACTOR_ACTIONS.includes(line.action)){
     if(state==='held-open')fail(`${label}: place the book before a character action`);
     const actor=choice(line.actor??t.speakers[0],t.speakers,label+'.actor');
-    const target=line.action==='punch'?choice(line.target??t.speakers.find(id=>id!==actor),t.speakers,label+'.target'):undefined;
-    if(target===actor)fail(`${label}: punch needs a different target actor`);
-    if(line.action!=='punch'&&line.target!==undefined)fail(`${label}: ${line.action} has no target`);
+    const target=PARTNER_ACTIONS.includes(line.action)?choice(line.target??t.speakers.find(id=>id!==actor),t.speakers,label+'.target'):undefined;
+    if(target===actor)fail(`${label}: ${line.action} needs a different target actor`);
+    if(!PARTNER_ACTIONS.includes(line.action)&&line.target!==undefined)fail(`${label}: ${line.action} has no target`);
     if(line.comic!==undefined&&line.comic!==current)fail(`${label}: character actions cannot change the comic`);
     return {...line,actor,...(target?{target}:{}),id:`beat-${i}`,seconds:number(line.seconds??2.4,.8,8,label+'.seconds'),comic:current,bookState:state};
    }

@@ -1,11 +1,6 @@
-/**
- * Deterministic rest-relative poses, sampled at 15 Hz for abrupt cartoon motion.
- * Restore the rig each frame before applying these offsets. Arms clamp to 2.6
- * radians and ordinary head/chest offsets to .5; head_spin/head_jerk deliberately
- * exceed head limits. No collision solving. Suppress ARM_GESTURES while holding.
- * Outside the beat or with invalid timing, return fresh zero offsets.
- * Canonical portable copy: goosnav-3D-assets/exports/theatre-gestures.mjs.
- */
+// Absolute-time, seeded cursor-like jumps. Restore the rig before sampling.
+// Chaotic limbs deliberately overextend; hand-held props retain IK ownership.
+// Portable copy: goosnav-3D-assets/exports/theatre-gestures.mjs.
 export const gestures = Object.freeze({
   cry: Object.freeze({ arms: true }),
   head_spin: Object.freeze({ arms: false }),
@@ -21,17 +16,24 @@ export const ARM_GESTURES = Object.freeze(['explain', 'shrug', 'point', 'offer',
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const ease = v => { const x = clamp(v, 0, 1); return x * x * (3 - 2 * x); };
 export function sampleGesture(opts = {}) {
-  const { gesture = 'none', time = 0, start = 0, duration = 0, seed = 0, amplitude = 1, attack = .18, release = .24 } = opts;
+  const { gesture = 'none', time = 0, start = 0, duration = 0, seed = 0, amplitude = 1, attack = .025, release = 0 } = opts;
   const result = { upper_armL: [0,0,0], forearmL: [0,0,0], upper_armR: [0,0,0], forearmR: [0,0,0], chest: [0,0,0], head: [0,0,0] };
   if (!Object.hasOwn(gestures, gesture) || ![time,start,duration].every(Number.isFinite) || duration <= 0) return result;
   const age = time - start;
   if (!Number.isFinite(age) || age <= 0 || age >= duration) return result;
   const ramp = (v, fallback) => Number.isFinite(v) && v > 0 ? v : fallback;
   const weight = (Number.isFinite(amplitude) ? clamp(amplitude, 0, 2) : 0) *
-    ease(age / ramp(attack, .18)) * ease((duration - age) / ramp(release, .24));
+    ease(age / ramp(attack, .025)) * (Number.isFinite(release) && release > 0 ? ease((duration - age) / release) : 1);
   // Modulo before multiplication keeps even extreme finite inputs finite.
-  const phase = (Math.floor((age % (Math.PI * 2)) * 15) / 15) * 26 + ((seed >>> 0) % 997) / 997 * Math.PI * 2;
+  const phase = (Math.floor((age % (Math.PI * 2)) * 24) / 24) * 26 + ((seed >>> 0) % 997) / 997 * Math.PI * 2;
   const wave = Math.sin(phase), slow = Math.sin(phase * .5);
+  const tick = Math.floor((age % 60) * 24);
+  const wild = ['arm_flail','windmill','rubber_hose','fist_shake'].includes(gesture);
+  const yank = channel => {
+    let n = Math.imul((tick ^ (seed >>> 0)) + channel * 374761393, 668265263);
+    n = Math.imul(n ^ (n >>> 13), 1274126177);
+    return ((n ^ (n >>> 16)) >>> 0) / 4294967295 * 2 - 1;
+  };
   if (gesture === 'head_spin') {result.head[1]=Math.floor((age%60)*15)*Math.PI*.62*weight;return result;}
   if (gesture === 'head_jerk') {result.head=[Math.sin(phase*3)*1.2,Math.sin(phase*7)*2.5,Math.sin(phase*11)*1.4].map(v=>v*weight);return result;}
   for (const [side, sign] of [['L',1],['R',-1]]) {
@@ -63,8 +65,18 @@ export function sampleGesture(opts = {}) {
   }
   result.chest = gesture === 'despair' ? [.22,0,.06 * slow] : [.08 * wave,.1 * slow,.12 * wave];
   result.head = gesture === 'despair' ? [.3,0,.08 * slow] : [.1 * slow,.12 * wave,.2 * slow];
+  if (wild) {
+    for (const [side, sign] of [['L',1],['R',-1]]) {
+      const k = side === 'L' ? 1 : 8;
+      const strength=gesture==='fist_shake' && side==='L' ? .15 : 1;
+      result[`upper_arm${side}`] = result[`upper_arm${side}`].map((v,j)=>v*.5+strength*yank(k+j)*[2.8,2.6,2.5][j]);
+      result[`forearm${side}`] = result[`forearm${side}`].map((v,j)=>v*.5+strength*yank(k+3+j)*[2.9,1.8,1.6][j]);
+    }
+    result.chest = [yank(20)*.32,yank(21)*.38,yank(22)*.42];
+    result.head = [yank(23)*.6,yank(24)*.8,yank(25)*.65];
+  }
   for (const [bone, xyz] of Object.entries(result)) {
-    const bound = bone === 'head' || bone === 'chest' ? .5 : 2.6;
+    const bound = bone === 'head' || bone === 'chest' ? (wild ? 1.6 : .5) : 7.6;
     result[bone] = xyz.map(v => clamp(v * weight, -bound, bound) || 0);
   }
   return result;

@@ -1,4 +1,4 @@
-import { resolveScript } from '../src/contracts.mjs';
+import { resolveScript, resolveOutput } from '../src/contracts.mjs';
 import { createZip } from '../src/zip.mjs';
 
 const STORAGE_KEY = 'comic-theatre-batch-library-v1';
@@ -90,7 +90,7 @@ export function createBatchUI({ api, isReady, getEditorScript, browserMode, owns
     const ready = Boolean(isReady());
     const selected = selectedEntries().length;
     const busy = loading || submitting;
-    for (const id of ['batch-files', 'batch-folder', 'batch-load-pages', 'batch-add-editor']) $(id).disabled = !ready || busy;
+    for (const id of ['batch-files', 'batch-folder', 'batch-add-editor']) $(id).disabled = !ready || busy;
     $('batch-select-all').disabled = !ready || busy || !entries.some(entry => !entry.error && !entry.selected);
     $('batch-clear-selection').disabled = busy || !selected;
     $('batch-remove-selected').disabled = busy || !selected;
@@ -125,7 +125,7 @@ export function createBatchUI({ api, isReady, getEditorScript, browserMode, owns
       if (typeof entry.script?.title === 'string') detail.append(node('p', entry.script.title, 'batch-script-title'));
       if (entry.error) detail.append(node('p', entry.error, 'batch-validation-error'));
       else if (entry.script) {
-        const output = { width: 1080, height: 1350, fps: 24, ...entry.script.output };
+        const output = resolveOutput(entry.script.output);
         detail.append(node('p', `${output.width} × ${output.height} · ${output.fps} fps · ${entry.script.template || 'No template'}${entry.script.output ? '' : ' · default output settings'}`, 'batch-script-settings'));
       }
       const remove = node('button', 'Remove', 'batch-remove'); remove.type = 'button';
@@ -190,34 +190,6 @@ export function createBatchUI({ api, isReady, getEditorScript, browserMode, owns
     const result = addText(name, JSON.stringify(script, null, 2));
     persist(); renderLibrary();
     return result;
-  }
-
-  async function loadPageScripts() {
-    if (loading || submitting) return;
-    loading = true; renderLibrary(); message('Loading page 1–25 scripts…');
-    const counts = { added: 0, invalid: 0, duplicate: 0, manifest: 0, limit: 0 };
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 60000);
-    try {
-      const folder = new URL('./examples/', document.baseURI);
-      const response = await fetch(new URL('index.json', folder), { credentials: 'same-origin', signal: controller.signal });
-      if (!response.ok) throw new Error(`The example library could not be loaded (${response.status}).`);
-      const index = await response.json();
-      if (!Array.isArray(index?.examples)) throw new Error('The example library index is invalid.');
-      const pages = index.examples.filter(item => item?.group === 'pages').slice(0, 25);
-      if (!pages.length) throw new Error('This installation has no page scripts in its example library.');
-      for (const item of pages) {
-        if (typeof item.path !== 'string') throw new Error('An example script has no local file path.');
-        const url = new URL(item.path, document.baseURI);
-        if (url.origin !== location.origin || !url.pathname.startsWith(folder.pathname) || !url.pathname.endsWith('.json') || url.search || url.hash) throw new Error('The example library contains an invalid local path.');
-        const file = await fetch(url, { credentials: 'same-origin', signal: controller.signal });
-        if (!file.ok) throw new Error(`${item.name || item.path} could not be loaded (${file.status}).`);
-        counts[addText(item.name || url.pathname.split('/').at(-1), await file.text())]++;
-      }
-      reportImport(counts);
-    } catch (error) {
-      message(`${error.name === 'AbortError' ? 'Loading examples timed out.' : error.message} Any scripts already loaded are available below.`, true);
-    } finally { clearTimeout(timer); loading = false; persist(); renderLibrary(); }
   }
 
   function videoLink(item) {
@@ -361,7 +333,6 @@ export function createBatchUI({ api, isReady, getEditorScript, browserMode, owns
     const files = [...input.files]; input.value = '';
     void importFiles(files);
   });
-  $('batch-load-pages').addEventListener('click', loadPageScripts);
   $('batch-add-editor').addEventListener('click', () => {
     try {
       const script = getEditorScript();

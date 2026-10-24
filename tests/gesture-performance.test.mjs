@@ -17,11 +17,11 @@ test('public sampler returns bounded, seeded, rest-relative offsets without fram
     for (const time of [2.9, 2, .1, 0, -1, 3, 4]) sampleGesture({ ...opts, time });
     assert.deepEqual(sampleGesture(opts), first);
     for (const time of [-1, 0, 3, 4]) assert.ok(values(sampleGesture({ ...opts, time })).every(v => v === 0));
-    for (const time of [1e-6, 3 - 1e-6]) assert.ok(values(sampleGesture({ ...opts, time })).every(v => Math.abs(v) < 1e-8));
+    assert.ok(values(sampleGesture({...opts,time:3-1e-6})).some(v=>Math.abs(v)>.1),'motion persists until the cut');
     for (const amplitude of [-1, 0, 1, 2, 100, NaN, Infinity]) {
       for (const time of [NaN, Infinity, -Infinity, 1e308, .3, 1.7]) {
         const pose = sampleGesture({ ...opts, time, amplitude });
-        for (const [bone, xyz] of Object.entries(pose)) assert.ok(xyz.every(v => Number.isFinite(v) && Math.abs(v) <= (['head', 'chest'].includes(bone) ? .5 : 2.6)));
+        for (const [bone, xyz] of Object.entries(pose)) assert.ok(xyz.every(v => Number.isFinite(v) && Math.abs(v) <= (['head', 'chest'].includes(bone) ? 1.6 : 7.6)));
       }
     }
     assert.ok(values(sampleGesture({ ...opts, amplitude: 0 })).every(v => v === 0));
@@ -36,7 +36,7 @@ test('public sampler returns bounded, seeded, rest-relative offsets without fram
 test('custom attack/release scale the pose and authored lateral arm signs oppose each other', () => {
   assert.equal(typeof module.sampleGesture, 'function');
   const { sampleGesture } = module;
-  const opts = {gesture:'double_point',time:.18,duration:3,seed:41};
+  const opts = {gesture:'double_point',time:.18,duration:3,seed:41,attack:.18,release:.24};
   const full = sampleGesture(opts), half = sampleGesture({...opts,attack:.36});
   values(half).forEach((v,i)=>assert.ok(Math.abs(v-values(full)[i]*.5)<1e-12));
   assert.ok(full.upper_armL[2] > 0 && full.upper_armR[2] < 0);
@@ -50,8 +50,8 @@ test('custom attack/release scale the pose and authored lateral arm signs oppose
 
 test('chaotic gestures step sharply and head controls remain independent of held arms',()=>{
  const opts={gesture:'arm_flail',start:0,duration:3,seed:4};
- assert.deepEqual(module.sampleGesture({...opts,time:1.01}),module.sampleGesture({...opts,time:1.04}));
- assert.notDeepEqual(module.sampleGesture({...opts,time:1.04}),module.sampleGesture({...opts,time:1.08}));
+ assert.deepEqual(module.sampleGesture({...opts,time:1.01}),module.sampleGesture({...opts,time:1.03}));
+ assert.notDeepEqual(module.sampleGesture({...opts,time:1.03}),module.sampleGesture({...opts,time:1.05}));
  for(const gesture of ['head_spin','head_jerk']){
   assert.ok(!module.ARM_GESTURES.includes(gesture));
   const pose=module.sampleGesture({...opts,gesture,time:1});assert.ok(pose.head.some(v=>Math.abs(v)>.5));
@@ -59,4 +59,10 @@ test('chaotic gestures step sharply and head controls remain independent of held
   assert.ok(values(module.sampleGesture({...opts,gesture,time:1e307,duration:1e308})).every(Number.isFinite));
  }
  assert.ok(module.ARM_GESTURES.includes('cry'));
+});
+
+
+test('wild gestures keep distinct authored poses instead of sharing one random arm animation',()=>{
+ const poses=['arm_flail','fist_shake','windmill','rubber_hose'].map(gesture=>JSON.stringify(module.sampleGesture({gesture,time:1,duration:3,seed:81})));
+ assert.equal(new Set(poses).size,4);
 });

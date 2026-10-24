@@ -24,9 +24,10 @@ export function createActor(source, id, index = 0, config = {}) {
     }
     if (o.isSkinnedMesh) { o.frustumCulled = false; skeletons.push(o.skeleton); }
     if (o.isMesh) {
-      o.castShadow = true; o.receiveShadow = true;
+      o.castShadow = !o.material?.transparent; o.receiveShadow = !o.material?.transparent;
       const ownMaterial = m => {
         const owned = m.clone();
+        if (owned.transparent) owned.depthWrite = false;
         if (clothing[config?.variant] && m.name.includes('shirt')) owned.color.set(clothing[config.variant]);
         return owned;
       };
@@ -139,10 +140,17 @@ export function createActor(source, id, index = 0, config = {}) {
     const mouthValue = speaking ? sampleMouth(line.mouth, age) * faceEnvelope(age, line.end - line.start, .035, .045) : 0;
     const visemes = sampleVisemes(mouthValue, age, seed, index);
     const phase = time * 1.7 + index * 2.1 + (seed % 100) * .13;
-    const gesture = (ownsLine ? line.gesture : reaction.gesture) || 'none';
-    const armGesture = held > .5 && ARM_GESTURES.includes(gesture) ? 'none' : gesture;
+    const frenzy = {cosmic_rage:1,brain_static:.65,overclocked:.8}[emotion] ?? 0;
+    const requestedGesture = (ownsLine ? line.gesture : reaction.gesture) || 'none';
+    const gesture = frenzy && requestedGesture === 'none' ? 'arm_flail' : requestedGesture;
+    const armGesture = held > .5 && ARM_GESTURES.includes(gesture) ? (frenzy ? 'head_jerk' : 'none') : gesture;
     const extra = Object.hasOwn(gestures, armGesture) ? sampleGesture({ gesture: armGesture,
       time, start: line?.start ?? time, duration: expressionDuration, seed: seed + index }) : null;
+    if (frenzy && extra) {
+      const pulse=Math.sin(Math.floor(age*24)*37.1+seed);
+      extra.head=extra.head.map((v,k)=>v+frenzy*pulse*[.6,.9,.7][k]);
+      if(held<.5) for(const side of ['L','R']) bones[`forearm${side}`].scale.y=1+frenzy*(pulse>0?.55:-.15);
+    }
     let tilt = exp.tilt;
     if (gesture === 'tilt' || gesture === 'head_tilt') tilt += .13 * envelope;
     const explicitGaze = gazeOverride ?? line?.gaze?.[id] ?? reaction.gaze;

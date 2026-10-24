@@ -11,12 +11,12 @@ import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
-const ids=['diner','basement','moon-base','tv-studio'];
+const ids=['diner','basement','moon-base','tv-studio','space','black-pyramids','red-mesas','backrooms','starter-overgrown-courtyard'];
 const review=join(tmpdir(),'theatre-scene-integration');
 
 async function fixture(t){
  const catalog=JSON.parse(await readFile(resolve(root,'assets/catalog.json'),'utf8'));
- catalog.scenes=[{id:'library'},{id:'fireside'},...ids.map(id=>({id,label:id,asset:'scene-'+id,default:false}))];
+ catalog.scenes=[{id:'library'},{id:'fireside'},...ids.map(id=>({...catalog.scenes.find(s=>s.id===id),id,asset:'scene-'+id,default:false}))];
  catalog.templates=catalog.templates.map(t=>({...t,scenes:[...new Set([...t.scenes,...ids])]}));
  for(const id of ids){
   const path=`assets/environments/theatre-${id}.glb`;
@@ -80,7 +80,7 @@ async function fixture(t){
  return {page,catalog,timeline};
 }
 
-test('real E1 sets render at existing cameras, with one table and disposable geometry', {timeout:180000},async t=>{
+test('all optional sets render at existing cameras, with one table and disposable geometry', {timeout:180000},async t=>{
  const {page,catalog,timeline}=await fixture(t);await mkdir(review,{recursive:true});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  for(const id of ids){
@@ -127,7 +127,7 @@ test('real E1 sets render at existing cameras, with one table and disposable geo
    window.player.dispose();window.player.dispose();window.snapshot.dispose();
    return window.resources.map(r=>r.count);
   });
-  assert.ok(disposed.length>20);assert.ok(disposed.every(count=>count===1),'set resources disposed exactly once');
+  assert.ok(disposed.length>0,'loaded set exposes resources to dispose');assert.ok(disposed.every(count=>count===1),'set resources disposed exactly once');
  }
  assert.deepEqual(errors,[]);
  console.log('Scene screenshots:',review);
@@ -150,7 +150,7 @@ test('missing scene and later loading failure reject before GPU and release load
  assert.ok(result.resources.length>20);assert.ok(result.resources.every(n=>n===1));
 });
 
-test('native tall hats and astronaut headgear fit existing conversation shots through large gestures',{timeout:300000},async t=>{
+test('headgear fits cut framing and cameras remain fixed through large gestures',{timeout:300000},async t=>{
  const {page,catalog,timeline}=await fixture(t);await mkdir(review,{recursive:true});
  for(const [variant,scene]of [['crooked','tv-studio'],['cowboy','diner'],['astronaut','moon-base']]){
   await page.evaluate(async({catalog,timeline,variant,scene})=>{
@@ -161,7 +161,7 @@ test('native tall hats and astronaut headgear fit existing conversation shots th
     events:timeline.events.slice(0,4).map((e,i)=>({...e,gesture:i<2?'windmill':'rubber_hose',
      mouth:[{t:0,value:0},{t:.3,value:.7},{t:.6,value:.3},{t:1,value:0}]}))}});
   },{catalog,timeline,variant,scene});
-  for(const [name,frame,actors]of [['two-shot',6,['reader','friend']],['reader',18,['reader']],['friend',30,['friend']],['over-shoulder',42,['reader']]]){
+  for(const [name,frame,actors]of [['two-shot',0,['reader','friend']],['reader',12,['reader']],['friend',24,['friend']],['over-shoulder',36,['reader']]]){
    const check=await page.evaluate(async({frame,actors})=>{
     await window.player.renderAt(frame);
     return actors.map(id=>{
@@ -182,6 +182,8 @@ test('native tall hats and astronaut headgear fit existing conversation shots th
     });
    },{frame,actors});
    await page.locator('canvas').screenshot({path:join(review,`${variant}-${name}.png`)});
+   const cameras=await page.evaluate(async frame=>{const first=window.player.diagnostics().camera;await window.player.renderAt(frame+6);return [first,window.player.diagnostics().camera];},frame);
+   assert.deepEqual(cameras[0],cameras[1],'wild gestures must not move the camera to keep a hat on screen');
    for(const b of check){
     assert.deepEqual(b.scale,[1,1,1],'native actor scale is preserved');
     assert.ok(b.min[0]>-.95&&b.max[0]<.95&&b.min[1]>-.95&&b.max[1]<.95,

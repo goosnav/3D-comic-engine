@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 const root = fileURLToPath(new URL('../',import.meta.url));
-test('fitted assets, supported hands and cartoon actions render and seek', {timeout:120000}, async t=>{
+test('fitted assets, supported hands and cartoon actions render and seek', {timeout:180000}, async t=>{
  const catalog=JSON.parse(await readFile(resolve(root,'assets/catalog.json')));
  const server=createServer(async(req,res)=>{try{
   if(req.url==='/'){res.setHeader('Content-Type','text/html');return res.end('<style>body{margin:0}</style><script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script><canvas></canvas>');}
@@ -81,5 +81,21 @@ test('fitted assets, supported hands and cartoon actions render and seek', {time
  assert.equal((await render(1)).captions.color,'#ffe35b');assert.equal((await render(4)).captions.color,'#6ee7ff');assert.equal((await render(6)).captions,null);
  assert.ok((await render(16.5)).camera.position[2]>(await render(15.5)).camera.position[2]*2);
  const late=await render(8);await render(14);assert.deepEqual(await render(8),late);
+ for(const scene of ['space','black-pyramids','red-mesas','backrooms','starter-overgrown-courtyard']) {
+  const state=await page.evaluate(async({catalog,scene})=>{
+   window.player.dispose();const {createPlayer}=await import('/src/player.mjs');
+   const actions=['nose_touch','high_five','handshake','dance','ascend','punch'];
+   const events=actions.map((rail,i)=>({type:'action',id:rail,rail,actor:'reader',target:'friend',shot:'two-shot',start:i*2,end:i*2+2}));
+   events.push({type:'line',id:'rage',speaker:'reader',text:'This is a completely reasonable response.',emotion:'cosmic_rage',gesture:'none',shot:'medium',start:12,end:14,mouth:[]});
+   window.player=await createPlayer(document.querySelector('canvas'),{catalog,timeline:{width:540,height:960,fps:24,frames:336,duration:14,seed:81,scene,cast:['reader','friend'],characters:{reader:scene==='space'?'astronaut':'cowboy',friend:scene==='space'?'astronaut-beady':'glasses'},sources:['book2-020'],events}});
+   await window.player.renderAt(0);return window.player.diagnostics();
+  },{catalog,scene});
+  assert.ok(state.camera.position.every(Number.isFinite));
+  for(const [name,time]of [['nose-touch',1],['high-five',3],['handshake',5],['dance',6.7],['ascend-early',8.2],['ascend',8.5],['punch',10.2],['cosmic-rage',12.5]]) {
+   const d=await render(time);await page.screenshot({path:resolve(root,`.local/review/${scene}-${name}.png`)});
+   if(name==='ascend')assert.ok(d.stunt.trackingPitch<-1);
+  }
+  for(let start=0;start<14;start+=2)assert.deepEqual((await render(start+.2)).camera,(await render(start+1.8)).camera,`${scene} camera is static`);
+ }
  assert.deepEqual(errors,[]);
 });

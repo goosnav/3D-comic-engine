@@ -69,13 +69,13 @@ JSON has no comments. Put notes in a separate file; fields such as `notes`,
 
 | `template` | Comics | `speaker` IDs | Compatible scenes |
 | --- | --- | --- | --- |
-| `book-duet` | 1 | `reader`, `friend` | `library`, `fireside`, `diner`, `basement`, `moon-base`, `tv-studio` |
-| `fireside-reader` | 1 | `reader` | `fireside`, `diner`, `basement`, `moon-base`, `tv-studio` |
-| `page-tour` | 2-3 | `reader`, `friend` | `library`, `fireside`, `diner`, `basement`, `moon-base`, `tv-studio` |
+| `book-duet` | 1 | `reader`, `friend` | `library`, `fireside`, `diner`, `basement`, `moon-base`, `tv-studio`, `space`, `black-pyramids`, `red-mesas`, `backrooms`, `starter-overgrown-courtyard` |
+| `fireside-reader` | 1 | `reader` | `fireside`, `diner`, `basement`, `moon-base`, `tv-studio`, `space`, `black-pyramids`, `red-mesas`, `backrooms`, `starter-overgrown-courtyard` |
+| `page-tour` | 2-3 | `reader`, `friend` | `library`, `fireside`, `diner`, `basement`, `moon-base`, `tv-studio`, `space`, `black-pyramids`, `red-mesas`, `backrooms`, `starter-overgrown-courtyard` |
 
 Appearance variants are `blue`, `rust`, `olive`, `cowboy`, `glasses`, `crooked`,
 and `astronaut`, plus a `-beady` version of each. `astronaut` and
-`astronaut-beady` require `moon-base` or `tv-studio`. The solo format has no
+`astronaut-beady` support `moon-base`, `tv-studio`, `space`, `black-pyramids`, `red-mesas`, `backrooms`, and `starter-overgrown-courtyard`. Their clear helmets enclose noses squashed against the glass. The solo format has no
 `friend`, so it cannot use listener reactions. Avoid adding inactive cast entries.
 
 Use [`assets/catalog.json`](../assets/catalog.json) for current IDs and constraints.
@@ -116,7 +116,7 @@ arm_flail fist_shake double_point despair windmill rubber_hose cry head_spin hea
 ```
 
 Big arm gestures are optional performance controls, not physical simulations.
-Poses jump at 15 Hz for abrupt, erratic cartoon acceleration. While the
+Poses jump at 24 Hz for abrupt, erratic cartoon acceleration. While the
 reader holds the book, use `none`, `nod`, `head_tilt`, `page_glance`, `head_spin`, or `head_jerk` for that
 actor, including their listener reactions. The free partner can use arm gestures.
 
@@ -258,8 +258,13 @@ the beat's explicit actor gaze takes priority.
 - `{"action":"head_spin","actor":"reader"}` rotates the head around the neck axis in sharp steps.
 - `{"action":"head_jerk","actor":"friend"}` snaps the head in different directions.
 - `{"action":"walk_away","actor":"friend"}` strides off stage without returning.
+- `{"action":"nose_touch","actor":"reader","target":"friend"}` snaps the pair together nose-first.
+- `{"action":"high_five","actor":"reader","target":"friend"}` brings their raised hands together.
+- `{"action":"handshake","actor":"reader","target":"friend"}` shakes their joined hands rapidly.
+- `{"action":"dance","actor":"friend"}` jerks, spins, hops and overextends the arms.
+- `{"action":"ascend","actor":"reader","target":"friend"}` rockets upward while the friend tracks him with his head. No return before the cut.
 
-Place the book before character actions. They accept 0.8–8 seconds, `actor`, optional `gaze`, and `shot`. Only punch accepts `target`. Book actions use the reader. These are repeatable cartoon poses, not a physics simulation. Characters reset at the next beat with no return animation; the missing book resets when the next book action starts. Deliberate continuity cuts are part of the effect.
+Place the book before character actions. They accept 0.8–8 seconds, `actor`, optional `gaze`, and `shot`. `punch`, `nose_touch`, `high_five`, `handshake`, and `ascend` accept `target`, defaulting to the other character. For ascent, `actor` rises and `target` watches. Partner actions require a two-character template. Book actions use the reader. These are repeatable cartoon poses, not a physics simulation. Characters reset at the next beat with no return animation; the missing book resets when the next book action starts. Deliberate continuity cuts are part of the effect.
 
 `cry`, `head_spin`, and `head_jerk` are also dialogue/listener gestures, so they can run during speech. Crying adds tears and frantic arm movement. The head gestures work while holding the book.
 
@@ -282,3 +287,5 @@ Captions are enabled by default, use bold Helvetica (Arial or bundled metric-com
 Generated and recorded speech have leading/trailing silence trimmed with a 25 ms consonant margin. The default pause is zero and reactions default to `line_start`, so the next clip starts when speech ends. An explicit `pause` or `reaction.at: "line_end"` still creates the requested hold. Internal speech pauses are preserved.
 
 See [chaotic-comedy.json](../examples/chaotic-comedy.json) for all new actions, both caption colors, and shot sizes.
+
+`cosmic_rage`, `brain_static`, and `overclocked` also drive abrupt body motion, even with gesture `none`. Free arms stretch; held-book arms keep their grip. Wild gestures use seeded 24 Hz jumps with no default fade to rest. The camera remains fixed.

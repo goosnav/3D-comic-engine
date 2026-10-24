@@ -138,13 +138,38 @@
     },
     "actor-astronaut": {
       "path": "assets/actor-astronaut.glb",
-      "sha256": "a23f418baf2e7486704334af80b4bded1789a105658d1aac2254ff2ec4a0d7f0",
+      "sha256": "a5f2d133e15e86af91c31b373e2ab4a1273556996377228b8c70b082ac179be0",
       "sourcePath": "exports/ps1guy_v10_theatre_astronaut.glb"
     },
     "actor-astronaut-beady": {
       "path": "assets/actor-astronaut-beady.glb",
-      "sha256": "4969451ddf8e6d0e7b685294cbfe128ea475e5a0dcc894c63b7d78eb6b683d0e",
+      "sha256": "05a8a1b687eaf9f58a00f01dba1b69e272b9a807ef4b72aca193cce4bf0649fa",
       "sourcePath": "exports/ps1guy_v10_theatre_astronaut_beady.glb"
+    },
+    "scene-space": {
+      "path": "assets/environments/theatre-space.glb",
+      "sha256": "64596089fc5f1cc10e3020efd23307bee6ab4b1bb115ba7f2b51a508b444209c",
+      "derivedFrom": "environments/theatre-space/scene.glb"
+    },
+    "scene-black-pyramids": {
+      "path": "assets/environments/theatre-black-pyramids.glb",
+      "sha256": "4254af76f7892b9fb7e43dabcab7e2dbcf9bb2d628b1030be708605cbaadcb08",
+      "derivedFrom": "environments/theatre-black-pyramids/scene.glb"
+    },
+    "scene-red-mesas": {
+      "path": "assets/environments/theatre-red-mesas.glb",
+      "sha256": "ba03e0c271c07eb55805038b88e54e6d9af2c0115869d1e0cfb0394b574fb8a8",
+      "derivedFrom": "environments/theatre-red-mesas/scene.glb"
+    },
+    "scene-backrooms": {
+      "path": "assets/environments/theatre-backrooms.glb",
+      "sha256": "622f0e814febd9909295779a5b60e0832ea9c885701f5c0fb5d116984afd4d14",
+      "derivedFrom": "environments/theatre-backrooms/scene.glb"
+    },
+    "scene-starter-overgrown-courtyard": {
+      "path": "assets/environments/theatre-starter-overgrown-courtyard.glb",
+      "sha256": "f630b538be2c1ce5f0f8e8d15d395415b5a41fba6ff30131dbeca8febb17c683",
+      "derivedFrom": "environments/theatre-starter-overgrown-courtyard/scene.glb"
     }
   },
   "variants": [
@@ -214,7 +239,12 @@
       "asset": "actor-astronaut",
       "allowedScenes": [
         "moon-base",
-        "tv-studio"
+        "tv-studio",
+        "space",
+        "black-pyramids",
+        "red-mesas",
+        "backrooms",
+        "starter-overgrown-courtyard"
       ]
     },
     {
@@ -223,7 +253,12 @@
       "asset": "actor-astronaut-beady",
       "allowedScenes": [
         "moon-base",
-        "tv-studio"
+        "tv-studio",
+        "space",
+        "black-pyramids",
+        "red-mesas",
+        "backrooms",
+        "starter-overgrown-courtyard"
       ]
     }
   ],
@@ -2277,7 +2312,12 @@
         "diner",
         "basement",
         "moon-base",
-        "tv-studio"
+        "tv-studio",
+        "space",
+        "black-pyramids",
+        "red-mesas",
+        "backrooms",
+        "starter-overgrown-courtyard"
       ]
     },
     {
@@ -2293,7 +2333,12 @@
         "diner",
         "basement",
         "moon-base",
-        "tv-studio"
+        "tv-studio",
+        "space",
+        "black-pyramids",
+        "red-mesas",
+        "backrooms",
+        "starter-overgrown-courtyard"
       ]
     },
     {
@@ -2311,7 +2356,12 @@
         "diner",
         "basement",
         "moon-base",
-        "tv-studio"
+        "tv-studio",
+        "space",
+        "black-pyramids",
+        "red-mesas",
+        "backrooms",
+        "starter-overgrown-courtyard"
       ]
     }
   ],
@@ -2346,6 +2396,37 @@
       "id": "tv-studio",
       "label": "Please Applaud the Furniture",
       "asset": "scene-tv-studio",
+      "default": false
+    },
+    {
+      "id": "space",
+      "label": "Meridian — Space Platform",
+      "asset": "scene-space",
+      "default": false
+    },
+    {
+      "id": "black-pyramids",
+      "label": "Black Pyramids — Sunset Desert",
+      "asset": "scene-black-pyramids",
+      "default": false
+    },
+    {
+      "id": "backrooms",
+      "label": "Backrooms — The Rooms Beyond",
+      "asset": "scene-backrooms",
+      "default": false
+    },
+    {
+      "id": "starter-overgrown-courtyard",
+      "label": "Starter Overgrown Courtyard",
+      "asset": "scene-starter-overgrown-courtyard",
+      "default": false,
+      "backgroundColor": "#8ba9bd"
+    },
+    {
+      "id": "red-mesas",
+      "label": "Red Mesas — Canyon Overlook",
+      "asset": "scene-red-mesas",
       "default": false
     }
   ]

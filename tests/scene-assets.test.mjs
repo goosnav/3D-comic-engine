@@ -86,7 +86,7 @@ test('bulky OTS clears the central speaking face while retaining the near should
   for(const aspect of [432/768,432/540])for(const focusId of ['reader','friend']){
    const camera=new THREE.PerspectiveCamera(38,aspect,.04,30);
    for(const time of [.25,.5,.75]){
-    const line={type:'line',speaker:focusId,start:0,end:1,gesture:'rubber_hose',mouth:[{t:0,value:.7},{t:1,value:.7}]};
+    const line={type:'line',speaker:focusId,start:0,end:1,gesture:'none',mouth:[{t:0,value:.7},{t:1,value:.7}]};
     actors.forEach((a,i)=>a.apply({time,line,listening:a.root.name!==`actor-${focusId}`,gaze:i?-.32:.32,seed:11}));
     scene.updateMatrixWorld(true);actors.forEach(a=>a.skeletons.forEach(s=>s.update()));
     frameCamera(camera,{shot:'over-shoulder',focusId,actors,time});camera.updateMatrixWorld(true);
@@ -100,7 +100,7 @@ test('bulky OTS clears the central speaking face while retaining the near should
     // repeated SkinnedMesh raycasts would reskin every triangle for every ray.
     const baked=actor=>{
      const group=new THREE.Group();actor.root.traverse(o=>{
-      if(!o.isMesh)return;const g=o.geometry.clone(),positions=g.attributes.position;
+      if(!o.isMesh||o.material?.transparent)return;const g=o.geometry.clone(),positions=g.attributes.position;
       for(let i=0;i<positions.count;i++){
        const p=o.getVertexPosition(i,new THREE.Vector3()).applyMatrix4(o.matrixWorld);
        positions.setXYZ(i,p.x,p.y,p.z);

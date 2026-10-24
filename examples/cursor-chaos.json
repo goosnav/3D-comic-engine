@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Please Stop Touching the Universe",
+  "comics": ["book2-020"],
+  "seed": 81,
+  "scene": "black-pyramids",
+  "characters": {"reader":"cowboy", "friend":"glasses"},
+  "output": {"preset":"instagram_reels", "fps":24},
+  "captions": {"enabled":true,"position":"top","colors":{"reader":"#FFE35B","friend":"#6EE7FF"}},
+  "endCard": {"enabled":false},
+  "lines": [
+    {"speaker":"reader","text":"This book has made me cosmically reasonable.","emotion":"cosmic_rage","shot":"medium"},
+    {"action":"nose_touch","actor":"reader","target":"friend","seconds":1,"shot":"two-shot"},
+    {"action":"high_five","actor":"reader","target":"friend","seconds":0.8,"shot":"two-shot"},
+    {"action":"handshake","actor":"friend","target":"reader","seconds":1,"shot":"two-shot"},
+    {"speaker":"friend","text":"We have reached an agreement.","gesture":"head_jerk","shot":"medium"},
+    {"action":"dance","actor":"reader","seconds":1.2,"shot":"two-shot"},
+    {"action":"punch","actor":"friend","target":"reader","seconds":0.8,"shot":"wide"},
+    {"speaker":"reader","text":"I must consult the upper management.","shot":"medium"},
+    {"action":"ascend","actor":"reader","target":"friend","seconds":1.4,"shot":"two-shot"},
+    {"speaker":"friend","text":"I disagree with gravity.","emotion":"cosmic_rage","shot":"medium"},
+    {"action":"explode","actor":"friend","seconds":1,"shot":"two-shot"},
+    {"speaker":"reader","text":"Five stars.","shot":"extreme-wide"}
+  ]
+}

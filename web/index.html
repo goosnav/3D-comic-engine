@@ -14,22 +14,15 @@
     <h1>3D Comic Engine</h1>
   </header>
   <main>
-    <section class="intro" aria-label="How it works">
-      <ol>
-        <li>Choose a template and comic pages.</li>
-        <li>Write the dialogue.</li>
-        <li>Generate and download your video.</li>
-      </ol>
-    </section>
     <section class="panel starter" aria-labelledby="start-heading">
       <div class="starter-heading">
-        <div><h2 id="start-heading">Start here</h2><p class="hint">Open your JSON, try a worked example, or choose comic pages below and write your own.</p></div>
+        <div><h2 id="start-heading">Start here</h2></div>
         <button id="new-video" type="button" disabled>Start blank</button>
       </div>
       <div class="starter-actions">
         <div>
           <label class="file-label primary" for="upload-json-top">Upload JSON<input id="upload-json-top" type="file" accept=".json,application/json" aria-describedby="upload-help"></label>
-          <p id="upload-help" class="hint">Open a script from this device. Your current draft is kept until the file is checked.</p>
+          <p id="upload-help" class="hint">Open a saved script.</p>
           <a class="template-link" href="./templates/blank-book-duet.json" download>Download blank JSON template</a>
         </div>
         <div>
@@ -43,23 +36,21 @@
             </select>
             <button id="load-example" type="button" disabled>Load example</button>
           </div>
-          <p class="hint">Complete scripts with dialogue and stage directions. Edit them before generating.</p>
         </div>
       </div>
       <p id="start-status" class="status">Loading the editor…</p>
     </section>
     <section class="panel batch-panel" aria-labelledby="batch-heading">
       <div class="batch-heading">
-        <div><h2 id="batch-heading">Batch render JSON scripts</h2><p class="hint">Select scripts once, render them in a queue, then download the MP4s together. Each film uses its own JSON dialogue, scene, cast, timing, resolution and frame rate.</p></div>
+        <div><h2 id="batch-heading">Batch render JSON scripts</h2><p class="hint">Select scripts and download the finished videos together.</p></div>
         <span class="batch-format">JSON → MP4</span>
       </div>
       <div class="toolbar batch-imports">
         <label class="file-label primary" for="batch-files">Add JSON files<input id="batch-files" type="file" accept=".json,application/json" multiple disabled></label>
         <label class="file-label" for="batch-folder">Add folder<input id="batch-folder" type="file" accept=".json,application/json" webkitdirectory directory multiple disabled></label>
-        <button id="batch-load-pages" type="button" disabled>Load page 1–25 scripts</button>
         <button id="batch-add-editor" type="button" disabled>Add current editor script</button>
       </div>
-      <p class="hint">Add several files or a folder, or choose from scripts already in your library below. Up to 100 scripts per batch; 2 MiB per JSON. Folder imports include JSON files in subfolders.</p>
+      <p class="hint">Up to 100 scripts per batch. Maximum JSON size: 2 MiB.</p>
       <p id="batch-import-status" class="status" role="status" aria-live="polite"></p>
       <p id="batch-storage-status" class="status" role="status"></p>
       <div class="batch-library-heading">
@@ -70,7 +61,7 @@
         <button id="batch-clear-selection" type="button" disabled>Clear selection</button>
         <button id="batch-remove-selected" type="button" disabled>Remove selected</button>
       </div>
-      <p id="batch-library-empty" class="batch-empty">No scripts added yet. Your uploaded JSONs will appear here with their original settings.</p>
+      <p id="batch-library-empty" class="batch-empty">No scripts added.</p>
       <ul id="batch-library" class="batch-library" aria-label="Uploaded script library"></ul>
       <div class="batch-start">
         <div><label for="batch-voice">Batch voice</label><select id="batch-voice" disabled><option value="flite">On-device Flite (no model needed)</option><option value="kokoro">Local Kokoro (optional install)</option><option value="recorded">Recorded audio paths in JSON</option></select></div>
@@ -79,7 +70,7 @@
       <p id="batch-device-note" class="hint" hidden>Keep this tab visible and your device awake until the queue finishes. Download your videos before closing the tab. Batch rendering requires MP4 support in your browser.</p>
       <div class="batch-results-heading"><h3>Batch results</h3><button id="batch-refresh" type="button">Refresh batches</button></div>
       <p id="batch-runs-status" class="status" role="status"></p>
-      <p id="batch-runs-empty" class="batch-empty">Start a batch to see progress and download completed MP4s as one ZIP.</p>
+      <p id="batch-runs-empty" class="batch-empty">No batches yet.</p>
       <div id="batch-runs" class="batch-runs" aria-label="Batch render results"></div>
     </section>
     <div class="workspace">
@@ -94,7 +85,6 @@
           </div>
           <p id="edition" class="edition"></p>
           <div id="page-selectors"><p class="muted">Loading the local catalog…</p></div>
-          <p class="hint">Random comic changes one page at a time. Your other pages, dialogue and settings stay in place.</p>
           <button id="add-page" type="button" hidden>+ Add page</button>
           <div id="page-previews" class="page-previews" aria-label="Selected page previews"></div>
         </fieldset>
@@ -122,7 +112,6 @@
             <div><label for="captions-reader">Reader caption color</label><input id="captions-reader" type="color" value="#ffe35b"></div>
             <div><label for="captions-friend">Friend caption color</label><input id="captions-friend" type="color" value="#6ee7ff"></div>
           </div>
-          <p class="hint">Bold Helvetica captions follow short spoken phrases. Each shot keeps a static camera. Dialogue cuts immediately unless you set a pause in JSON.</p>
           <div class="subheading"><h3>Characters</h3></div>
           <div class="field-pair">
             <div><label for="reader-clothing">Reader character</label><select id="reader-clothing"></select></div>

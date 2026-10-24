@@ -148,3 +148,9 @@ shots, colored phrase captions, abrupt arm gestures, crying, a rocket punch,
 flattening, nose removal and replacement, head spins/jerks, a flying book,
 explosion, and walking off stage. It uses zero default dialogue pauses and lets
 characters reappear at the next cut without a return animation.
+
+### Cursor chaos and library worlds
+
+`cursor-chaos.json` combines cosmic rage, nose contact, high fives, handshakes, dancing, rocket punches and tracked ascent in the black-pyramid desert. Change `scene` to `space` or `red-mesas` to use the other library worlds. In space, try `astronaut` and `astronaut-beady` for the glass helmets and squashed noses. Every action holds its outcome until the cut.
+
+`space-chaos.json` showcases the glass helmets. `backrooms-reading.json` and `courtyard-reading.json` start in the Backrooms and `starter-overgrown-courtyard` settings. All five library worlds are available in the Scene dropdown.

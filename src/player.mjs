@@ -257,7 +257,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
   const comics = validate(timeline, catalog);
   const environment = sceneAsset(catalog, timeline.scene);
   const loading = message => { signal?.throwIfAborted(); onProgress(message, { phase: 'loading', progress: null, message }); };
-  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x192929);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(catalog.scenes?.find(s=>s.id===timeline.scene)?.backgroundColor ?? 0x192929);
   const insertScene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(38, timeline.width / timeline.height, .04, 500);
   const insertCamera = new THREE.OrthographicCamera(-camera.aspect, camera.aspect, 1, -1, .1, 5);
@@ -281,7 +281,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       const gltf = await loader.loadAsync(assetURL(assetBase, environment.path));
       environmentRoot = gltf.scene; loadedRoots.push(environmentRoot);
       environmentRoot.name = `environment-${timeline.scene}`;
-      environmentRoot.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      environmentRoot.traverse(o => { if (o.isMesh) { o.castShadow = !o.userData.background; o.receiveShadow = !o.userData.background; } });
     }
     const selections = timeline.cast.map(id => actorAsset(catalog, timeline, id));
     for (const { asset } of selections) if (!actorModels.has(asset.path)) {

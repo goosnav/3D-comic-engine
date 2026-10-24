@@ -107,7 +107,6 @@ Open **Batch render JSON scripts** near the top of the app. **Add JSON files**
 accepts a multiple-file selection. **Add folder** reads JSON files throughout the
 chosen folder and its subfolders. Non-JSON files and CLI manifest arrays are
 skipped, so you can choose the repository's `examples/` folder directly.
-Alternatively, **Load page 1–25 scripts** adds the complete page set in order.
 
 The **Script library** keeps imported scripts separate from the current editor.
 Select any combination with the checkboxes, or click **Select all**. Files
@@ -307,7 +306,7 @@ Merge these fields into a complete script. Available variants: `blue`, `rust`,
 eyes without whites. You can mix the eye styles in one cast. Default readers wear
 different colors. Accessory variants are `cowboy`, `glasses`, `crooked` (lopsided
 tall hat), and `astronaut`; each also has a `-beady` version. Astronauts require
-`moon-base` or `tv-studio`. With Template default, the engine selects a compatible
+`moon-base`, `tv-studio`, `space`, `black-pyramids`, `red-mesas`, `backrooms`, or `starter-overgrown-courtyard`. Their helmets have clear glass and a squashed nose. With Template default, the engine selects a compatible
 scene; an explicitly incompatible scene is rejected, not silently changed.
 Book Two is the currently supported
 product. Omitted end-card values use the example defaults. Title/text/URL limits
@@ -355,8 +354,8 @@ Lines inherit the last comic ID. Every selected comic needs a dialogue line, and
 you cannot reference an undeclared comic. A change to a nonadjacent page is a
 deliberate edit/source cut, not a fake continuous page flip.
 
-`scene` may be `library`, `fireside`, `diner`, `basement`, `moon-base`, or
-`tv-studio`, if compatible with the template. The four new settings are optional;
+`scene` may be `library`, `fireside`, `diner`, `basement`, `moon-base`,
+`tv-studio`, `space`, `black-pyramids`, `red-mesas`, `backrooms`, or `starter-overgrown-courtyard`, if compatible with the template. The additional settings are optional;
 ordinary scripts still choose from their original default scenes. Astronauts
 without an explicit scene choose from compatible settings. Omit `seed` for fresh variation; the chosen seed and all
 defaults are saved in the run. Resume retains them. Randomness never changes the
@@ -517,3 +516,5 @@ For JSON settings and the full action list, see the
 Speech is trimmed at its edges and cuts straight into the next beat unless you
 request a pause or line-end reaction. Phrase timing is estimated from measured
 speech energy; it is not exact word alignment.
+
+Try **Please Stop Touching the Universe** from the example menu for nose contact, a high five, handshake, erratic dance, a stronger punch, and tracked ascent. Each is available in the Action dropdown. Set Actor and Target for partner actions; ascent sends Actor upward while Target watches. Use `cosmic_rage` during dialogue for violent body motion without an extra action beat. All cameras remain still.

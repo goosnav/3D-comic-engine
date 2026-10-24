@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "The Garden Has Read the Book",
+  "comics": [
+    "book2-020"
+  ],
+  "seed": 81,
+  "scene": "starter-overgrown-courtyard",
+  "characters": {
+    "reader": "cowboy",
+    "friend": "glasses"
+  },
+  "output": {
+    "preset": "instagram_reels",
+    "fps": 24
+  },
+  "captions": {
+    "enabled": true,
+    "position": "top",
+    "colors": {
+      "reader": "#FFE35B",
+      "friend": "#6EE7FF"
+    }
+  },
+  "endCard": {
+    "enabled": false
+  },
+  "lines": [
+    {
+      "speaker": "reader",
+      "text": "The garden has read the book.",
+      "shot": "wide"
+    },
+    {
+      "speaker": "friend",
+      "text": "Finally. An educated shrub.",
+      "shot": "medium"
+    },
+    {
+      "action": "high_five",
+      "seconds": 1,
+      "shot": "two-shot"
+    }
+  ]
+}

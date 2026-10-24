@@ -48,8 +48,7 @@ Optional higher-quality local voice: Python 3.10–3.12,
 Use **Batch render JSON scripts** near the top of the app:
 
 1. Choose **Add JSON files** to select several files, **Add folder** to include the
-   JSONs in a folder and its subfolders, or **Load page 1–25 scripts** for the
-   [25-page example set](examples/README.md).
+   JSONs in a folder and its subfolders.
 2. Select scripts from the **Script library**, or use **Select all**. Scripts
    uploaded into the editor are also kept in this library. **Add current editor
    script** saves a separate copy of your current draft for batch selection.
@@ -194,3 +193,5 @@ Try `examples/chaotic-comedy.json` for the new actions and captions; its dialogu
 is invented commentary.
 The corrected hats, glasses and folding book are bundled GLBs; editable Blender
 sources and rebuild scripts are saved in the companion `goosnav-3D-assets` library.
+
+The scene selector also includes **Meridian — Space Platform**, **Black Pyramids — Sunset Desert**, **Red Mesas — Canyon Overlook**, **Backrooms — The Rooms Beyond**, and **Starter Overgrown Courtyard**, adapted from the active 3D asset library. Astronaut variants now have glass helmets and the original nose pressed against the glass. Try [cursor-chaos.json](examples/cursor-chaos.json) for nose touching, high fives, handshakes, erratic dancing, and tracked ascent. Partner actions use `actor` and `target`; ascent makes the target watch the actor rise out of frame. Wild limbs jump at 24 Hz, deliberately overextend, and continue until the cut.

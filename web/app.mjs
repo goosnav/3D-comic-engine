@@ -1,4 +1,4 @@
-import { EMOTIONS, GESTURES, GAZES, ACTIONS, ACTOR_ACTIONS, OUTPUT_PRESETS } from '../src/contracts.mjs';
+import { EMOTIONS, GESTURES, GAZES, ACTIONS, ACTOR_ACTIONS, PARTNER_ACTIONS, OUTPUT_PRESETS } from '../src/contracts.mjs';
 import { editorDefaults } from '../src/editor-defaults.mjs';
 import { comicReplacements, replaceComic, randomComic } from '../src/editor-selection.mjs';
 import { createBatchUI } from './batch.mjs';
@@ -386,7 +386,7 @@ function renderLines() {
       const seconds = el('input'); seconds.id = `line-${index}-seconds`; seconds.type = 'number'; seconds.step = '.1'; seconds.min = '.3'; seconds.max = '8'; seconds.placeholder = 'Automatic'; seconds.value = line.seconds ?? '';
       seconds.addEventListener('input', () => { if (seconds.value === '') delete line.seconds; else line.seconds = seconds.valueAsNumber; changed(); });
       controls.append(field('Duration (seconds)', seconds));
-      if (ACTOR_ACTIONS.includes(line.action)) for (const key of line.action === 'punch' ? ['actor', 'target'] : ['actor']) {
+      if (ACTOR_ACTIONS.includes(line.action)) for (const key of PARTNER_ACTIONS.includes(line.action) ? ['actor', 'target'] : ['actor']) {
         const select = el('select'); select.id = `line-${index}-${key}`;
         choose(select, templateFor(state.script).speakers, line[key], 'Automatic');
         select.addEventListener('change', () => { if (select.value) line[key] = select.value; else delete line[key]; changed(); });
