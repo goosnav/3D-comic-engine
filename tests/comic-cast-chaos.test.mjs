@@ -172,3 +172,19 @@ test('chaos CLI writes one script or a folder of scripts with a batch manifest',
     await assert.rejects(run(process.execPath, [bin, 'chaos', '--intensity', 'calm']), e => e.code === 2);
   } finally { await fs.rm(dir, {recursive: true, force: true}); }
 });
+
+test('colour grade is optional, validated, and carried to the timeline', async () => {
+  const {GRADES} = await import('../src/contracts.mjs');
+  const {GRADE_IDS, DEFAULT_GRADE} = await import('../src/grade.mjs');
+  assert.deepEqual(GRADES, GRADE_IDS);
+  assert.equal(DEFAULT_GRADE, 'muted');
+  const plain = resolveScript(raw, catalog);
+  assert.equal(plain.grade, undefined, 'omitted grade keeps the resolved shape (renders muted)');
+  for (const grade of GRADES) {
+    const resolved = resolveScript({...raw, grade}, catalog);
+    assert.equal(resolved.grade, grade);
+    assert.deepEqual(resolveScript(resolved, catalog), resolved);
+    assert.equal(compileTimeline(resolved, {'beat-0': {duration: 1}}).grade, grade);
+  }
+  assert.throws(() => resolveScript({...raw, grade: 'sepia'}, catalog), /grade/);
+});

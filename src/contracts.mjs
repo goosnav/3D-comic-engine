@@ -12,6 +12,8 @@ export const PARTNER_ACTIONS=['punch','nose_touch','high_five','handshake','asce
 export const GMOD_ACTIONS=['t_pose','ragdoll','noclip','big_head','jitter','helicopter','goose_chase'];
 export const ACTOR_ACTIONS=['punch','explode','flatten','nose_off','head_spin','head_jerk','walk_away','nose_touch','high_five','handshake','dance','ascend',...GMOD_ACTIONS];
 export const MAX_EXTRAS=4;
+// Colour grade of the 3D stage (src/grade.mjs). Omitted means muted.
+export const GRADES=['muted','film','vivid'];
 export const ACTIONS=[...BOOK_ACTIONS,...ACTOR_ACTIONS];
 export const GAZES=['auto','partner','away','book','ceiling','camera'];
 export const OUTPUT_PRESETS=Object.freeze({
@@ -83,7 +85,7 @@ function selectScene(requested,template,characters,catalog,seed){
  return pool[Math.floor(seeded(seed)()*pool.length)];
 }
 export function resolveScript(raw,catalog){
- keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard','captions','extras'], 'script');
+ keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard','captions','extras','grade'], 'script');
  if((raw.version??1)!==1)fail('version must be 1');
  if(typeof raw.title!=='string'||!raw.title.trim()||raw.title.length>160)fail('title must contain 1–160 characters');
  const {t,selected}=selection(raw.template,raw.comics,catalog);
@@ -150,7 +152,8 @@ export function resolveScript(raw,catalog){
  if(!used.size)fail('At least one dialogue line is required');for(const c of raw.comics)if(!used.has(c))fail(`Selected comic ${c} needs a dialogue line`);
  const output=resolveOutput(raw.output);
  const extras=resolveExtras(raw.extras,lines,catalog);
- return {version:1,template:t.id,title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,captions,...(extras.length?{extras}:{}),cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
+ if(raw.grade!==undefined)choice(raw.grade,GRADES,'grade');
+ return {version:1,template:t.id,title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,captions,...(extras.length?{extras}:{}),...(raw.grade!==undefined?{grade:raw.grade}:{}),cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
 }
 export function selectScript(template,seed=randomInt(0,2147483647),catalog){
  const t=catalog.templates.find(t=>t.id===template);if(!t)fail('Unknown template');number(seed,0,4294967295,'seed');const rand=seeded(seed);

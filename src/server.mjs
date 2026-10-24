@@ -63,7 +63,7 @@ export async function startServer({port=0,outputRoot=OUTPUT,renderCatalog,batchJ
    const web={'/':'web/index.html','/app.mjs':'web/app.mjs','/batch.mjs':'web/batch.mjs','/style.css':'web/style.css'};
    if(web[p])return file(req,res,await safePath(ROOT,web[p]));
    if(scriptTemplates.has(p))return file(req,res,await safePath(ROOT,p.slice(1)));
-   if(['/src/contracts.mjs','/src/editor-defaults.mjs','/src/editor-selection.mjs','/src/gesture-performance.mjs','/src/player.mjs','/src/stunts.mjs','/src/captions.mjs','/src/speech-timing.mjs','/src/actor.mjs','/src/facial-performance.mjs','/src/endcard.mjs','/src/endcard-video.mjs','/src/endcard-frames.mjs','/src/book.mjs','/src/book-pages.mjs','/src/zip.mjs','/src/extras.mjs','/src/goose.mjs','/src/chaos.mjs'].includes(p)||p.startsWith('/node_modules/three/')&&p.endsWith('.js'))return file(req,res,await safePath(ROOT,p.slice(1)));
+   if(['/src/contracts.mjs','/src/editor-defaults.mjs','/src/editor-selection.mjs','/src/gesture-performance.mjs','/src/player.mjs','/src/stunts.mjs','/src/captions.mjs','/src/speech-timing.mjs','/src/actor.mjs','/src/facial-performance.mjs','/src/endcard.mjs','/src/endcard-video.mjs','/src/endcard-frames.mjs','/src/book.mjs','/src/book-pages.mjs','/src/zip.mjs','/src/extras.mjs','/src/goose.mjs','/src/chaos.mjs','/src/grade.mjs'].includes(p)||p.startsWith('/node_modules/three/')&&p.endsWith('.js'))return file(req,res,await safePath(ROOT,p.slice(1)));
    json(res,404,{error:'Not found'});
   }catch(e){if(!res.headersSent)json(res,e.statusCode??(e.code==='ENOENT'?404:400),{error:e.message});else res.destroy();}
  });

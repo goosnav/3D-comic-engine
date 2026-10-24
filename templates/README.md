@@ -64,6 +64,7 @@ JSON has no comments. Put notes in a separate file; fields such as `notes`,
 | `captions` | No | Enabled by default; `position` is `top` or `bottom`, with `colors.reader` and `colors.friend` as six-digit hex colors. |
 | `output` | No | `{ "width": 1080, "height": 1920, "fps": 24 }` by default. Width/height must be even integers from 128 through 1920. FPS is 12, 24, or 30. |
 | `endCard` | No | Optional final product card. See below. |
+| `grade` | No | Colour grade of the 3D stage: `muted` (default, slightly drab), `film` (dusty, faded, grainy) or `vivid` (the original bright colours). Comic page inserts, captions and the end card are never graded. |
 | `extras` | No | Up to four background cameos: `goose`, `glove-bot`, `walker`, `shoe-hat`. See below. |
 
 ### Format, source count, and cast

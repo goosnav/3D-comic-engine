@@ -144,6 +144,7 @@ free dependency downloads; rendering does not contact external services.
 - Garry's Mod-style stunts: T-pose glide, ragdoll, noclip, big head, prop jitter, helicopter, goose chase.
 - Comic cast: Little Billy (spinning propeller cap) and the gooby-hat guy as castable characters.
 - Background cameos: an orange-billed goose, Glove Bot, the two-legged walker and the shoe-hat creature.
+- Colour grading: a slightly drab `muted` look by default, plus `film` and `vivid`; page inserts stay exact.
 - Automatic chaos scripts from a seed (`chaos` command / **Generate chaos script** button), no AI.
 - Editable retro end card using the actual spinning-book video.
 - Exact source hashes and embedded-book page checks; no silent page substitutions.

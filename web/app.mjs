@@ -479,6 +479,7 @@ function renderOutput() {
   const size = OUTPUT_PRESETS[preset] ?? {width:1080,height:1920};
   for (const key of ['width','height']) { $(`output-${key}`).value = output[key] ?? size[key]; $(`output-${key}`).disabled = preset !== 'custom'; }
   $('output-fps').value = output.fps ?? 24;
+  $('grade').value = state.script.grade ?? 'muted';
 }
 function renderForm() {
   choose($('template'), templates().map(item => ({ id: item.id, label: `${item.id} · ${item.label}` })), state.script.template);
@@ -618,6 +619,10 @@ $('output-preset').addEventListener('change', () => {
 });
 for (const key of ['width','height','fps']) $(`output-${key}`).addEventListener('change', () => {
   state.script.output = {...state.script.output, [key]:Number($(`output-${key}`).value)}; changed();
+});
+$('grade').addEventListener('change', () => {
+  if ($('grade').value === 'muted') delete state.script.grade; else state.script.grade = $('grade').value;
+  changed();
 });
 $('add-action').addEventListener('click', () => {
   state.script.lines.push({action:'read'}); changed(); renderLines();

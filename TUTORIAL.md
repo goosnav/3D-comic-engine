@@ -75,6 +75,12 @@ dialogue from built-in phrase banks. No AI is involved. Pick **Mild**, **Wild** 
 **Unhinged** first. The result loads into the form like an example, so you can
 edit any line before rendering. The CLI equivalent is `node bin/theatre.mjs chaos`.
 
+**Color grade** (under Video size) sets the look of the 3D scenes. **Muted** is the
+default: slightly desaturated with soft blacks and a drab warm cast, so bright
+costumes don't read like a kids' show. **Film** is dustier and grainier; **Vivid**
+is the original bright look. The JSON field is `grade`. Comic page inserts,
+captions and the end card always keep their exact colours.
+
 Choose a template, then open a **Page** dropdown and scroll through book order,
 or use **Random comic** beside that row. Each click picks a different verified
 comic without duplicating another selected page. It keeps your dialogue, title,

@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createActor } from './actor.mjs';
+import { GRADES } from './contracts.mjs';
 import { createCaptions } from './captions.mjs';
 import { createStunts } from './stunts.mjs';
 import { createExtras } from './extras.mjs';
+import { createGrade, DEFAULT_GRADE } from './grade.mjs';
 import { createBook } from './book.mjs';
 import { createEndcard, endCardFields, loadEndcardVideo } from './endcard.mjs';
 import { loadEndcardFrames } from './endcard-frames.mjs';
@@ -234,6 +236,7 @@ function validate(timeline, catalog) {
       !Number.isInteger(timeline.frames) || timeline.frames < 1) throw new Error('Timeline requires events, positive integer fps and frames');
   for (const key of ['width', 'height']) if (!Number.isInteger(timeline[key]) || timeline[key] < 1 || timeline[key] > 4096) throw new Error(`Invalid timeline ${key}`);
   sceneAsset(catalog, timeline.scene);
+  if (timeline.grade !== undefined && !GRADES.includes(timeline.grade)) throw new Error(`Unknown grade: ${timeline.grade}`);
   if (!catalog?.assets?.book?.path) throw new Error('Catalog must supply book GLB');
   if (!Array.isArray(timeline.cast) || !timeline.cast.includes('reader') || timeline.cast.some(id => !['reader', 'friend'].includes(id)) || new Set(timeline.cast).size !== timeline.cast.length) throw new Error('Cast must contain reader and optionally friend');
   timeline.cast.forEach(id => actorAsset(catalog, timeline, id));
@@ -277,7 +280,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
   const textures = new Map(), loadedRoots = [];
   const endcards = new Map(), fonts = [];
   let renderRequest = 0;
-  let renderer, actors, book, stunts, extras, captions, sourcePlane, endcardVideo, disposed = false, frame = null, active = null, source = null, shot = 'two-shot', endcard = null;
+  let renderer, grade, actors, book, stunts, extras, captions, sourcePlane, endcardVideo, disposed = false, frame = null, active = null, source = null, shot = 'two-shot', endcard = null;
   try {
     // Load sequentially so every fulfilled allocation is owned even if a later load fails.
     const manager = new THREE.LoadingManager();
@@ -346,6 +349,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    grade = createGrade(renderer, timeline.width, timeline.height, timeline.grade ?? DEFAULT_GRADE);
     scene.add(new THREE.HemisphereLight(0xf7ead4, 0x395150, 2.1));
     const key = new THREE.DirectionalLight(0xffdfb1, 3.2);
     key.position.set(-2.5, 4, 3); key.castShadow = true;
@@ -383,7 +387,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
   } catch (error) {
     endcardVideo?.dispose();
     disposeObjects([scene, insertScene, captions?.scene, ...loadedRoots], [...textures.values()]);
-    fonts.forEach(f => document.fonts.delete(f)); renderer?.dispose(); throw error;
+    fonts.forEach(f => document.fonts.delete(f)); grade?.dispose(); renderer?.dispose(); throw error;
   }
 
   function renderAt(frameIndex) {
@@ -442,7 +446,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       const h = Math.min(.95, camera.aspect * .95 / ratio);
       sourcePlane.scale.set(h * ratio, h, 1);
       renderer.render(insertScene, insertCamera);
-    } else renderer.render(scene, camera);
+    } else grade.render(scene, camera, frame);
     if (captions.diagnostics()) {
       renderer.autoClear = false; renderer.clearDepth(); renderer.render(captions.scene, captions.camera); renderer.autoClear = true;
     }
@@ -450,7 +454,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
 
   function diagnostics() {
     return structuredClone({ frame, time: frame === null ? null : frame / timeline.fps,
-      scene: timeline.scene, shot, activeEvent: active?.id || null,
+      scene: timeline.scene, grade: grade.id, shot, activeEvent: active?.id || null,
       source: source ? { id: source.id, path: source.path, sha256: source.sha256, pdfPage: source.pdfPage, fit: shot === 'source' ? 'contain' : 'physical-page' } : null,
       endCard: endcard?.diagnostics() || null,
       stunt: stunts.diagnostics(), extras: extras.diagnostics(), captions: captions.diagnostics(),
@@ -468,7 +472,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
     endcardVideo?.dispose();
     disposeObjects([scene, insertScene, captions.scene, ...loadedRoots, ...[...endcards.values()].map(c => c.scene)], [...textures.values()]);
     fonts.forEach(f => document.fonts.delete(f));
-    renderer.renderLists.dispose(); renderer.dispose();
+    grade.dispose(); renderer.renderLists.dispose(); renderer.dispose();
   }
   try { await renderAt(0); } catch (error) { dispose(); throw error; }
   return { renderAt, diagnostics, dispose };
