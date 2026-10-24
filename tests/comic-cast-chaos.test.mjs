@@ -170,6 +170,7 @@ test('chaos CLI writes one script or a folder of scripts with a batch manifest',
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(dir, 'batch.json'), 'utf8')), result.files.map(input => ({input})));
     for (const file of result.files) resolveScript(JSON.parse(await fs.readFile(path.join(dir, file), 'utf8')), catalog);
     await assert.rejects(run(process.execPath, [bin, 'chaos', '--intensity', 'calm']), e => e.code === 2);
+    for (const flag of [['--dither', 'max'], ['--grade', 'sepia']]) await assert.rejects(run(process.execPath, [bin, 'render', path.join(dir, 'chaos-40.json'), ...flag]), e => e.code === 2 && new RegExp(flag[0]).test(e.stderr));
   } finally { await fs.rm(dir, {recursive: true, force: true}); }
 });
 
@@ -187,4 +188,20 @@ test('colour grade is optional, validated, and carried to the timeline', async (
     assert.equal(compileTimeline(resolved, {'beat-0': {duration: 1}}).grade, grade);
   }
   assert.throws(() => resolveScript({...raw, grade: 'sepia'}, catalog), /grade/);
+});
+
+test('dither is optional, validated, and carried to the timeline', async () => {
+  const {DITHERS} = await import('../src/contracts.mjs');
+  const {DITHER_IDS, DEFAULT_DITHER, ditherScale} = await import('../src/grade.mjs');
+  assert.deepEqual(DITHERS, DITHER_IDS);
+  assert.equal(DEFAULT_DITHER, 'subtle');
+  assert.equal(resolveScript(raw, catalog).dither, undefined);
+  for (const dither of DITHERS) {
+    const resolved = resolveScript({...raw, dither}, catalog);
+    assert.deepEqual(resolveScript(resolved, catalog), resolved);
+    assert.equal(compileTimeline(resolved, {'beat-0': {duration: 1}}).dither, dither);
+  }
+  assert.throws(() => resolveScript({...raw, dither: 'max'}, catalog), /dither/);
+  assert.equal(ditherScale(1080, 1920), 2);
+  assert.equal(ditherScale(432, 768), 1);
 });

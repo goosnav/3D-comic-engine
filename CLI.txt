@@ -39,6 +39,12 @@ Recorded paths are relative to the input JSON, never machine-global paths.
 --preview preserves the entire film and aspect ratio normally at up to 768 pixels / 12fps.
 Normal defaults: 1080x1920/24fps (Instagram Reels, 9:16). JSON output fields may override these defaults.
 Duration follows actual measured audio/reactions. Safety bound: 600 seconds.
+Look overrides (no JSON edit needed): --grade muted|film|vivid, --dither subtle|crunchy|off
+  node bin/theatre.mjs render script.json --dither off --grade vivid
+  node bin/theatre.mjs batch batch.json --dither crunchy
+Speed: renders use the real GPU through Vulkan when Chromium can reach it and
+fall back to software rendering automatically. Set THEATRE_GPU=0 to force
+software. GPU and software output can differ by a few pixel values.
 
 BATCH
   node bin/theatre.mjs batch examples/batch.json --preview --json

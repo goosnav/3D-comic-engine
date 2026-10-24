@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createActor } from './actor.mjs';
-import { GRADES } from './contracts.mjs';
+import { GRADES, DITHERS } from './contracts.mjs';
 import { createCaptions } from './captions.mjs';
 import { createStunts } from './stunts.mjs';
 import { createExtras } from './extras.mjs';
-import { createGrade, DEFAULT_GRADE } from './grade.mjs';
+import { createGrade, createFlatDitherMaterial, DEFAULT_GRADE, DEFAULT_DITHER } from './grade.mjs';
 import { createBook } from './book.mjs';
 import { createEndcard, endCardFields, loadEndcardVideo } from './endcard.mjs';
 import { loadEndcardFrames } from './endcard-frames.mjs';
@@ -237,6 +237,7 @@ function validate(timeline, catalog) {
   for (const key of ['width', 'height']) if (!Number.isInteger(timeline[key]) || timeline[key] < 1 || timeline[key] > 4096) throw new Error(`Invalid timeline ${key}`);
   sceneAsset(catalog, timeline.scene);
   if (timeline.grade !== undefined && !GRADES.includes(timeline.grade)) throw new Error(`Unknown grade: ${timeline.grade}`);
+  if (timeline.dither !== undefined && !DITHERS.includes(timeline.dither)) throw new Error(`Unknown dither: ${timeline.dither}`);
   if (!catalog?.assets?.book?.path) throw new Error('Catalog must supply book GLB');
   if (!Array.isArray(timeline.cast) || !timeline.cast.includes('reader') || timeline.cast.some(id => !['reader', 'friend'].includes(id)) || new Set(timeline.cast).size !== timeline.cast.length) throw new Error('Cast must contain reader and optionally friend');
   timeline.cast.forEach(id => actorAsset(catalog, timeline, id));
@@ -349,7 +350,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    grade = createGrade(renderer, timeline.width, timeline.height, timeline.grade ?? DEFAULT_GRADE);
+    grade = createGrade(renderer, timeline.width, timeline.height, { grade: timeline.grade ?? DEFAULT_GRADE, dither: timeline.dither ?? DEFAULT_DITHER });
     scene.add(new THREE.HemisphereLight(0xf7ead4, 0x395150, 2.1));
     const key = new THREE.DirectionalLight(0xffdfb1, 3.2);
     key.position.set(-2.5, 4, 3); key.castShadow = true;
@@ -380,7 +381,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
     });
     extras = createExtras({ scene, timeline, catalog, models: extraModels, actors });
     stunts = createStunts(actors);
-    captions = createCaptions(timeline.width, timeline.height, timeline.captions);
+    captions = createCaptions(timeline.width, timeline.height, timeline.captions, timeline.dither ?? DEFAULT_DITHER);
     book = createBook(bookGLTF, timeline, comics); scene.add(book.root);
     sourcePlane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ toneMapped: false }));
     insertScene.background = new THREE.Color(0xeee9df); insertScene.add(sourcePlane);
@@ -433,10 +434,19 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
         frameSource: endcardMode === 'frames' ? endcardVideo : undefined,
         videoAsset: endcardMode === 'frames' ? catalog.assets.endCardFrames : catalog.assets.endCardVideo }));
       endcard = endcards.get(endEvent); shot = 'endcard'; source = null;
+      const plane = endcard.scene.children[0];
+      if (!plane.userData.dithered) {
+        // Dither while drawing the flat card: no offscreen pass, so real-time
+        // browser exports keep up even on software rendering.
+        const flat = createFlatDitherMaterial(plane.material.map, timeline.width, timeline.height, grade.dither);
+        if (flat) { plane.material.dispose(); plane.material = flat; }
+        plane.userData.dithered = true;
+      }
       const card = endcard;
       return card.renderAt(time - endEvent.start).then(() => {
         if (disposed) throw new Error('Player is disposed');
         if (request !== renderRequest) return;
+        // The end card shares the dither, never the colour grade.
         renderer.render(card.scene, card.camera);
       });
     } else if (source && shot === 'source') {
@@ -454,7 +464,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
 
   function diagnostics() {
     return structuredClone({ frame, time: frame === null ? null : frame / timeline.fps,
-      scene: timeline.scene, grade: grade.id, shot, activeEvent: active?.id || null,
+      scene: timeline.scene, grade: grade.id, dither: grade.dither, shot, activeEvent: active?.id || null,
       source: source ? { id: source.id, path: source.path, sha256: source.sha256, pdfPage: source.pdfPage, fit: shot === 'source' ? 'contain' : 'physical-page' } : null,
       endCard: endcard?.diagnostics() || null,
       stunt: stunts.diagnostics(), extras: extras.diagnostics(), captions: captions.diagnostics(),

@@ -14,6 +14,8 @@ export const ACTOR_ACTIONS=['punch','explode','flatten','nose_off','head_spin','
 export const MAX_EXTRAS=4;
 // Colour grade of the 3D stage (src/grade.mjs). Omitted means muted.
 export const GRADES=['muted','film','vivid'];
+// Ordered dither over the whole picture and captions. Omitted means subtle.
+export const DITHERS=['subtle','crunchy','off'];
 export const ACTIONS=[...BOOK_ACTIONS,...ACTOR_ACTIONS];
 export const GAZES=['auto','partner','away','book','ceiling','camera'];
 export const OUTPUT_PRESETS=Object.freeze({
@@ -85,7 +87,7 @@ function selectScene(requested,template,characters,catalog,seed){
  return pool[Math.floor(seeded(seed)()*pool.length)];
 }
 export function resolveScript(raw,catalog){
- keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard','captions','extras','grade'], 'script');
+ keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard','captions','extras','grade','dither'], 'script');
  if((raw.version??1)!==1)fail('version must be 1');
  if(typeof raw.title!=='string'||!raw.title.trim()||raw.title.length>160)fail('title must contain 1–160 characters');
  const {t,selected}=selection(raw.template,raw.comics,catalog);
@@ -153,7 +155,8 @@ export function resolveScript(raw,catalog){
  const output=resolveOutput(raw.output);
  const extras=resolveExtras(raw.extras,lines,catalog);
  if(raw.grade!==undefined)choice(raw.grade,GRADES,'grade');
- return {version:1,template:t.id,title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,captions,...(extras.length?{extras}:{}),...(raw.grade!==undefined?{grade:raw.grade}:{}),cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
+ if(raw.dither!==undefined)choice(raw.dither,DITHERS,'dither');
+ return {version:1,template:t.id,title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,captions,...(extras.length?{extras}:{}),...(raw.grade!==undefined?{grade:raw.grade}:{}),...(raw.dither!==undefined?{dither:raw.dither}:{}),cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
 }
 export function selectScript(template,seed=randomInt(0,2147483647),catalog){
  const t=catalog.templates.find(t=>t.id===template);if(!t)fail('Unknown template');number(seed,0,4294967295,'seed');const rand=seeded(seed);

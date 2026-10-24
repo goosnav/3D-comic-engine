@@ -145,6 +145,7 @@ free dependency downloads; rendering does not contact external services.
 - Comic cast: Little Billy (spinning propeller cap) and the gooby-hat guy as castable characters.
 - Background cameos: an orange-billed goose, Glove Bot, the two-legged walker and the shoe-hat creature.
 - Colour grading: a slightly drab `muted` look by default, plus `film` and `vivid`; page inserts stay exact.
+- Ordered dither over picture, captions and end card for a slightly crunchy digital look (`subtle`, `crunchy`, `off`).
 - Automatic chaos scripts from a seed (`chaos` command / **Generate chaos script** button), no AI.
 - Editable retro end card using the actual spinning-book video.
 - Exact source hashes and embedded-book page checks; no silent page substitutions.
@@ -183,6 +184,13 @@ npm run verify:assets
 
 [Design](DEV/DESIGN.md) · [Implementation plan](DEV/IMPLEMENTATION_PLAN.md) ·
 [Verification](DEV/VERIFICATION.md) · [Directory guide](DEV/README.md)
+
+Desktop renders use the GPU (Vulkan) when headless Chromium can reach it, and
+fall back to software rendering automatically (`THEATRE_GPU=0` forces software).
+Frames are captured with Chromium's fast screenshot path. On the development
+machine (Intel HD 530) a 1080×1920 frame renders in about 20 ms, against about
+600 ms in software. The `--grade` and `--dither` options on `render` and `batch`
+override a script's look without editing it.
 
 Linux/Chromium is the development test platform. macOS/Windows launchers and
 Safari/physical phones require native-device validation; supplying launchers is

@@ -480,6 +480,7 @@ function renderOutput() {
   for (const key of ['width','height']) { $(`output-${key}`).value = output[key] ?? size[key]; $(`output-${key}`).disabled = preset !== 'custom'; }
   $('output-fps').value = output.fps ?? 24;
   $('grade').value = state.script.grade ?? 'muted';
+  $('dither').value = state.script.dither ?? 'subtle';
 }
 function renderForm() {
   choose($('template'), templates().map(item => ({ id: item.id, label: `${item.id} · ${item.label}` })), state.script.template);
@@ -622,6 +623,10 @@ for (const key of ['width','height','fps']) $(`output-${key}`).addEventListener(
 });
 $('grade').addEventListener('change', () => {
   if ($('grade').value === 'muted') delete state.script.grade; else state.script.grade = $('grade').value;
+  changed();
+});
+$('dither').addEventListener('change', () => {
+  if ($('dither').value === 'subtle') delete state.script.dither; else state.script.dither = $('dither').value;
   changed();
 });
 $('add-action').addEventListener('click', () => {

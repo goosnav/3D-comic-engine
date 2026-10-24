@@ -31,7 +31,7 @@ export async function createJob(raw,{outputRoot=OUTPUT,inputRoot=ROOT,voice='fli
  await atomicJSON(path.join(dir,'job.json'),job);return job;
 }
 export const MAX_BATCH_JOBS=100;
-export async function runBatch(entries,{baseDir=ROOT,outputRoot=OUTPUT,voice='flite',preview=false,progress=()=>{}}={}){
+export async function runBatch(entries,{baseDir=ROOT,outputRoot=OUTPUT,voice='flite',preview=false,look={},progress=()=>{}}={}){
  if(!Array.isArray(entries)||entries.length<1||entries.length>MAX_BATCH_JOBS)throw Error(`Batch manifest must be an array of 1–${MAX_BATCH_JOBS} entries`);
  const results=[];
  for(const [index,entry] of entries.entries()){
@@ -42,6 +42,8 @@ export async function runBatch(entries,{baseDir=ROOT,outputRoot=OUTPUT,voice='fl
    if((await fs.stat(input)).size>256000)throw Error('Script exceeds the 256000-byte limit');
    const raw=JSON.parse(await fs.readFile(input,'utf8'));
    if(preview)raw.output=previewOutput(raw.output);
+   // CLI --grade/--dither override every script in the batch.
+   if(raw&&typeof raw==='object'&&!Array.isArray(raw))Object.assign(raw,look);
    job=await createJob(raw,{outputRoot,inputRoot:path.dirname(input),voice:entry.voice??voice});
    progress(`[${index+1}/${entries.length}] Run ${job.id}`);
    const finished=await processJob(job.id,{outputRoot,progress:message=>progress(`[${index+1}/${entries.length}] ${message}`)});

@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 const root = fileURLToPath(new URL('../', import.meta.url));
-test('muted and film grades calm the 3D stage; source inserts stay exact', { timeout: 180000 }, async t => {
+test('grades calm the stage, dither crunches stage and captions; source inserts stay exact', { timeout: 180000 }, async t => {
   const catalog = JSON.parse(await readFile(resolve(root, 'assets/catalog.json')));
   const server = createServer(async (req, res) => { try {
     if (req.url === '/') { res.setHeader('Content-Type', 'text/html'); return res.end('<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script><canvas></canvas>'); }
@@ -18,11 +18,11 @@ test('muted and film grades calm the 3D stage; source inserts stay exact', { tim
   const page = await browser.newPage(), errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto(`http://127.0.0.1:${server.address().port}`);
   const results = {};
-  for (const grade of ['vivid', 'muted', 'film']) {
-    const timeline = { version: 1, width: 216, height: 384, fps: 12, duration: 4, frames: 48, seed: 2, scene: 'library', cast: ['reader', 'friend'], characters: { reader: 'billy', friend: 'gooby' }, grade, sources: ['book2-020'], endCard: { enabled: false }, events: [
+  for (const [grade, dither] of [['vivid', 'off'], ['vivid', undefined], ['muted', undefined], ['film', undefined], ['muted', 'crunchy']]) {
+    const timeline = { dither, version: 1, width: 216, height: 384, fps: 12, duration: 4, frames: 48, seed: 2, scene: 'library', cast: ['reader', 'friend'], characters: { reader: 'billy', friend: 'gooby' }, grade, sources: ['book2-020'], endCard: { enabled: false }, events: [
       { id: 'a', type: 'line', speaker: 'reader', comic: 'book2-020', shot: 'two-shot', start: 0, end: 2, mouth: [] },
       { id: 'b', type: 'line', speaker: 'reader', comic: 'book2-020', shot: 'source', start: 2, end: 4, mouth: [] }] };
-    results[grade] = await page.evaluate(async ({ timeline, catalog }) => {
+    results[`${grade}-${dither ?? 'subtle'}`] = await page.evaluate(async ({ timeline, catalog }) => {
       const { createPlayer } = await import('/src/player.mjs');
       const canvas = document.querySelector('canvas'), player = await createPlayer(canvas, { timeline, catalog });
       const measure = async frame => {
@@ -39,11 +39,36 @@ test('muted and film grades calm the 3D stage; source inserts stay exact', { tim
       return { stage, source, again, grade: first };
     }, { timeline, catalog });
   }
+  // Captions snap to the dither palette: every opaque caption pixel is a level.
+  const caption = await page.evaluate(async () => {
+    const {createCaptions} = await import('/src/captions.mjs'), {DITHERS} = await import('/src/grade.mjs');
+    const out = {};
+    for (const dither of ['off', 'subtle', 'crunchy']) {
+      const layer = createCaptions(216, 384, {enabled: true, position: 'bottom', colors: {reader: '#ffe35b'}}, dither);
+      layer.draw({type: 'line', speaker: 'reader', start: 0, captions: [{text: 'Crunchy words', start: 0, end: 1}]}, .5);
+      const d = layer.scene.children[0].material.map.image.getContext('2d').getImageData(0, 0, 216, 384).data;
+      let visible = 0, offGrid = 0, partial = 0; const levels = DITHERS[dither]?.levels;
+      for (let i = 0; i < d.length; i += 4) {
+        if (!d[i + 3]) continue; visible++;
+        if (d[i + 3] < 255) partial++;
+        // Canvas storage is premultiplied, so only opaque pixels read back exactly.
+        if (levels && d[i + 3] === 255 && [0, 1, 2].some(c => d[i + c] !== Math.round(Math.round(d[i + c] / 255 * levels) / levels * 255))) offGrid++;
+      }
+      out[dither] = {visible, offGrid, partial};
+    }
+    return out;
+  });
+  t.diagnostic(JSON.stringify(caption));
+  for (const dither of ['subtle', 'crunchy']) { assert.ok(caption[dither].visible > 500); assert.equal(caption[dither].offGrid, 0); }
+  assert.ok(caption.off.visible > 500 && caption.off.partial > 0, 'dither off keeps smooth antialiasing');
   assert.deepEqual(errors, []);
   t.diagnostic(JSON.stringify(results));
-  assert.equal(results.muted.grade, 'muted');
-  assert.ok(results.muted.stage.sat < results.vivid.stage.sat * .85, 'muted pulls colour back');
-  assert.ok(results.film.stage.sat < results.muted.stage.sat, 'film is dustier still');
-  for (const grade of ['muted', 'film']) assert.deepEqual(results[grade].again, results[grade].stage, 'grain is deterministic per frame');
-  assert.deepEqual(results.muted.source, results.vivid.source, 'comic page inserts are never graded');
+  const r = results;
+  assert.equal(r['muted-subtle'].grade, 'muted');
+  assert.ok(r['muted-subtle'].stage.sat < r['vivid-subtle'].stage.sat * .85, 'muted pulls colour back');
+  assert.ok(r['film-subtle'].stage.sat < r['muted-subtle'].stage.sat, 'film is dustier still');
+  for (const key of Object.keys(r)) assert.deepEqual(r[key].again, r[key].stage, `${key}: grain and dither are deterministic per frame`);
+  assert.notDeepEqual(r['vivid-subtle'].stage, r['vivid-off'].stage, 'dither changes the picture');
+  assert.notDeepEqual(r['muted-crunchy'].stage, r['muted-subtle'].stage);
+  for (const key of Object.keys(r)) assert.deepEqual(r[key].source, r['vivid-off'].source, `${key}: comic page inserts are never graded or dithered`);
 });

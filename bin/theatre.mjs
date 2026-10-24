@@ -2,7 +2,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {ROOT,loadCatalog,verifyCatalog} from '../src/library.mjs';
-import {previewOutput,resolveScript,selectScript} from '../src/contracts.mjs';
+import {previewOutput,resolveScript,selectScript,GRADES,DITHERS} from '../src/contracts.mjs';
 import {createJob,processJob,listJobs,readJob,runBatch,MAX_BATCH_JOBS,OUTPUT} from '../src/jobs.mjs';
 import {run} from '../src/process.mjs';
 import {openBrowser} from './open-browser.mjs';
@@ -14,8 +14,8 @@ const help=`Comic Theatre — local JSON-driven book cutscenes
   node bin/theatre.mjs chaos [--seed NUMBER] [--template T] [--intensity mild|wild|unhinged] [--out script.json]
   node bin/theatre.mjs chaos --count N --out-dir DIR [--seed FIRST] [--template T] [--intensity LEVEL]
   node bin/theatre.mjs validate script.json
-  node bin/theatre.mjs render script.json [--voice flite|kokoro|recorded] [--preview] [--output-dir DIR]
-  node bin/theatre.mjs batch manifest.json [--voice flite|kokoro|recorded] [--preview] [--output-dir DIR]
+  node bin/theatre.mjs render script.json [--voice flite|kokoro|recorded] [--preview] [--grade G] [--dither D] [--output-dir DIR]
+  node bin/theatre.mjs batch manifest.json [--voice flite|kokoro|recorded] [--preview] [--grade G] [--dither D] [--output-dir DIR]
   node bin/theatre.mjs resume RUN_ID [--output-dir DIR]
   node bin/theatre.mjs status [RUN_ID] [--output-dir DIR]
   node bin/theatre.mjs draft script.json [--out draft.json]
@@ -30,6 +30,8 @@ Inputs resolve beneath the manifest directory; recordings resolve beside each sc
 Exit codes: 0 success; 1 production/runtime failure (including any failed batch item);
 2 invalid command, input JSON/contract or manifest; Ctrl+C normally exits 130.
 Flite is free bundled speech with no model/Python. Kokoro is optional local speech.
+--grade muted|film|vivid and --dither subtle|crunchy|off override the scripts' look.
+Renders use the GPU when available (THEATRE_GPU=0 forces software rendering).
 'chaos' writes complete seeded scripts (dialogue, stunts, cast, cameos) with no model.
 Rendering calls no paid service. 'draft' explicitly enables an optional local model.
 --preview preserves aspect ratio normally at up to 768 px / 12 fps. Default: Reels 1080×1920 / 24 fps.
@@ -50,7 +52,7 @@ const readJSON=async(file,maxBytes=256000)=>{
 };
 try{
  const command=args.shift()??'help',positional=[],options={};
- const allowed={gui:['port','no-open','output-dir'],select:['seed','out'],chaos:['seed','out','template','intensity','count','out-dir'],validate:[],render:['voice','preview','output-dir'],batch:['voice','preview','output-dir'],resume:['output-dir'],status:['output-dir'],draft:['out','template','seed'],assets:[],doctor:[],help:[]};
+ const allowed={gui:['port','no-open','output-dir'],select:['seed','out'],chaos:['seed','out','template','intensity','count','out-dir'],validate:[],render:['voice','preview','output-dir','grade','dither'],batch:['voice','preview','output-dir','grade','dither'],resume:['output-dir'],status:['output-dir'],draft:['out','template','seed'],assets:[],doctor:[],help:[]};
  if(command==='--help'||command==='-h'||command==='help'){emit({help},help);}
  else{
   if(!Object.hasOwn(allowed,command))invalid(`Unknown command '${command}'`);
@@ -69,6 +71,9 @@ try{
   else{
    if(positional.length>1||(['gui','assets','doctor'].includes(command)&&positional.length))invalid('Too many positional arguments');
    if(options.voice&&!['flite','kokoro','recorded'].includes(options.voice))invalid('--voice: choose flite, kokoro or recorded');
+   if(options.grade&&!GRADES.includes(options.grade))invalid(`--grade: choose ${GRADES.join(', ')}`);
+   if(options.dither&&!DITHERS.includes(options.dither))invalid(`--dither: choose ${DITHERS.join(', ')}`);
+   const look={...(options.grade?{grade:options.grade}:{}),...(options.dither?{dither:options.dither}:{})};
    if(options.seed!==undefined&&(!Number.isInteger(Number(options.seed))||Number(options.seed)<0||Number(options.seed)>4294967295))invalid('--seed must be an integer from 0 to 4294967295');
    const outputRoot=path.resolve(options['output-dir']??OUTPUT);
    const save=async value=>{
@@ -120,13 +125,14 @@ try{
     await save(await draftScript(raw,catalog));
    }else if(command==='render'){
     const raw=await readJSON(positional[0]);if(options.preview&&raw&&typeof raw==='object'&&!Array.isArray(raw))raw.output=previewOutput(raw.output);
+    if(raw&&typeof raw==='object'&&!Array.isArray(raw))Object.assign(raw,look);
     await validate(raw);
     const job=await createJob(raw,{voice:options.voice??'flite',inputRoot:path.dirname(path.resolve(positional[0])),outputRoot});
     progress(`Run ${job.id}`);const finished=await processJob(job.id,{outputRoot,progress});emit(finished,finished.verification.path);
    }else if(command==='batch'){
     const entries=await readJSON(positional[0],1024*1024);
     if(!Array.isArray(entries)||entries.length<1||entries.length>MAX_BATCH_JOBS)invalid(`Batch manifest must be an array of 1–${MAX_BATCH_JOBS} entries`);
-    const report=await runBatch(entries,{baseDir:path.dirname(path.resolve(positional[0])),outputRoot,voice:options.voice??'flite',preview:options.preview,progress});
+    const report=await runBatch(entries,{baseDir:path.dirname(path.resolve(positional[0])),outputRoot,voice:options.voice??'flite',preview:options.preview,look,progress});
     emit(report);if(!report.ok)process.exitCode=1;
    }else if(command==='resume'){
     if(!positional[0])invalid('Supply RUN_ID from status');

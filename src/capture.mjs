@@ -6,18 +6,37 @@ import {atomicJSON,segmentRanges} from './jobs.mjs';
 import {run,withDeadline} from './process.mjs';
 import {startServer} from './server.mjs';
 export async function probeVideo(file){return JSON.parse((await run(process.env.FFPROBE??'ffprobe',['-v','error','-count_frames','-show_streams','-show_format','-of','json',file])).toString());}
+// Real GPU (Vulkan via ANGLE) renders ~30x faster than the software
+// SwiftShader fallback. THEATRE_GPU=0 forces software; any GPU failure falls
+// back to software automatically. Pixels may differ slightly between the two.
+const GPU_ARGS=['--use-angle=vulkan','--enable-features=Vulkan','--ignore-gpu-blocklist','--disable-dev-shm-usage'];
+const SOFTWARE_ARGS=['--enable-unsafe-swiftshader','--disable-dev-shm-usage'];
 export async function captureVideo({dir,id,timeline,catalog,inputKey,progress=()=>{}}){
- const server=await startServer({outputRoot:path.dirname(dir),renderCatalog:catalog});let browser,page;
+ const server=await startServer({outputRoot:path.dirname(dir),renderCatalog:catalog});let browser,page,cdp,useGPU=process.env.THEATRE_GPU!=='0';
  const closeBrowser=async()=>{if(browser){const previous=browser;browser=null;await withDeadline(previous.close(),5000,'Browser shutdown').catch(()=>{});}};
  const segmentsDir=path.join(dir,'segments');await fs.mkdir(segmentsDir,{recursive:true});
  try{
-  const load=async()=>{
+  const open=async gpu=>{
    await closeBrowser();
-   browser=await chromium.launch({headless:true,timeout:60000,...(process.env.THEATRE_BROWSER?{executablePath:process.env.THEATRE_BROWSER}:{}),args:['--enable-unsafe-swiftshader','--disable-dev-shm-usage']});
+   browser=await chromium.launch({headless:true,timeout:60000,...(process.env.THEATRE_BROWSER?{executablePath:process.env.THEATRE_BROWSER}:{}),args:gpu?GPU_ARGS:SOFTWARE_ARGS});
    page=await withDeadline(browser.newPage({viewport:{width:timeline.width,height:timeline.height},deviceScaleFactor:1}),30000,'Browser page setup',closeBrowser);
    await page.route('**/*',route=>new URL(route.request().url()).origin===server.url?route.continue():route.abort());
    await page.goto(server.url+'/render/'+id);await page.waitForFunction(()=>window.renderReady||window.renderError,{},{timeout:60000});
    const error=await withDeadline(page.evaluate(()=>window.renderError),30000,'Renderer setup',closeBrowser);if(error)throw Error(error);
+   cdp=await page.context().newCDPSession(page);
+  };
+  const load=async()=>{
+   if(useGPU){
+    try{await open(true);await progress('Rendering on the GPU');return;}
+    catch(e){useGPU=false;await progress(`GPU rendering unavailable (${e.message.split('\n')[0]}); using software rendering`);}
+   }
+   await open(false);
+  };
+  // Fast-path capture: low-compression PNG straight from the compositor.
+  // Several times faster than a regular screenshot, and pixel-identical.
+  const capture=async file=>{
+   const shot=await withDeadline(cdp.send('Page.captureScreenshot',{format:'png',optimizeForSpeed:true,captureBeyondViewport:false,clip:{x:0,y:0,width:timeline.width,height:timeline.height,scale:1}}),30000,'Frame capture',closeBrowser);
+   await fs.writeFile(file,Buffer.from(shot.data,'base64'));
   };
   await load();const parts=[],ranges=segmentRanges(timeline.frames,timeline.fps);
   for(const [index,[start,end]]of ranges.entries()){
@@ -27,10 +46,11 @@ export async function captureVideo({dir,id,timeline,catalog,inputKey,progress=()
     let error;for(let attempt=0;attempt<3;attempt++){
      const framesDir=path.join(segmentsDir,name+'-frames');await fs.mkdir(framesDir,{recursive:true});
      try{
-      if(attempt){await progress(`Retry ${attempt}/2 of segment ${index+1}`);await load();}
+      // A retry after a GPU failure continues in software.
+      if(attempt){await progress(`Retry ${attempt}/2 of segment ${index+1}`);useGPU=false;await load();}
       for(let f=start;f<end;f++){
        await withDeadline(page.evaluate(f=>window.player.renderAt(f),f),30000,`Frame ${f}`,closeBrowser);
-       await page.locator('canvas').screenshot({path:path.join(framesDir,`frame-${String(f-start).padStart(6,'0')}.png`),timeout:30000});
+       await capture(path.join(framesDir,`frame-${String(f-start).padStart(6,'0')}.png`));
        if((f-start)%timeline.fps===0)await progress(`Rendering frame ${f+1}/${timeline.frames} · segment ${index+1}/${ranges.length}`);
       }
       await run(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-y','-framerate',String(timeline.fps),'-i',path.join(framesDir,'frame-%06d.png'),'-frames:v',String(end-start),'-c:v','libx264','-preset','veryfast','-crf','19','-pix_fmt','yuv420p','-threads','2','-an',mp4]);

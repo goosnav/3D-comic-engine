@@ -65,6 +65,7 @@ JSON has no comments. Put notes in a separate file; fields such as `notes`,
 | `output` | No | `{ "width": 1080, "height": 1920, "fps": 24 }` by default. Width/height must be even integers from 128 through 1920. FPS is 12, 24, or 30. |
 | `endCard` | No | Optional final product card. See below. |
 | `grade` | No | Colour grade of the 3D stage: `muted` (default, slightly drab), `film` (dusty, faded, grainy) or `vivid` (the original bright colours). Comic page inserts, captions and the end card are never graded. |
+| `dither` | No | Ordered (Bayer) dither over the 3D picture, captions and end card, for a slightly crunchy digital look: `subtle` (default), `crunchy` (strong bitcrushed pattern) or `off`. Full resolution, no pixelation. Comic page inserts are never dithered. |
 | `extras` | No | Up to four background cameos: `goose`, `glove-bot`, `walker`, `shoe-hat`. See below. |
 
 ### Format, source count, and cast

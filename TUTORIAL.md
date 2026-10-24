@@ -81,6 +81,13 @@ costumes don't read like a kids' show. **Film** is dustier and grainier; **Vivid
 is the original bright look. The JSON field is `grade`. Comic page inserts,
 captions and the end card always keep their exact colours.
 
+**Dither** adds a fixed ordered-dither pattern (like a palette-limited sprite or the
+spinning book on the end card) over the 3D scenes, the captions and the end card.
+**Subtle** (default) reads as a light digital crunch after video compression,
+**Crunchy** is a strong bitcrushed pattern, **Off** is smooth. It runs at full
+resolution; nothing is pixelated. The JSON field is `dither`. Comic page inserts
+are never dithered.
+
 Choose a template, then open a **Page** dropdown and scroll through book order,
 or use **Random comic** beside that row. Each click picks a different verified
 comic without duplicating another selected page. It keeps your dialogue, title,
