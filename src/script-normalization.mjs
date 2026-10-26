@@ -1,4 +1,5 @@
 import { CAPTION_DEFAULTS } from './caption-defaults.mjs';
+import { DEFAULT_SPEECH_RATE, MIN_SPEECH_RATE, MAX_SPEECH_RATE } from './speech-timing.mjs';
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const token = value => typeof value === 'string' ? value.trim().toLowerCase().replace(/[\s-]+/g, '_') : null;
@@ -108,6 +109,7 @@ export function normalizePresentation(raw, vocabulary, { repair = true } = {}) {
     if (!object(target.gaze)) { set(target, 'gaze', {}, `${prefix}.gaze`, 'invalid gaze object; using automatic gaze'); return; }
     for (const actor of ['reader', 'friend']) choice(target.gaze, actor, gazes, 'auto', `${prefix}.gaze.${actor}`, gazeAliases);
   }
+  numeric(script, 'speechRate', MIN_SPEECH_RATE, MAX_SPEECH_RATE, DEFAULT_SPEECH_RATE, 'speechRate');
   choice(script, 'grade', grades, 'muted', 'grade');
   choice(script, 'dither', dithers, 'subtle', 'dither');
   if (script.captions !== undefined) {

@@ -2,12 +2,20 @@
 import hashlib
 import importlib.metadata
 import json
+import math
 import os
 from pathlib import Path
 import sys
 
 os.environ.setdefault('HF_HUB_OFFLINE', '1')
 os.environ.setdefault('TRANSFORMERS_OFFLINE', '1')
+
+def speech_speed(request):
+    # Same bounds/default as src/speech-timing.mjs; JS normally sends an explicit value.
+    speed = request.get('speed', 1.15)
+    if isinstance(speed, bool) or not isinstance(speed, (int, float)) or not math.isfinite(speed) or not .5 <= speed <= 2:
+        raise ValueError('speechRate must be a number from 0.5 to 2')
+    return speed
 
 def model_folder():
     from huggingface_hub import snapshot_download
@@ -45,7 +53,7 @@ def main():
             if request['voice'] not in ['am_onyx', 'am_puck']:
                 raise ValueError('Unsupported voice; choose am_onyx or am_puck')
             chunks = [a.detach().cpu().numpy() for _, _, a in pipeline(
-                request['text'], voice=str(folder/'voices'/f"{request['voice']}.pt"), speed=1)]
+                request['text'], voice=str(folder/'voices'/f"{request['voice']}.pt"), speed=speech_speed(request))]
             if not chunks:
                 raise RuntimeError('Local speech returned no audio')
             audio = np.concatenate(chunks)

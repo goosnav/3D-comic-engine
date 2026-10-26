@@ -1,15 +1,17 @@
 import { WASI, File, OpenFile, ConsoleStdout, PreopenDirectory } from '@bjorn3/browser_wasi_shim';
+import { fliteDurationStretch } from './speech-timing.mjs';
 
 // A new WASI instance owns each take. No host filesystem, network, or shared heap.
-export async function synthesizeSpeech(module, text, { speaker = 'reader' } = {}) {
+export async function synthesizeSpeech(module, text, { speaker = 'reader', speechRate } = {}) {
   if (typeof text !== 'string' || !text.trim() || text.length > 1000 || text.includes('\0')) {
     throw new Error('Speech text must contain 1–1000 characters without NUL bytes');
   }
+  const durationStretch = fliteDurationStretch(speaker, speechRate);
   const output = new PreopenDirectory('/out', []), messages = [];
   const log = ConsoleStdout.lineBuffered(line => { if (messages.length < 8) messages.push(line); });
   const friend = speaker === 'friend';
   const wasi = new WASI(['flite', '-voice', 'kal', '--setf', `int_f0_target_mean=${friend ? 125 : 95}`,
-    '--setf', `duration_stretch=${friend ? 1 : 1.12}`, '-t', text, '-o', '/out/voice.wav'], [],
+    '--setf', `duration_stretch=${durationStretch}`, '-t', text, '-o', '/out/voice.wav'], [],
   [new OpenFile(new File([])), log, log, output], { debug: false });
   // Shim 0.4.2 counts UTF-16 characters here, but args_get writes UTF-8 bytes.
   // Correct the allocation size so curly quotes and other valid text cannot

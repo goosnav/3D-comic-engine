@@ -4,6 +4,7 @@ import {bookSpread} from './book-pages.mjs';
 import {emotions} from './facial-performance.mjs';
 import {gestures,ARM_GESTURES} from './gesture-performance.mjs';
 import {captionDefaults} from './caption-defaults.mjs';
+import {resolveSpeechRate} from './speech-timing.mjs';
 import {normalizePresentation,scriptWarnings} from './script-normalization.mjs';
 export const EMOTIONS=Object.keys(emotions);
 export const GESTURES=['none','explain','nod','head_tilt','shrug','page_glance',...Object.keys(gestures)];
@@ -94,7 +95,7 @@ export function repairScript(raw,options){
 }
 export function resolveScript(raw,catalog,options){
  raw=repairScript(raw,options);
- keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard','captions','extras','grade','dither','warnings'], 'script');
+ keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard','captions','extras','grade','dither','warnings','speechRate'], 'script');
  if((raw.version??1)!==1)fail('version must be 1');
  if(typeof raw.title!=='string'||!raw.title.trim()||raw.title.length>160)fail('title must contain 1–160 characters');
  const {t,selected}=selection(raw.template,raw.comics,catalog);
@@ -104,6 +105,7 @@ export function resolveScript(raw,catalog,options){
  choice(captions.position,['top','bottom'],'captions.position');
  if(raw.captions?.colors!==undefined)keys(raw.captions.colors,['reader','friend'],'captions.colors');
  for(const [id,color] of Object.entries(captions.colors))if(typeof color!=='string'||!/^#[0-9a-f]{6}$/i.test(color))fail(`captions.colors.${id} must be a six-digit hex color`);
+ const speechRate=resolveSpeechRate(raw.speechRate);
  const product=choice(raw.product??'book2',['book2'],'product');
  const variants=catalog.variants?.map(v=>v.id)??['blue','rust','olive'];
  const characters={};if(raw.characters!==undefined)keys(raw.characters,[...new Set(catalog.templates.flatMap(t=>t.speakers))],'characters');
@@ -163,7 +165,7 @@ export function resolveScript(raw,catalog,options){
  if(raw.grade!==undefined)choice(raw.grade,GRADES,'grade');
  if(raw.dither!==undefined)choice(raw.dither,DITHERS,'dither');
  const warnings=scriptWarnings(raw);
- return {...(warnings.length?{warnings}:{}),version:1,template:t.id,title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,captions,...(extras.length?{extras}:{}),...(raw.grade!==undefined?{grade:raw.grade}:{}),...(raw.dither!==undefined?{dither:raw.dither}:{}),cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
+ return {...(warnings.length?{warnings}:{}),version:1,template:t.id,title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,captions,speechRate,...(extras.length?{extras}:{}),...(raw.grade!==undefined?{grade:raw.grade}:{}),...(raw.dither!==undefined?{dither:raw.dither}:{}),cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
 }
 export function selectScript(template,seed=randomInt(0,2147483647),catalog){
  const t=catalog.templates.find(t=>t.id===template);if(!t)fail('Unknown template');number(seed,0,4294967295,'seed');const rand=seeded(seed);

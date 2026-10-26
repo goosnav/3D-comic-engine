@@ -4,6 +4,7 @@ import { comicReplacements, replaceComic, randomComic } from '../src/editor-sele
 import { createBatchUI } from './batch.mjs';
 import { captionDefaults } from '../src/caption-defaults.mjs';
 import { appendGeneratorNotes } from './generator-notes.mjs';
+import { DEFAULT_SPEECH_RATE, MIN_SPEECH_RATE, MAX_SPEECH_RATE } from '../src/speech-timing.mjs';
 
 const $ = id => document.getElementById(id);
 const browserMode=document.querySelector('meta[name="theatre-runtime"]')?.content==='browser';
@@ -36,6 +37,20 @@ const shots = [
 ];
 const exampleFiles = new Set(['book-duet.example.json', 'fireside.example.json', 'page-tour.example.json', 'astronaut.example.json']);
 const uploadInputs = ['upload-json-top', 'upload-json'];
+const speechRateInput = el('input');
+speechRateInput.id = 'speech-rate'; speechRateInput.type = 'number'; speechRateInput.inputMode = 'decimal';
+speechRateInput.min = String(MIN_SPEECH_RATE); speechRateInput.max = String(MAX_SPEECH_RATE); speechRateInput.step = '0.05';
+speechRateInput.value = String(DEFAULT_SPEECH_RATE); speechRateInput.disabled = true;
+speechRateInput.setAttribute('aria-describedby', 'speech-rate-help');
+const speechRateField = field('Speech speed (×)', speechRateInput);
+const speechRateHelp = el('p', `Speech only: ${MIN_SPEECH_RATE}–${MAX_SPEECH_RATE}×. Default ${DEFAULT_SPEECH_RATE}×; 1× restores the original pace. Animation, pauses and music are unchanged. Saved in each JSON, including batches.`, 'hint');
+speechRateHelp.id = 'speech-rate-help'; speechRateField.append(speechRateHelp);
+$('voice').parentElement.after(speechRateField);
+speechRateInput.addEventListener('input', () => {
+  if (!state.script || state.dirtyJSON || state.busy) return;
+  state.script.speechRate = Number.isFinite(speechRateInput.valueAsNumber) ? speechRateInput.valueAsNumber : null;
+  changed();
+});
 const batchUI = createBatchUI({
   api,
   isReady: () => Boolean(state.token && state.catalog),
@@ -54,6 +69,7 @@ function keepPresentation(result, original) {
     if (original[key] !== undefined) next[key] = { ...(object(next[key]) ? next[key] : {}), ...clone(original[key]) };
   }
   if (original.product !== undefined) next.product = original.product;
+  if (original.speechRate !== undefined) next.speechRate = original.speechRate;
   return next;
 }
 
@@ -72,6 +88,7 @@ function controls() {
   $('source-fields').disabled = paused;
   $('author-fields').disabled = paused;
   $('script-json').disabled = !state.script;
+  $('speech-rate').disabled = paused || state.busy;
   $('json-state').textContent = state.dirtyJSON ? 'Unapplied edits · form paused' : 'In sync';
   for (const button of document.querySelectorAll('[data-post]')) button.disabled = state.busy;
   $('new-video').disabled = !state.catalog;
@@ -473,6 +490,7 @@ function renderExtras() {
   }
 }
 function renderOutput() {
+  $('speech-rate').value = state.script.speechRate === undefined ? DEFAULT_SPEECH_RATE : state.script.speechRate ?? '';
   const captions=captionDefaults(state.script.captions);
   $('captions-enabled').checked=captions.enabled;
   $('captions-position').value=captions.position;

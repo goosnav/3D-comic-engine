@@ -1,3 +1,18 @@
+// Speech-only speed. Never use this multiplier to advance the animation clock.
+export const DEFAULT_SPEECH_RATE = 1.15;
+export const MIN_SPEECH_RATE = 0.5;
+export const MAX_SPEECH_RATE = 2;
+export function resolveSpeechRate(value = DEFAULT_SPEECH_RATE) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < MIN_SPEECH_RATE || value > MAX_SPEECH_RATE) {
+    throw new Error(`speechRate must be a number from ${MIN_SPEECH_RATE} to ${MAX_SPEECH_RATE}`);
+  }
+  return value;
+}
+// Retain each Flite speaker's original pacing at 1x; F0 and sample rate stay fixed.
+export function fliteDurationStretch(speaker, speechRate) {
+  return (speaker === 'friend' ? 1 : 1.12) / resolveSpeechRate(speechRate);
+}
+
 // Keep a short consonant margin while removing generated or recorded edge silence.
 export function speechBounds(samples, sampleRate) {
   let peak = 0;
