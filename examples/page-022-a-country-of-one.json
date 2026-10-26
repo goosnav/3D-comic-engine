@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 022 — A Country of One",
+  "comics": [
+    "book2-022"
+  ],
+  "seed": 2026102201,
+  "scene": "moon-base",
+  "characters": {
+    "reader": "astronaut-beady",
+    "friend": "astronaut"
+  },
+  "product": "book2",
+  "grade": "film",
+  "dither": "subtle",
+  "lines": [
+    {
+      "speaker": "reader",
+      "comic": "book2-022",
+      "text": "This comic says all the bad enemies are in other countries.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 0.65
+    },
+    {
+      "speaker": "friend",
+      "text": "There aren't any countries on the moon.",
+      "emotion": "pleased",
+      "gesture": "explain",
+      "shot": "two-shot",
+      "pause": 0.35
+    },
+    {
+      "speaker": "reader",
+      "text": "So we're safe.",
+      "emotion": "thoughtful",
+      "gesture": "nod",
+      "shot": "over-shoulder",
+      "pause": 0.45
+    },
+    {
+      "action": "read",
+      "seconds": 0.8,
+      "shot": "book"
+    },
+    {
+      "speaker": "friend",
+      "text": "We should start a country.",
+      "emotion": "neutral",
+      "gesture": "explain",
+      "shot": "speaker",
+      "pause": 0.4,
+      "gaze": {
+        "reader": "partner",
+        "friend": "camera"
+      }
+    },
+    {
+      "speaker": "reader",
+      "text": "Why?",
+      "emotion": "skeptical",
+      "gesture": "head_tilt",
+      "shot": "close-up",
+      "pause": 0.2
+    },
+    {
+      "speaker": "friend",
+      "text": "We're running out of people to blame.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 1.7,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "concerned",
+        "gesture": "none",
+        "at": "line_end",
+        "duration": 1.4,
+        "face": {
+          "eye_open": 0.85,
+          "mouth_curve": -0.3
+        }
+      }
+    },
+    {
+      "action": "close",
+      "seconds": 0.8,
+      "shot": "book"
+    }
+  ],
+  "output": {
+    "preset": "instagram_portrait",
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  },
+  "sourceLock": [
+    {
+      "id": "book2-022",
+      "sha256": "01f5538554b977ba3ff7c54e93625591d2ed401ae50f255e697ebfb7173bbcd8",
+      "pdfPage": 26,
+      "pdfSha256": "0b9edc67fc3ba74f8ec257d1c2cc86b35c5e7b1fa894f0395b622cc3125bb3a5"
+    }
+  ]
+}

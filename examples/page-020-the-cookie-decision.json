@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 020 — The Cookie Decision",
+  "comics": [
+    "book2-020"
+  ],
+  "seed": 2026102001,
+  "scene": "library",
+  "characters": {
+    "reader": "glasses",
+    "friend": "billy"
+  },
+  "product": "book2",
+  "grade": "muted",
+  "dither": "subtle",
+  "lines": [
+    {
+      "action": "open",
+      "comic": "book2-020",
+      "seconds": 1.25,
+      "shot": "book"
+    },
+    {
+      "speaker": "reader",
+      "text": "I will be one of the great men of history! My life will define an era!!",
+      "emotion": "pleased",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 0.4,
+      "gaze": {
+        "reader": "book",
+        "friend": "book"
+      }
+    },
+    {
+      "action": "hold",
+      "seconds": 0.8,
+      "shot": "book"
+    },
+    {
+      "speaker": "friend",
+      "text": "What's he accomplished?",
+      "emotion": "curious",
+      "gesture": "head_tilt",
+      "shot": "speaker",
+      "pause": 0.25
+    },
+    {
+      "speaker": "reader",
+      "text": "His mother offered him cookies.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "two-shot",
+      "pause": 0.35
+    },
+    {
+      "speaker": "friend",
+      "text": "Did he take one?",
+      "emotion": "curious",
+      "gesture": "none",
+      "shot": "close-up",
+      "pause": 0.25
+    },
+    {
+      "speaker": "reader",
+      "text": "He'll have it all figured out by thirty-five.",
+      "emotion": "dry",
+      "gesture": "head_tilt",
+      "shot": "source",
+      "pause": 0.55
+    },
+    {
+      "speaker": "friend",
+      "text": "It's important not to rush these decisions.",
+      "emotion": "thoughtful",
+      "gesture": "nod",
+      "shot": "two-shot",
+      "pause": 1.6,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "skeptical",
+        "gesture": "head_tilt",
+        "at": "line_end",
+        "duration": 1.15,
+        "gaze": "partner"
+      }
+    },
+    {
+      "action": "place",
+      "seconds": 0.8,
+      "shot": "book"
+    },
+    {
+      "action": "close",
+      "seconds": 0.75,
+      "shot": "book"
+    }
+  ],
+  "output": {
+    "preset": "instagram_reels",
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  },
+  "sourceLock": [
+    {
+      "id": "book2-020",
+      "sha256": "e5148320fc451303e9ea6f4c2bf225d86701db09ff7c351f80e4caa33661c472",
+      "pdfPage": 24,
+      "pdfSha256": "0b9edc67fc3ba74f8ec257d1c2cc86b35c5e7b1fa894f0395b622cc3125bb3a5"
+    }
+  ]
+}

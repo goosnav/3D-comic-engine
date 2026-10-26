@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "template": "book-duet",
+  "title": "Page 036 — Second Opinion",
+  "comics": [
+    "book2-036"
+  ],
+  "seed": 2026103601,
+  "scene": "backrooms",
+  "characters": {
+    "reader": "crooked-beady",
+    "friend": "olive"
+  },
+  "product": "book2",
+  "grade": "film",
+  "dither": "crunchy",
+  "lines": [
+    {
+      "action": "open",
+      "comic": "book2-036",
+      "seconds": 1,
+      "shot": "book"
+    },
+    {
+      "speaker": "reader",
+      "text": "Are you eating dirt & grubs off the ground?",
+      "emotion": "concerned",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 0.35
+    },
+    {
+      "speaker": "friend",
+      "text": "That's dangerous.",
+      "emotion": "skeptical",
+      "gesture": "head_tilt",
+      "shot": "speaker",
+      "pause": 0.25
+    },
+    {
+      "speaker": "reader",
+      "text": "My brain parasite says you're toxic",
+      "emotion": "dry",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 0.55
+    },
+    {
+      "speaker": "friend",
+      "text": "That thing needs supervision.",
+      "emotion": "concerned",
+      "gesture": "explain",
+      "shot": "two-shot",
+      "pause": 0.3
+    },
+    {
+      "speaker": "reader",
+      "text": "Who supervises a brain parasite?",
+      "emotion": "curious",
+      "gesture": "head_tilt",
+      "shot": "close-up",
+      "pause": 0.35
+    },
+    {
+      "speaker": "friend",
+      "text": "Another brain parasite.",
+      "emotion": "neutral",
+      "gesture": "nod",
+      "shot": "speaker",
+      "pause": 0.45
+    },
+    {
+      "speaker": "reader",
+      "text": "Wouldn't they fight?",
+      "emotion": "concerned",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 0.25
+    },
+    {
+      "speaker": "friend",
+      "text": "That's how you get a second opinion.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "close-up",
+      "pause": 1.4,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "brain_static",
+        "gesture": "none",
+        "at": "line_end",
+        "duration": 1.1
+      }
+    },
+    {
+      "action": "big_head",
+      "actor": "friend",
+      "seconds": 1.15,
+      "shot": "close-up"
+    },
+    {
+      "action": "close",
+      "seconds": 0.9,
+      "shot": "book"
+    }
+  ],
+  "output": {
+    "preset": "square",
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": true,
+    "title": "Goosnav Book Two",
+    "text": "A book of comics.",
+    "url": "www.goosnav.shop",
+    "seconds": 2.2
+  },
+  "sourceLock": [
+    {
+      "id": "book2-036",
+      "sha256": "dd6aac6b9e90ed82d99c40cfb119bc353eee4fee14f064efb173c54bc42280c5",
+      "pdfPage": 40,
+      "pdfSha256": "0b9edc67fc3ba74f8ec257d1c2cc86b35c5e7b1fa894f0395b622cc3125bb3a5"
+    }
+  ]
+}
