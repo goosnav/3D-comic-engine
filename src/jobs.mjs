@@ -4,6 +4,7 @@ import {randomUUID} from 'node:crypto';
 import lockfile from 'proper-lockfile';
 import {ROOT,digest,loadCatalog,verifyCatalog,safePath} from './library.mjs';
 import {previewOutput,resolveScript} from './contracts.mjs';
+import {scriptWarnings,correctionNote} from './script-normalization.mjs';
 import {prepareAudio,writeMix} from './audio.mjs';
 import {compileTimeline} from './timeline.mjs';
 export const OUTPUT=path.join(ROOT,'output');
@@ -27,7 +28,7 @@ export async function createJob(raw,{outputRoot=OUTPUT,inputRoot=ROOT,voice='fli
  const slug=script.title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'comic';
  const id=`${slug}-${new Date().toISOString().replace(/[:.]/g,'-')}-${randomUUID().slice(0,8)}`;
  const dir=path.join(outputRoot,id);await fs.mkdir(dir,{recursive:true});await atomicJSON(path.join(dir,'script.json'),script);
- const job={id,status:'queued',created:new Date().toISOString(),title:script.title,voice,inputRoot,pid:process.pid,progress:'Waiting for production slot'};
+ const job={id,status:'queued',warnings:scriptWarnings(script),created:new Date().toISOString(),title:script.title,voice,inputRoot,pid:process.pid,progress:'Waiting for production slot'};
  await atomicJSON(path.join(dir,'job.json'),job);return job;
 }
 export const MAX_BATCH_JOBS=100;
@@ -67,6 +68,7 @@ export async function processJob(id,{outputRoot=OUTPUT,progress=()=>{}}={}){
   // claim coordination with the parent Blender harness; use a dedicated worker.
   release=await lockfile.lock(outputRoot,{stale:30000,update:5000,retries:{retries:3600,factor:1,minTimeout:1000,maxTimeout:1000}});
   const catalog=await loadCatalog();await verifyCatalog(catalog);const script=resolveScript(JSON.parse(await fs.readFile(path.join(dir,'script.json'))),catalog);
+  job.warnings=scriptWarnings(script);
   await update('audio','Preparing measured voice takes');
   const takes=await prepareAudio(script,{mode:job.voice,inputRoot:job.inputRoot,progress});
   const timeline=compileTimeline(script,takes);await writeMix(timeline,takes,path.join(dir,'mix.wav'));await atomicJSON(path.join(dir,'timeline.json'),timeline);
@@ -75,7 +77,7 @@ export async function processJob(id,{outputRoot=OUTPUT,progress=()=>{}}={}){
   const inputKey=digest(JSON.stringify({script,catalog,timeline,takes:Object.values(takes).map(t=>t.sha256),code,lock:digest(await fs.readFile(path.join(ROOT,'package-lock.json')))}));
   await update('rendering',`${timeline.frames} frames, ${timeline.duration.toFixed(1)} seconds`);
   const {captureVideo}=await import('./capture.mjs');const video=await captureVideo({dir,id,script,timeline,catalog,inputKey,progress:async message=>update('rendering',message)});
-  job={...job,status:'complete',progress:'Complete video verified locally; not uploaded',video:`/output/${id}/${path.basename(video.path)}`,verification:video,updated:new Date().toISOString()};await atomicJSON(path.join(dir,'job.json'),job);return job;
+  job={...job,status:'complete',exitNote:correctionNote(script)||'No automatic JSON corrections.',progress:'Complete video verified locally; not uploaded',video:`/output/${id}/${path.basename(video.path)}`,verification:video,updated:new Date().toISOString()};await atomicJSON(path.join(dir,'job.json'),job);if(job.warnings.length)progress(job.exitNote);return job;
  }catch(e){if(runRelease){job={...job,status:'failed',error:e.message,progress:'Stopped with checkpoints preserved',updated:new Date().toISOString()};await atomicJSON(path.join(dir,'job.json'),job);}throw e;}
  finally{if(release)await release();if(runRelease)await runRelease();}
 }

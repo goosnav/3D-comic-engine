@@ -1,5 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {resolveScript} from './contracts.mjs';
+import {scriptWarnings,correctionNote} from './script-normalization.mjs';
 import {OUTPUT,MAX_BATCH_JOBS,createJob,processJob,readJob} from './jobs.mjs';
 
 export const BATCH_BODY_LIMIT=32*1024*1024;
@@ -65,6 +66,7 @@ export function createServerBatchQueue({catalog,outputRoot=OUTPUT,create=createJ
     const prefix=`/output/${job.id}/`;
     if(verified.status!=='complete'||verified.id!==job.id||typeof verified.video!=='string'||!verified.video.startsWith(prefix)||!/^[A-Za-z0-9_.-]+\.mp4$/.test(verified.video.slice(prefix.length)))throw Error(verified.error||'Rendered video did not pass verification');
     item.status='complete';item.video=verified.video;
+    item.exitNote=verified.exitNote||(correctionNote(item)||'No automatic JSON corrections.');
    }catch(error){item.status='failed';item.error=message(error);}
    finally{delete item.script;finish(batch);}
   }
@@ -88,7 +90,7 @@ export function createServerBatchQueue({catalog,outputRoot=OUTPUT,create=createJ
    // omitted seeds/defaults for the run without changing authored settings.
    for(const item of items){
     if(item.status==='failed')continue;
-    try{item.script=resolveScript(item.script,catalog);}catch(error){item.status='failed';item.error=message(error);delete item.script;}
+    try{item.script=resolveScript(item.script,catalog);item.warnings=scriptWarnings(item.script);}catch(error){item.status='failed';item.error=message(error);delete item.script;}
    }
    const batch={id:`batch-${randomUUID()}`,createdAt:new Date().toISOString(),status:'running',voice:data.voice??'flite',items};
    batches.set(batch.id,batch);finish(batch);schedule();

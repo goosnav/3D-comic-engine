@@ -1,7 +1,9 @@
-import { EMOTIONS, GESTURES, GAZES, ACTIONS, ACTOR_ACTIONS, PARTNER_ACTIONS, OUTPUT_PRESETS } from '../src/contracts.mjs';
+import { EMOTIONS, GESTURES, GAZES, ACTIONS, ACTOR_ACTIONS, PARTNER_ACTIONS, OUTPUT_PRESETS, repairScript } from '../src/contracts.mjs';
 import { editorDefaults } from '../src/editor-defaults.mjs';
 import { comicReplacements, replaceComic, randomComic } from '../src/editor-selection.mjs';
 import { createBatchUI } from './batch.mjs';
+import { captionDefaults } from '../src/caption-defaults.mjs';
+import { appendGeneratorNotes } from './generator-notes.mjs';
 
 const $ = id => document.getElementById(id);
 const browserMode=document.querySelector('meta[name="theatre-runtime"]')?.content==='browser';
@@ -55,6 +57,10 @@ function keepPresentation(result, original) {
   return next;
 }
 
+function repairSummary() {
+  const count = state.script?.warnings?.length ?? 0;
+  return count ? ` ${count} automatic corrections recorded in JSON and generator notes.` : '';
+}
 function message(text, error = false) {
   for (const id of ['editor-status', 'start-status']) {
     $(id).textContent = text;
@@ -121,6 +127,7 @@ async function api(path, body, { timeoutMs = body ? 120000 : 15000 } = {}) {
 }
 
 function structureErrors(script) {
+  try { script = repairScript(script); } catch (error) { return [error.message]; }
   const errors = [];
   if (!object(script)) return ['The script must be a JSON object.'];
   if (script.version !== undefined && script.version !== 1) errors.push('Use script version 1.');
@@ -466,11 +473,11 @@ function renderExtras() {
   }
 }
 function renderOutput() {
-  const captions=state.script.captions;
-  $('captions-enabled').checked=captions?.enabled??true;
-  $('captions-position').value=captions?.position??'bottom';
+  const captions=captionDefaults(state.script.captions);
+  $('captions-enabled').checked=captions.enabled;
+  $('captions-position').value=captions.position;
   for(const id of ['reader','friend']){
-    $(`captions-${id}`).value=captions?.colors?.[id]??(id==='reader'?'#ffe35b':'#6ee7ff');
+    $(`captions-${id}`).value=captions.colors[id];
     $(`captions-${id}`).disabled=!templateFor(state.script)?.speakers.includes(id);
   }
   const output = state.script.output ?? {};
@@ -498,6 +505,7 @@ function renderForm() {
   renderPages(); renderSelection(); renderLines(); controls();
 }
 function install(script) {
+  script = repairScript(script);
   check(structureErrors(script));
   const next = clone(script);
   // Cast and timeline IDs are template/engine details. Keep sourceLock so ordinary
@@ -605,8 +613,8 @@ $('end-card-enabled').addEventListener('change', () => {
 });
 for (const key of ['title', 'text', 'url', 'seconds']) $(`end-card-${key}`).addEventListener('input', () => {
   const input = $(`end-card-${key}`);
-  // A cleared/invalid number stays invalid until corrected; never restore a
-  // default silently or serialize NaN as a valid duration.
+  // Preserve unfinished numeric input. The shared normalizer records any
+  // fallback applied on validation/generation rather than silently fixing it here.
   const value = key === 'seconds' ? (Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : null) : input.value;
   state.script.endCard = { ...state.script.endCard, [key]: value }; changed();
 });
@@ -640,7 +648,7 @@ $('add-line').addEventListener('click', () => {
 });
 $('script-json').addEventListener('input', () => { state.revision++; state.dirtyJSON = true; saveDraft($('script-json').value); controls(); });
 $('apply-json').addEventListener('click', () => {
-  try { if (!state.catalog) throw new Error('Connect to the local theatre first.'); install(JSON.parse($('script-json').value)); message('JSON applied. Form and JSON are in sync. Validate before generating.'); }
+  try { if (!state.catalog) throw new Error('Connect to the local theatre first.'); install(JSON.parse($('script-json').value)); message('JSON applied. Form and JSON are in sync. Validate before generating.' + repairSummary()); }
   catch (error) { message(`JSON not applied: ${error.message}`, true); }
 });
 $('revert-json').addEventListener('click', () => { if (state.script) { state.revision++; syncJSON(); message('Unapplied JSON reverted to the current form script.'); } });
@@ -665,7 +673,7 @@ async function uploadJSON(event) {
     if (!confirmReplacement('Upload this JSON')) { message('Upload cancelled. Your script is unchanged.'); return; }
     install(script);
     batchUI.register(script, file.name);
-    message('JSON uploaded. Review selected pages, then validate the script.');
+    message('JSON uploaded. Review selected pages, then validate the script.' + repairSummary());
   } catch (error) { if (operation === state.operation) message(`Upload not applied: ${error.message}`, true); }
   finally { if (operation === state.operation) input.value = ''; }
 }
@@ -676,7 +684,7 @@ $('validate').addEventListener('click', () => operate('Validate', async () => {
   check(structureErrors(result.script));
   if (result.script.template !== script.template || JSON.stringify(result.script.comics) !== JSON.stringify(script.comics)) throw new Error('Validation returned different sources or template. Response not applied; check the server.');
   install(result.script);
-  message('Server validation passed. Source lock and resolved defaults recorded; your script remains editable.');
+  message('Server validation passed. Source lock and resolved defaults recorded; your script remains editable.' + repairSummary());
 }));
 $('draft').addEventListener('click', () => operate('AI Draft', async () => {
   const script = clone(state.script); const revision = state.revision;
@@ -743,6 +751,7 @@ function renderJobs(jobs) {
       card.append(el('p', `Elapsed · ${Math.floor(seconds / 60)}m ${seconds % 60}s`, 'job-elapsed'));
     }
     if (job.error) card.append(el('p', `${typeof job.error === 'string' ? job.error : stringify(job.error)}\n${browserMode?'Your script is preserved. Keep the tab visible and try Generate again. If it repeats, copy this error and include your phone/browser version.':'Check the script and local server setup, then Generate again when corrected.'}`, 'status error'));
+    appendGeneratorNotes(card, job);
     if (job.video) {
       const path = browserMode&&browserAPI?.ownsURL(job.video)?job.video:localPath(job.video, '/output/');
       if (path) { const link = el('a', 'Open video ↗'); link.href = path; link.target = '_blank'; link.rel = 'noopener noreferrer'; card.append(link); }

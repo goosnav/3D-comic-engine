@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { ditherCanvas } from './grade.mjs';
+import { captionDefaults, captionCenter } from './caption-defaults.mjs';
 
 export function createCaptions(width, height, config, dither = 'off') {
+  config = captionDefaults(config);
   const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
   const ctx = canvas.getContext('2d'), texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -31,7 +33,7 @@ export function createCaptions(width, height, config, dither = 'off') {
       do { lines=wrap(); if(lines.length<=2 && lines.every(l=>ctx.measureText(l).width<=width*.88))break; size*=.9; } while(size>.05);
       ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
       ctx.fillStyle=state.color;ctx.strokeStyle='#101010';ctx.lineWidth=Math.max(2,size*.09);
-      const center = height * (config.position==='top' ? .125 : .875);
+      const center = captionCenter(height, config.position);
       // With dither on, the fill shades lighter to darker down each line so the
       // dither pattern shows inside the letters, like a palette-limited sprite.
       const shade=(hex,k)=>'#'+[1,3,5].map(i=>{const v=parseInt(hex.slice(i,i+2),16);return Math.round(k>0?v+(255-v)*k:v*(1+k)).toString(16).padStart(2,'0');}).join('');

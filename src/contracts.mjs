@@ -3,6 +3,8 @@ const randomInt=()=>globalThis.crypto.getRandomValues(new Uint32Array(1))[0];
 import {bookSpread} from './book-pages.mjs';
 import {emotions} from './facial-performance.mjs';
 import {gestures,ARM_GESTURES} from './gesture-performance.mjs';
+import {captionDefaults} from './caption-defaults.mjs';
+import {normalizePresentation,scriptWarnings} from './script-normalization.mjs';
 export const EMOTIONS=Object.keys(emotions);
 export const GESTURES=['none','explain','nod','head_tilt','shrug','page_glance',...Object.keys(gestures)];
 export const SHOTS=['auto','speaker','two-shot','over-shoulder','book','source','close-up','medium','wide','extreme-wide'];
@@ -86,17 +88,21 @@ function selectScene(requested,template,characters,catalog,seed){
  if(!pool.length)fail(`No default scene for template ${template.id}; choose an explicit scene: ${compatible.join(', ')}`);
  return pool[Math.floor(seeded(seed)()*pool.length)];
 }
-export function resolveScript(raw,catalog){
- keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard','captions','extras','grade','dither'], 'script');
+// Also used before editor shape checks; incomplete drafts may still be edited.
+export function repairScript(raw,options){
+ return normalizePresentation(raw,{emotions:EMOTIONS,gestures:GESTURES,shots:SHOTS,gazes:GAZES,grades:GRADES,dithers:DITHERS,armGestures:ARM_GESTURES,actorActions:ACTOR_ACTIONS},options);
+}
+export function resolveScript(raw,catalog,options){
+ raw=repairScript(raw,options);
+ keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard','captions','extras','grade','dither','warnings'], 'script');
  if((raw.version??1)!==1)fail('version must be 1');
  if(typeof raw.title!=='string'||!raw.title.trim()||raw.title.length>160)fail('title must contain 1–160 characters');
  const {t,selected}=selection(raw.template,raw.comics,catalog);
- const captions={enabled:true,position:'bottom',colors:{reader:'#ffe35b',friend:'#6ee7ff'},...raw.captions};
+ const captions=captionDefaults(raw.captions);
  if(raw.captions!==undefined)keys(raw.captions,['enabled','position','colors'],'captions');
  if(typeof captions.enabled!=='boolean')fail('captions.enabled must be true or false');
  choice(captions.position,['top','bottom'],'captions.position');
  if(raw.captions?.colors!==undefined)keys(raw.captions.colors,['reader','friend'],'captions.colors');
- captions.colors={reader:'#ffe35b',friend:'#6ee7ff',...raw.captions?.colors};
  for(const [id,color] of Object.entries(captions.colors))if(typeof color!=='string'||!/^#[0-9a-f]{6}$/i.test(color))fail(`captions.colors.${id} must be a six-digit hex color`);
  const product=choice(raw.product??'book2',['book2'],'product');
  const variants=catalog.variants?.map(v=>v.id)??['blue','rust','olive'];
@@ -156,7 +162,8 @@ export function resolveScript(raw,catalog){
  const extras=resolveExtras(raw.extras,lines,catalog);
  if(raw.grade!==undefined)choice(raw.grade,GRADES,'grade');
  if(raw.dither!==undefined)choice(raw.dither,DITHERS,'dither');
- return {version:1,template:t.id,title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,captions,...(extras.length?{extras}:{}),...(raw.grade!==undefined?{grade:raw.grade}:{}),...(raw.dither!==undefined?{dither:raw.dither}:{}),cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
+ const warnings=scriptWarnings(raw);
+ return {...(warnings.length?{warnings}:{}),version:1,template:t.id,title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,captions,...(extras.length?{extras}:{}),...(raw.grade!==undefined?{grade:raw.grade}:{}),...(raw.dither!==undefined?{dither:raw.dither}:{}),cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
 }
 export function selectScript(template,seed=randomInt(0,2147483647),catalog){
  const t=catalog.templates.find(t=>t.id===template);if(!t)fail('Unknown template');number(seed,0,4294967295,'seed');const rand=seeded(seed);

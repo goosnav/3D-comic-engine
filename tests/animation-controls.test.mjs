@@ -27,7 +27,7 @@ test('video presets resolve to exact pixels, preserve custom dimensions and prev
 });
 test('gaze and physical actions validate actor identity, hand ownership and book transitions',()=>{
  for(const gaze of GAZES)assert.doesNotThrow(()=>resolve([{...raw.lines[0],gaze:{reader:gaze,friend:'book'}}]));
- for(const gaze of [{reader:'wall'},{ghost:'book'},'book'])assert.throws(()=>resolve([{...raw.lines[0],gaze}]));
+ for(const gaze of [{reader:'wall'},{ghost:'book'},'book'])assert.throws(()=>resolveScript({...raw,lines:[{...raw.lines[0],gaze}]},catalog,{repair:false}));
  const lines=[raw.lines[0],{action:'hold'},{action:'throw'},{action:'open'},{action:'punch',actor:'reader',target:'friend'},{action:'explode',actor:'friend'}];
  const script=resolve(lines),timeline=compileTimeline(script,{'beat-0':{duration:1}});
  assert.equal(timeline.height,1920);assert.equal(timeline.events.find(e=>e.rail==='throw').bookState,'table-closed');

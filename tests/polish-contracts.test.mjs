@@ -12,7 +12,7 @@ test('minimal inputs get distinct clothing and a product-specific editable closi
  const custom=resolveScript({...raw(),characters:{reader:'olive',friend:'blue'},endCard:{title:'Keep reading',text:'Another page.',seconds:4}},c);
  assert.equal(custom.endCard.title,'Keep reading');assert.equal(custom.characters.reader,'olive');assert.deepEqual(resolveScript(custom,c),custom);
  assert.throws(()=>resolveScript({...raw(),characters:{reader:'unknown-character'}},c),/blue|rust|olive/);
- assert.throws(()=>resolveScript({...raw(),endCard:{seconds:0}},c),/seconds/);
+ assert.throws(()=>resolveScript({...raw(),endCard:{seconds:0}},c,{repair:false}),/seconds/);
  assert.throws(()=>resolveScript({...raw(),endCard:{title:'a'.repeat(121)}},c),/title/);
  const beady=resolveScript({...raw(),characters:{reader:'blue-beady',friend:'olive'}},c);
  assert.equal(beady.characters.reader,'blue-beady');assert.deepEqual(resolveScript(beady,c),beady);

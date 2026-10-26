@@ -10,7 +10,7 @@ const old = ['neutral','thoughtful','curious','skeptical','dry','pleased','conce
 const added = ['angry','furious','panicked','manic','cosmic_rage','brain_static','overclocked'];
 const gestures = ['arm_flail','fist_shake','double_point','despair','windmill','rubber_hose'];
 const catalog = { edition: {pdfSha256:'a'}, templates:[{id:'duet',minComics:1,maxComics:1,speakers:['reader','friend'],scenes:['library']}], comics:[{id:'p1',sha256:'b',pdfPage:5,verified:true}] };
-const resolve = lines => resolveScript({template:'duet',title:'Test',comics:['p1'],seed:41,lines},catalog);
+const resolve = (lines,options) => resolveScript({template:'duet',title:'Test',comics:['p1'],seed:41,lines},catalog,options);
 const event = {type:'line',speaker:'reader',start:1,end:4,face:{blink:'off'},mouth:[{t:0,value:0},{t:.5,value:1},{t:1,value:0}]};
 async function actor(variant = 'blue') {
   const b = await readFile(new URL(`../assets/actor-${variant}.glb`, import.meta.url));
@@ -49,10 +49,10 @@ test('reaction gestures cut abruptly at the authored end and then restore the re
     const after=snapshot();a.apply({time:1.7+1e-6,line:{...line,reaction:undefined},listening:true});assert.deepEqual(snapshot(),after);
   }
 });
-test('held reader rejects every arm gesture including listener reactions, but allows friend arms', () => {
+test('strict auditing rejects held reader arm gestures including listener reactions, but allows friend arms', () => {
   for (const gesture of ['explain','shrug',...gestures]) {
-    assert.throws(()=>resolve([{action:'hold'},{speaker:'reader',text:'Hi',gesture}]),/hands|held/);
-    assert.throws(()=>resolve([{action:'hold'},{speaker:'friend',text:'Hi',reaction:{actor:'reader',gesture}}]),/hands|held/);
+    assert.throws(()=>resolve([{action:'hold'},{speaker:'reader',text:'Hi',gesture}],{repair:false}),/hands|held/);
+    assert.throws(()=>resolve([{action:'hold'},{speaker:'friend',text:'Hi',reaction:{actor:'reader',gesture}}],{repair:false}),/hands|held/);
     assert.doesNotThrow(()=>resolve([{action:'hold'},{speaker:'friend',text:'Hi',gesture}]));
   }
 });
