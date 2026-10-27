@@ -1,3 +1,4 @@
+import { inWorkspace } from './workspace-controls.mjs';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -35,7 +36,7 @@ async function fixture(t, { staticMode = false } = {}) {
         res.setHeader('Content-Type', 'application/json');
         return res.end(await readFile(new URL(`templates/${req.url.split('/').at(-1)}`, root)));
       }
-      if (/^\/(?:nested\/)?src\/(zip|contracts|book-pages|editor-defaults|editor-selection|gesture-performance|facial-performance)\.mjs$/.test(req.url)) {
+      if (/^\/(?:nested\/)?src\/(script-normalization|caption-defaults|speech-timing|zip|contracts|book-pages|editor-defaults|editor-selection|gesture-performance|facial-performance)\.mjs$/.test(req.url)) {
         res.setHeader('Content-Type', 'text/javascript'); return res.end(await readFile(new URL(`src/${req.url.split('/').at(-1)}`, root)));
       }
       // Stub only the on-device runtime boundary: no GPU, speech, or export work.
@@ -55,7 +56,7 @@ async function fixture(t, { staticMode = false } = {}) {
         state.assets.push(req.url); res.setHeader('Content-Type', 'image/png');
         return res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfRcAAAAASUVORK5CYII=', 'base64'));
       }
-      const files = { [prefix]: 'index.html', [`${prefix}app.mjs`]: 'app.mjs', [`${prefix}batch.mjs`]: 'batch.mjs', [`${prefix}style.css`]: 'style.css' };
+      const files = { [`${prefix}generator-notes.mjs`]: 'generator-notes.mjs', [prefix]: 'index.html', [`${prefix}app.mjs`]: 'app.mjs', [`${prefix}batch.mjs`]: 'batch.mjs', [`${prefix}style.css`]: 'style.css' };
       if (files[req.url]) {
         const name = files[req.url]; let text = await readFile(new URL(`web/${name}`, root), 'utf8');
         if (staticMode && name === 'index.html') text = text.replace('content="desktop"', 'content="browser"');
@@ -74,7 +75,7 @@ async function fixture(t, { staticMode = false } = {}) {
 }
 const current = async page => JSON.parse(await page.locator('#script-json').inputValue());
 async function load(page, value = script) {
-  await page.locator('#script-json').fill(JSON.stringify(value)); await page.locator('#apply-json').click();
+  await (await inWorkspace(page.locator('#script-json'))).fill(JSON.stringify(value)); await (await inWorkspace(page.locator('#apply-json'))).click();
   await page.waitForFunction(() => document.querySelector('#editor-status').textContent.startsWith('JSON applied.'));
 }
 
@@ -87,7 +88,7 @@ test('page menus start empty, sort by PDF page and fetch only the selected previ
   assert.equal(await page.locator('#page-previews img').count(), 0); assert.deepEqual(state.assets, []);
   assert.deepEqual(await page.locator('#page-selectors select option').evaluateAll(nodes => nodes.map(n => n.value)), ['', 'p2', 'p4', 'p11', 'p30', 'p50']);
   assert.equal(await page.locator('option[value="p4"]').isDisabled(), true);
-  await page.getByLabel('Page 1', { exact: true }).selectOption('p30');
+  await (await inWorkspace(page.getByLabel('Page 1', { exact: true }))).selectOption('p30');
   await page.waitForFunction(() => document.querySelector('#page-previews img')?.naturalWidth > 0);
   assert.deepEqual(state.assets, ['/assets/comics/p30.png']);
   assert.equal(await page.locator('#page-previews a, #page-previews button, #page-selectors input[type="checkbox"]').count(), 0);
@@ -96,7 +97,7 @@ test('page menus start empty, sort by PDF page and fetch only the selected previ
 
 test('pages without transcripts show an honest empty state and never invent dialogue', async t => {
   const { page } = await fixture(t);
-  await page.getByLabel('Page 1', { exact: true }).selectOption('p11');
+  await (await inWorkspace(page.getByLabel('Page 1', { exact: true }))).selectOption('p11');
   assert.equal(await page.locator('#page-previews .transcript').textContent(), 'No transcript supplied.');
   assert.match(await page.locator('#page-previews').textContent(), /Catalog-verified source identity/);
   assert.doesNotMatch(await page.locator('#page-previews').textContent(), /reviewed/i);
@@ -106,14 +107,14 @@ test('pages without transcripts show an honest empty state and never invent dial
 test('empty starters follow the chosen cast while authored lines survive template changes', async t => {
   const { page } = await fixture(t);
   assert.deepEqual((await current(page)).lines, [{ speaker: 'reader', text: '' }, { speaker: 'friend', text: '' }]);
-  await page.locator('#template').selectOption('solo');
+  await (await inWorkspace(page.locator('#template'))).selectOption('solo');
   assert.deepEqual((await current(page)).lines, [{ speaker: 'reader', text: '' }]);
-  await page.getByLabel('Line 1 text', { exact: true }).fill('Keep my words.');
-  await page.locator('#template').selectOption('book-duet');
+  await (await inWorkspace(page.getByLabel('Line 1 text', { exact: true }))).fill('Keep my words.');
+  await (await inWorkspace(page.locator('#template'))).selectOption('book-duet');
   assert.deepEqual((await current(page)).lines, [{ speaker: 'reader', text: 'Keep my words.' }]);
-  await page.locator('#template').selectOption('solo');
+  await (await inWorkspace(page.locator('#template'))).selectOption('solo');
   page.once('dialog', dialog => dialog.accept());
-  await page.getByRole('button', { name: 'Start blank', exact: true }).click();
+  await (await inWorkspace(page.locator('#new-video'))).click();
   assert.equal((await current(page)).template, 'solo');
   assert.deepEqual((await current(page)).lines, [{ speaker: 'reader', text: '' }]);
 });
@@ -129,7 +130,7 @@ test('top JSON entry is visible on a phone and examples use the static installat
   assert.ok(position.upload.top >= 0 && position.upload.bottom <= position.viewport, 'Upload should be immediately visible on a phone');
   assert.ok(position.upload.bottom < position.sources, 'Top upload precedes page selection');
   assert.equal(await page.locator('#upload-json').count(), 1, 'The lower import remains available');
-  await page.locator('#load-example').click();
+  await (await inWorkspace(page.locator('#load-example'))).click();
   await page.waitForFunction(() => document.querySelector('#editor-status').textContent.startsWith('Example loaded.'));
   assert.equal((await current(page)).title, script.title);
   assert.ok(state.requests.includes('/nested/studio/templates/book-duet.example.json'));
@@ -143,23 +144,23 @@ test('ordered rows enforce template capacity without truncating imports and rema
   const { page } = await fixture(t); await load(page);
   assert.deepEqual(await current(page), script);
   assert.deepEqual(await page.locator('#page-selectors select').evaluateAll(nodes => nodes.map(n => n.value)), ['p30', 'p2']);
-  assert.equal(await page.getByRole('button', { name: '+ Add page', exact: true }).isDisabled(), true);
+  assert.equal(await page.getByRole('button', { includeHidden: true,  name: '+ Add page', exact: true }).isDisabled(), true);
   assert.equal(await page.locator('#page-selectors select').nth(1).locator('option[value="p30"]').isDisabled(), true);
-  await page.getByLabel('Page 1', { exact: true }).selectOption('p11');
+  await (await inWorkspace(page.getByLabel('Page 1', { exact: true }))).selectOption('p11');
   const remappedLines = script.lines.map(line => ({ ...line, comic: 'p11' }));
   assert.equal((await current(page)).sourceLock, undefined); assert.deepEqual((await current(page)).lines, remappedLines);
-  await page.locator('#template').selectOption('solo');
+  await (await inWorkspace(page.locator('#template'))).selectOption('solo');
   assert.deepEqual((await current(page)).comics, ['p11', 'p2']);
   assert.equal(await page.locator('#add-page').isVisible(), false);
-  await page.getByRole('button', { name: 'Remove page 1', exact: true }).click();
+  await (await inWorkspace(page.getByRole('button', { includeHidden: true,  name: 'Remove page 1', exact: true }))).click();
   assert.deepEqual((await current(page)).comics, ['p2']); assert.deepEqual((await current(page)).lines, remappedLines);
-  await page.getByRole('button', { name: 'Remove page 1', exact: true }).click();
+  await (await inWorkspace(page.getByRole('button', { includeHidden: true,  name: 'Remove page 1', exact: true }))).click();
   assert.equal(await page.getByLabel('Page 1', { exact: true }).inputValue(), '');
-  await page.locator('#template').selectOption('book-duet');
-  await page.getByLabel('Page 1', { exact: true }).selectOption('p30');
-  await page.locator('#add-page').click();
+  await (await inWorkspace(page.locator('#template'))).selectOption('book-duet');
+  await (await inWorkspace(page.getByLabel('Page 1', { exact: true }))).selectOption('p30');
+  await (await inWorkspace(page.locator('#add-page'))).click();
   assert.equal(await page.getByLabel('Page 2', { exact: true }).inputValue(), '');
-  await page.getByLabel('Page 2', { exact: true }).selectOption('p2');
+  await (await inWorkspace(page.getByLabel('Page 2', { exact: true }))).selectOption('p2');
   assert.deepEqual((await current(page)).comics, ['p30', 'p2']);
 });
 
@@ -170,13 +171,13 @@ test('performance dropdowns use contract enums and preserve omitted defaults and
     assert.equal(await page.getByLabel(`Line 1 ${key}`, { exact: true }).evaluate(n => n.tagName), 'SELECT');
     assert.deepEqual(await page.locator(`#line-0-${key} option`).evaluateAll(nodes => nodes.map(n => n.value).filter(Boolean)), values);
     for (const value of values) {
-      await page.getByLabel(`Line 1 ${key}`, { exact: true }).selectOption(value);
+      await (await inWorkspace(page.getByLabel(`Line 1 ${key}`, { exact: true }))).selectOption(value);
       assert.equal((await current(page)).lines[0][key], value);
     }
-    await page.getByLabel(`Line 1 ${key}`, { exact: true }).selectOption('');
+    await (await inWorkspace(page.getByLabel(`Line 1 ${key}`, { exact: true }))).selectOption('');
   }
   assert.deepEqual(await current(page), script);
-  await page.getByRole('button', { name: '+ Add dialogue', exact: true }).click();
+  await (await inWorkspace(page.getByRole('button', { includeHidden: true,  name: '+ Add dialogue', exact: true }))).click();
   assert.equal((await current(page)).lines.length, 2);
   assert.equal(await page.getByLabel('Line 2 text', { exact: true }).evaluate(n => n === document.activeElement), true);
 });
@@ -184,10 +185,10 @@ test('performance dropdowns use contract enums and preserve omitted defaults and
 // Catches fabricated percentages, dropped phase detail, and job refresh overwrites.
 test('structured progress shows stage percentage or indeterminate state and elapsed time, preserving dirty JSON', async t => {
   const { page, state } = await fixture(t); await load(page);
-  const dirty = '{ "unfinished":'; await page.locator('#script-json').fill(dirty);
+  const dirty = '{ "unfinished":'; await (await inWorkspace(page.locator('#script-json'))).fill(dirty);
   async function show(job) {
     state.jobs = [{ id: 'job', status: 'running', ...job }];
-    await page.locator('#refresh-jobs').click();
+    await (await inWorkspace(page.locator('#refresh-jobs'))).click();
     await page.waitForFunction(message => document.querySelector('#jobs').textContent.includes(message), job.progressDetail?.message ?? job.progress);
   }
   await show({ startedAt: new Date(Date.now() - 65000).toISOString(), progress: 'legacy text', progressDetail: { phase: 'speech', progress: .25, message: 'Speaking line 1 of 4' } });
@@ -212,7 +213,7 @@ test('completed jobs retain their actual elapsed duration from numeric or ISO ti
   for (const iso of [false, true]) {
     const start = Date.now() - 120000, end = start + 65000;
     state.jobs = [{ id: `finished-${iso}`, status: 'complete', startedAt: iso ? new Date(start).toISOString() : start, updatedAt: iso ? new Date(end).toISOString() : end, progressDetail: { phase: 'complete', progress: 1, message: `Finished ${iso}` } }];
-    await page.locator('#refresh-jobs').click();
+    await (await inWorkspace(page.locator('#refresh-jobs'))).click();
     await page.waitForFunction(message => document.querySelector('#jobs').textContent.includes(message), `Finished ${iso}`);
     assert.match(await page.locator('#jobs').textContent(), /Elapsed · 1m 5s/);
   }
@@ -221,7 +222,7 @@ test('completed jobs retain their actual elapsed duration from numeric or ISO ti
 // Catches absolute asset paths and browser callback code that installs a job's script.
 test('static subdirectory previews and runtime onChange preserve the author script', async t => {
   const { page, state } = await fixture(t, { staticMode: true }); await load(page, { ...script, comics: ['p30'] });
-  await page.locator('#page-previews img').scrollIntoViewIfNeeded();
+  await (await inWorkspace(page.locator('#page-previews img'))).scrollIntoViewIfNeeded();
   await page.waitForFunction(() => document.querySelector('#page-previews img')?.naturalWidth > 0);
   assert.deepEqual(state.assets, ['/nested/studio/assets/comics/p30.png']);
   const before = await page.locator('#script-json').inputValue();
@@ -242,15 +243,15 @@ test('static subdirectory previews and runtime onChange preserve the author scri
 test('Labs HQ styling keeps mobile controls usable with visible keyboard focus', async t => {
   const { page } = await fixture(t); await load(page);
   assert.equal(await page.title(), '3D Comic Engine');
-  assert.equal(await page.getByRole('heading', { name: '3D Comic Engine', exact: true }).count(), 1);
+  assert.equal(await page.getByRole('heading', { includeHidden: true,  name: '3D Comic Engine', exact: true }).count(), 1);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   const styles = await page.evaluate(() => ({ body: getComputedStyle(document.body).fontFamily, heading: getComputedStyle(document.querySelector('h1')).fontFamily, paper: getComputedStyle(document.documentElement).backgroundColor, radius: getComputedStyle(document.querySelector('.panel')).borderRadius }));
   assert.match(styles.body, /Times/); assert.match(styles.heading, /Helvetica/); assert.equal(styles.paper, 'rgb(255, 255, 255)'); assert.equal(styles.radius, '0px');
-  for (const control of await page.locator('button:visible, select:visible, summary:visible, .check-label, .file-label').all()) {
+  for (const control of await page.locator('button:visible, select:visible, summary:visible, .check-label:visible, .file-label:visible').all()) {
     const box = await control.boundingBox(); assert.ok(box.height >= 44 && box.width >= 44, `Touch target: ${await control.textContent()}`);
   }
-  await page.getByLabel('Page 1', { exact: true }).focus(); await page.keyboard.press('Tab');
+  await (await inWorkspace(page.getByLabel('Page 1', { exact: true }))).focus(); await page.keyboard.press('Tab');
   assert.ok(await page.evaluate(() => parseFloat(getComputedStyle(document.activeElement).outlineWidth) >= 2));
 });
 
@@ -274,19 +275,19 @@ test('browser music attaches a File snapshot to rendering only and clears withou
   const music = page.getByLabel('Background music (optional)', { exact: true });
   assert.equal(await music.count(), 1);
   await music.setInputFiles({ name: 'quiet.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('fixture music bytes') });
-  await page.locator('#generate').click();
+  await (await inWorkspace(page.locator('#generate'))).click();
   await page.waitForFunction(() => !!window.submittedRender);
   assert.deepEqual(await page.evaluate(async () => ({ name: window.submittedRender.music.name, bytes: await window.submittedRender.music.text(), file: window.submittedRender.music instanceof File, inScript: 'music' in window.submittedRender.script })), { name: 'quiet.mp3', bytes: 'fixture music bytes', file: true, inScript: false });
   await music.setInputFiles({ name: 'other.wav', mimeType: 'audio/wav', buffer: Buffer.from('different bytes') });
   assert.equal(await page.evaluate(() => window.submittedRender.music.name), 'quiet.mp3');
-  await page.getByRole('button', { name: 'Clear music', exact: true }).click();
+  await (await inWorkspace(page.getByRole('button', { includeHidden: true,  name: 'Clear music', exact: true }))).click();
   assert.equal(await music.evaluate(n => n.files.length), 0);
   assert.equal(await page.locator('#script-json').inputValue(), before);
   assert.doesNotMatch(await page.evaluate(() => JSON.stringify(localStorage)), /quiet\.mp3|fixture music bytes|other\.wav/);
-  await page.locator('#generate').click();
+  await (await inWorkspace(page.locator('#generate'))).click();
   await page.waitForFunction(() => window.submittedRender.music === undefined);
   await music.setInputFiles({ name: 'quiet.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('fixture music bytes') });
-  await page.reload(); await music.waitFor();
+  await page.reload(); await inWorkspace(music); await music.waitFor();
   assert.equal(await music.evaluate(n => n.files.length), 0);
 });
 
@@ -298,15 +299,15 @@ test('Start blank cancellation preserves input; confirmation clears music but re
   await music.setInputFiles({ name: 'quiet.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('music') });
   await page.evaluate(() => window.publishJobs([{id:'finished',status:'complete',video:'blob:fixture-video',filename:'finished.mp4'},{id:'active',status:'running'}]));
   page.once('dialog', dialog => dialog.dismiss());
-  await page.locator('#new-video').click();
+  await (await inWorkspace(page.locator('#new-video'))).click();
   assert.deepEqual(await current(page), original);
   assert.equal(await music.evaluate(n => n.files.length), 1);
   page.once('dialog', dialog => dialog.accept());
-  await page.locator('#new-video').click();
+  await (await inWorkspace(page.locator('#new-video'))).click();
   assert.equal(await music.evaluate(n => n.files.length), 0);
   assert.deepEqual((await current(page)).lines, [{ speaker: 'reader', text: '' }, { speaker: 'friend', text: '' }]);
-  assert.equal(await page.getByRole('link', {name:'Download video (MP4)',exact:true}).getAttribute('href'), 'blob:fixture-video');
-  assert.equal(await page.getByRole('button', {name:'Cancel export'}).count(), 1);
+  assert.equal(await page.getByRole('link', { includeHidden: true, name:'Download video (MP4)',exact:true}).getAttribute('href'), 'blob:fixture-video');
+  assert.equal(await page.getByRole('button', { includeHidden: true, name:'Cancel export'}).count(), 1);
 });
 
 test('desktop does not offer browser-only background music', async t => {
@@ -319,7 +320,7 @@ test('Generate brings phone progress into view before the live canvas', async t 
   const { page } = await fixture(t, { staticMode: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await load(page, { ...script, comics: ['p30'] });
-  await page.locator('#generate').click();
+  await (await inWorkspace(page.locator('#generate'))).click();
   await page.waitForFunction(() => document.querySelector('#editor-status').textContent.startsWith('Submitted'));
   const position = await page.evaluate(() => ({
     heading: document.querySelector('#jobs-heading').getBoundingClientRect().top,
@@ -341,19 +342,19 @@ test('size, gaze and action controls round-trip JSON and browser exports keep th
   assert.equal(await page.locator('#output-height').inputValue(),'1920');
   await load(page,{...script,comics:['p30'],output:{width:640,height:480,fps:12}});
   assert.equal(await page.locator('#output-preset').inputValue(),'custom');
-  await page.locator('#output-preset').selectOption('landscape');
-  await page.locator('#line-0-gaze-reader').selectOption('ceiling');
-  await page.locator('#add-action').click();
-  await page.locator('#line-1-action').selectOption('punch');
-  await page.locator('#line-1-actor').selectOption('friend');
-  await page.locator('#line-1-target').selectOption('reader');
+  await (await inWorkspace(page.locator('#output-preset'))).selectOption('landscape');
+  await (await inWorkspace(page.locator('#line-0-gaze-reader'))).selectOption('ceiling');
+  await (await inWorkspace(page.locator('#add-action'))).click();
+  await (await inWorkspace(page.locator('#line-1-action'))).selectOption('punch');
+  await (await inWorkspace(page.locator('#line-1-actor'))).selectOption('friend');
+  await (await inWorkspace(page.locator('#line-1-target'))).selectOption('reader');
   const authored=await current(page);
   assert.deepEqual(authored.output,{preset:'landscape',fps:12});
   assert.deepEqual(authored.lines[0].gaze,{reader:'ceiling'});
   assert.equal(authored.lines[1].target,'reader');
   await load(page,authored);
   assert.equal(await page.locator('#line-1-action').inputValue(),'punch');
-  await page.locator('#generate').click();
+  await (await inWorkspace(page.locator('#generate'))).click();
   await page.waitForFunction(()=>!!window.submittedRender);
   assert.deepEqual(await page.evaluate(()=>window.submittedRender.script.output),authored.output);
 });
@@ -362,12 +363,12 @@ test('size, gaze and action controls round-trip JSON and browser exports keep th
 test('caption settings and shot sizes round trip through the form and JSON',async t=>{
  const {page}=await fixture(t);await load(page);
  assert.equal(await page.locator('#captions-enabled').isChecked(),true);
- await page.locator('#captions-position').selectOption('top');
- await page.locator('#captions-reader').fill('#123456');await page.locator('#captions-reader').dispatchEvent('change');
- await page.locator('#captions-friend').fill('#abcdef');await page.locator('#captions-friend').dispatchEvent('change');
- await page.locator('#line-0-shot').selectOption('extreme-wide');
+ await (await inWorkspace(page.locator('#captions-position'))).selectOption('top');
+ await (await inWorkspace(page.locator('#captions-reader'))).fill('#123456');await page.locator('#captions-reader').dispatchEvent('change');
+ await (await inWorkspace(page.locator('#captions-friend'))).fill('#abcdef');await page.locator('#captions-friend').dispatchEvent('change');
+ await (await inWorkspace(page.locator('#line-0-shot'))).selectOption('extreme-wide');
  const saved=await current(page);assert.deepEqual(saved.captions,{enabled:true,position:'top',colors:{reader:'#123456',friend:'#abcdef'}});assert.equal(saved.lines[0].shot,'extreme-wide');
- await page.locator('#captions-enabled').uncheck();assert.equal((await current(page)).captions.enabled,false);
+ await (await inWorkspace(page.locator('#captions-enabled'))).uncheck();assert.equal((await current(page)).captions.enabled,false);
  await load(page,saved);assert.equal(await page.locator('#captions-enabled').isChecked(),true);assert.equal(await page.locator('#captions-position').inputValue(),'top');
- await page.locator('#add-action').click();await page.locator('#line-1-action').selectOption('flatten');await page.locator('#line-1-shot').selectOption('wide');assert.equal((await current(page)).lines[1].shot,'wide');
+ await (await inWorkspace(page.locator('#add-action'))).click();await (await inWorkspace(page.locator('#line-1-action'))).selectOption('flatten');await (await inWorkspace(page.locator('#line-1-shot'))).selectOption('wide');assert.equal((await current(page)).lines[1].shot,'wide');
 });

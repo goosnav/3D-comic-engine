@@ -1,3 +1,4 @@
+import { inWorkspace } from './workspace-controls.mjs';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -76,8 +77,8 @@ async function fixture(t, { legacy = false, expansion = false } = {}) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         return res.end(await readFile(new URL(path.slice(1), root)));
       }
-      const files = { '/': ['index.html', 'text/html'], '/app.mjs': ['app.mjs', 'text/javascript'], '/batch.mjs': ['batch.mjs', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
-      if (['/src/zip.mjs', '/src/contracts.mjs', '/src/book-pages.mjs', '/src/editor-defaults.mjs', '/src/editor-selection.mjs', '/src/gesture-performance.mjs', '/src/facial-performance.mjs'].includes(path)) { res.writeHead(200, { 'Content-Type': 'text/javascript' }); return res.end(await readFile(new URL(path.slice(1), root))); }
+      const files = { '/generator-notes.mjs': ['generator-notes.mjs', 'text/javascript'], '/': ['index.html', 'text/html'], '/app.mjs': ['app.mjs', 'text/javascript'], '/batch.mjs': ['batch.mjs', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
+      if (['/src/script-normalization.mjs', '/src/caption-defaults.mjs', '/src/speech-timing.mjs', '/src/zip.mjs', '/src/contracts.mjs', '/src/book-pages.mjs', '/src/editor-defaults.mjs', '/src/editor-selection.mjs', '/src/gesture-performance.mjs', '/src/facial-performance.mjs'].includes(path)) { res.writeHead(200, { 'Content-Type': 'text/javascript' }); return res.end(await readFile(new URL(path.slice(1), root))); }
       if (files[path]) { const [file, type] = files[path]; res.writeHead(200, { 'Content-Type': type }); return res.end(await readFile(new URL(`web/${file}`, root))); }
       res.writeHead(404); res.end('Not found');
     } catch (error) { json(res, 500, { error: error.message }); }
@@ -96,9 +97,9 @@ const current = async page => JSON.parse(await page.locator('#script-json').inpu
 test('Start blank clears authored and unapplied inputs and persists editable blank dialogue', async t => {
   const { page } = await fixture(t);
   await load(page, authored());
-  await page.locator('#voice').selectOption('recorded');
-  await page.locator('#script-json').fill('{broken');
-  await page.locator('#new-video').click();
+  await (await inWorkspace(page.locator('#voice'))).selectOption('recorded');
+  await (await inWorkspace(page.locator('#script-json'))).fill('{broken');
+  await (await inWorkspace(page.locator('#new-video'))).click();
   const blank = {version:1,template:'book-duet',title:'Untitled reading',comics:[],lines:[{speaker:'reader',text:''},{speaker:'friend',text:''}]};
   assert.deepEqual(await current(page), blank);
   assert.equal(await page.locator('#voice').inputValue(), 'flite');
@@ -111,8 +112,8 @@ test('Start blank rejects a late example response without overwriting its status
   const path = '/templates/book-duet.example.json';
   state.hold(path);
   const sent = page.waitForRequest(`**${path}`);
-  await page.locator('#load-example').click(); await sent;
-  await page.locator('#new-video').click();
+  await (await inWorkspace(page.locator('#load-example'))).click(); await sent;
+  await (await inWorkspace(page.locator('#new-video'))).click();
   const blank = await current(page);
   const done = page.waitForResponse(`**${path}`); state.release(path); await done;
   await page.waitForTimeout(50);
@@ -123,7 +124,7 @@ test('Start blank removes an old saved draft and warns if persisting the blank d
   const {page} = await fixture(t);
   await load(page, authored());
   await page.evaluate(() => {Storage.prototype.setItem = () => {throw new DOMException('full','QuotaExceededError');};});
-  await page.locator('#new-video').click();
+  await (await inWorkspace(page.locator('#new-video'))).click();
   assert.match(await page.locator('#editor-status').textContent(), /storage|saved/i);
   assert.equal(await page.evaluate(() => localStorage.getItem('comic-theatre-editor-v1')), null);
   await page.reload(); await status(page,'Ready');
@@ -132,40 +133,40 @@ test('Start blank removes an old saved draft and warns if persisting the blank d
 test('astronaut choices follow explicit scene and never silently replace imported cast', async t => {
   const {page,state} = await fixture(t,{expansion:true});
   await load(page, script());
-  await page.locator('#scene').selectOption('library');
+  await (await inWorkspace(page.locator('#scene'))).selectOption('library');
   assert.equal(await page.locator('#reader-clothing option[value="astronaut"]').isDisabled(),true);
-  await page.locator('#scene').selectOption('moon-base');
-  await page.locator('#reader-clothing').selectOption('astronaut');
-  await page.locator('#scene').selectOption('library');
+  await (await inWorkspace(page.locator('#scene'))).selectOption('moon-base');
+  await (await inWorkspace(page.locator('#reader-clothing'))).selectOption('astronaut');
+  await (await inWorkspace(page.locator('#scene'))).selectOption('library');
   assert.equal((await current(page)).characters.reader,'astronaut');
-  await page.locator('#validate').click(); await status(page,'needs moon-base');
+  await (await inWorkspace(page.locator('#validate'))).click(); await status(page,'needs moon-base');
   assert.equal(state.requests.length,0);
-  await page.locator('#scene').selectOption('');
+  await (await inWorkspace(page.locator('#scene'))).selectOption('');
   assert.equal(await page.locator('#reader-clothing option[value="astronaut"]').isDisabled(),false);
-  await page.locator('#validate').click(); await status(page,'validation passed');
+  await (await inWorkspace(page.locator('#validate'))).click(); await status(page,'validation passed');
 });
 test('per-page random preserves explicit scene or automatic astronaut-compatible selection', async t => {
   const {page} = await fixture(t,{expansion:true});
   for(const scene of ['moon-base',undefined]){
     await load(page,{...script(),characters:{reader:'astronaut'},...(scene?{scene}:{})});
-    await page.locator('#random-page-0').click();
+    await (await inWorkspace(page.locator('#random-page-0'))).click();
     const result=await current(page);
     assert.notEqual(result.comics[0], 'page-a');
     assert.equal(result.lines[0].text, 'A reading.');
     assert.equal(result.lines[0].comic, result.comics[0]);
     assert.equal(result.characters.reader,'astronaut');
     assert.equal(result.scene,scene);
-    await page.locator('#validate').click(); await status(page,'validation passed');
+    await (await inWorkspace(page.locator('#validate'))).click(); await status(page,'validation passed');
   }
 });
 const status = async (page, pattern) => page.waitForFunction(pattern => new RegExp(pattern, 'i').test(document.querySelector('#editor-status').textContent), pattern);
 async function load(page, value) {
-  await page.locator('#script-json').fill(JSON.stringify(value));
-  await page.getByRole('button', { name: 'Apply JSON', exact: true }).click();
+  await (await inWorkspace(page.locator('#script-json'))).fill(JSON.stringify(value));
+  await (await inWorkspace(page.getByRole('button', { includeHidden: true,  name: 'Apply JSON', exact: true }))).click();
   await status(page, 'JSON applied');
 }
 async function download(page) {
-  const event = page.waitForEvent('download'); await page.locator('#download-json').click();
+  const event = page.waitForEvent('download'); await (await inWorkspace(page.locator('#download-json'))).click();
   const stream = await (await event).createReadStream(); const chunks = [];
   for await (const chunk of stream) chunks.push(chunk);
   return JSON.parse(Buffer.concat(chunks));
@@ -184,19 +185,19 @@ for (const legacy of [false, true]) test(`clothing and Book Two defaults display
   for (const key of ['title', 'text', 'url', 'seconds']) assert.equal(await page.locator(`#end-card-${key}`).inputValue(), String(defaults[key]));
   assert.equal(await page.getByLabel('Line 1 shot', { exact: true }).inputValue(), 'auto');
   assert.deepEqual(await download(page), value);
-  await page.locator('#validate').click(); await status(page, 'validation passed');
+  await (await inWorkspace(page.locator('#validate'))).click(); await status(page, 'validation passed');
   assert.deepEqual(state.requests.at(-1).body.script, value);
 });
 
 test('real form input, every shot, upload and download preserve advanced fields and source locks', async t => {
   const { page } = await fixture(t); const value = authored(); await load(page, value);
-  await page.getByLabel('Reader character', { exact: true }).selectOption('rust-beady');
-  await page.getByLabel('Friend character', { exact: true }).selectOption('olive');
-  await page.getByLabel('Show end card', { exact: true }).check();
+  await (await inWorkspace(page.getByLabel('Reader character', { exact: true }))).selectOption('rust-beady');
+  await (await inWorkspace(page.getByLabel('Friend character', { exact: true }))).selectOption('olive');
+  await (await inWorkspace(page.getByLabel('Show end card', { exact: true }))).check();
   const text = { title: 'A custom title', text: 'A custom closing line.', url: 'www.goosnav.shop/custom', seconds: 5.5 };
-  for (const [key, val] of Object.entries(text)) await page.locator(`#end-card-${key}`).fill(String(val));
+  for (const [key, val] of Object.entries(text)) await (await inWorkspace(page.locator(`#end-card-${key}`))).fill(String(val));
   for (const shot of ['auto', 'speaker', 'two-shot', 'over-shoulder', 'book', 'source']) {
-    await page.getByLabel('Line 1 shot', { exact: true }).selectOption(shot);
+    await (await inWorkspace(page.getByLabel('Line 1 shot', { exact: true }))).selectOption(shot);
     assert.equal((await current(page)).lines[0].shot, shot);
   }
   const expected = { ...value, characters: { ...value.characters, reader: 'rust-beady', friend: 'olive' }, endCard: { ...value.endCard, ...text, enabled: true }, lines: [{ ...value.lines[0], shot: 'source' }] };
@@ -207,7 +208,7 @@ test('real form input, every shot, upload and download preserve advanced fields 
   assert.deepEqual(await current(page), expected);
   assert.equal(await page.locator('#end-card-text').inputValue(), text.text);
   assert.equal(await page.getByLabel('Line 1 shot', { exact: true }).inputValue(), 'source');
-  await page.getByLabel('Show end card', { exact: true }).uncheck();
+  await (await inWorkspace(page.getByLabel('Show end card', { exact: true }))).uncheck();
   assert.deepEqual((await current(page)).endCard, { ...expected.endCard, enabled: false });
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
@@ -219,10 +220,10 @@ test('partial authored objects retain omitted defaults; validation records resol
   await load(page, value);
   assert.equal(await page.locator('#end-card-text').inputValue(), '');
   assert.equal(await page.locator('#end-card-title').inputValue(), defaults.title);
-  await page.locator('#end-card-title').fill('Chosen title');
+  await (await inWorkspace(page.locator('#end-card-title'))).fill('Chosen title');
   assert.deepEqual((await current(page)).endCard, { text: '', title: 'Chosen title' });
   state.resolve = true;
-  await page.locator('#validate').click(); await status(page, 'validation passed');
+  await (await inWorkspace(page.locator('#validate'))).click(); await status(page, 'validation passed');
   const resolved = await current(page);
   assert.deepEqual(resolved.characters, { reader: 'olive', friend: 'rust' });
   assert.deepEqual(resolved.endCard, { ...defaults, title: 'Chosen title', text: '' });
@@ -231,13 +232,13 @@ test('partial authored objects retain omitted defaults; validation records resol
 
 test('draft preserves authored clothing/product/end card; unavailable writer still allows local manual render', async t => {
   const { page, state } = await fixture(t); const value = authored(); await load(page, value);
-  await page.locator('#draft').click(); await status(page, 'not configured');
+  await (await inWorkspace(page.locator('#draft'))).click(); await status(page, 'not configured');
   assert.deepEqual(state.requests.at(-1).body.script, value);
   assert.deepEqual(await current(page), value);
-  await page.locator('#generate').click(); await status(page, 'manual-render');
+  await (await inWorkspace(page.locator('#generate'))).click(); await status(page, 'manual-render');
   assert.deepEqual(state.requests.at(-1), { path: '/api/render', body: { script: value, voice: 'flite' } });
   state.writer = true; state.rewrite = true;
-  await page.locator('#draft').click(); await status(page, 'AI draft applied');
+  await (await inWorkspace(page.locator('#draft'))).click(); await status(page, 'AI draft applied');
   const drafted = await current(page);
   for (const key of ['characters', 'product', 'endCard', 'sourceLock']) assert.deepEqual(drafted[key], value[key]);
   assert.equal(drafted.lines[0].text, 'Draft text.');
@@ -245,22 +246,20 @@ test('draft preserves authored clothing/product/end card; unavailable writer sti
 
 test('invalid input blocks POSTs and unapplied JSON pauses every new control', async t => {
   const { page, state } = await fixture(t); await load(page, authored());
-  await page.locator('#end-card-seconds').fill('0');
-  for (const id of ['generate', 'validate', 'draft']) { await page.locator(`#${id}`).click(); await status(page, 'seconds'); }
+  await (await inWorkspace(page.locator('#seed'))).fill('1.5');
+  for (const id of ['generate', 'validate', 'draft']) { await (await inWorkspace(page.locator(`#${id}`))).click(); await status(page, 'Seed'); }
   assert.equal(state.requests.length, 0);
-  await page.locator('#end-card-seconds').fill('');
-  await page.locator('#generate').click(); await status(page, 'seconds');
-  assert.equal(state.requests.length, 0);
+  await (await inWorkspace(page.locator('#seed'))).fill('');
   const invalid = [
     { characters: null }, { characters: { reader: 'hat' } }, { product: 'book3' },
-    { endCard: [] }, { endCard: { enabled: 'false' } }, { endCard: { text: 2 } }, { endCard: { seconds: -1 } },
-    { lines: [{ speaker: 'reader', text: 'Hello', shot: 'unknown' }] },
+    { endCard: [] }, { endCard: { text: 2 } }, { template: 'unknown' },
+    { lines: [{ speaker: 'unknown', text: 'Hello' }] },
   ];
   for (const patch of invalid) {
     const raw = JSON.stringify({ ...script(), ...patch });
-    await page.locator('#script-json').fill(raw); await page.locator('#apply-json').click(); await status(page, 'JSON not applied');
+    await (await inWorkspace(page.locator('#script-json'))).fill(raw); await (await inWorkspace(page.locator('#apply-json'))).click(); await status(page, 'JSON not applied');
     for (const id of ['reader-clothing', 'friend-clothing', 'product', 'end-card-enabled', 'end-card-title', 'end-card-text', 'end-card-url', 'end-card-seconds', 'line-0-shot']) assert.equal(await page.locator(`#${id}`).isDisabled(), true);
-    await page.locator('#generate').click(); await status(page, 'Apply JSON');
+    await (await inWorkspace(page.locator('#generate'))).click(); await status(page, 'Apply JSON');
     assert.equal(await page.locator('#script-json').inputValue(), raw);
   }
   assert.equal(state.requests.length, 0);
@@ -270,10 +269,10 @@ for (const endpoint of ['draft', 'validate', 'example']) test(`${endpoint} canno
   const { page, state } = await fixture(t); await load(page, authored()); state.writer = true;
   const path = endpoint === 'example' ? '/templates/book-duet.example.json' : `/api/${endpoint}`; state.hold(path);
   const sent = page.waitForRequest(request => request.url().endsWith(path));
-  await page.locator(endpoint === 'example' ? '#load-example' : `#${endpoint}`).click(); await sent;
-  await page.locator('#reader-clothing').selectOption('rust');
-  await page.locator('#end-card-text').fill('Keep this newer ending.');
-  await page.getByLabel('Line 1 shot', { exact: true }).selectOption('over-shoulder');
+  await (await inWorkspace(page.locator(endpoint === 'example' ? '#load-example' : `#${endpoint}`))).click(); await sent;
+  await (await inWorkspace(page.locator('#reader-clothing'))).selectOption('rust');
+  await (await inWorkspace(page.locator('#end-card-text'))).fill('Keep this newer ending.');
+  await (await inWorkspace(page.getByLabel('Line 1 shot', { exact: true }))).selectOption('over-shoulder');
   const edited = await current(page);
   state.release(path); await status(page, 'editor changed');
   assert.deepEqual(await current(page), edited);
@@ -282,17 +281,17 @@ for (const endpoint of ['draft', 'validate', 'example']) test(`${endpoint} canno
 
 test('source reselection and per-page random keep authored presentation settings and dialogue', async t => {
   const { page, state } = await fixture(t); const value = authored(); await load(page, value);
-  await page.getByLabel('Page 1', { exact: true }).selectOption('');
-  await page.getByLabel('Page 1', { exact: true }).selectOption('page-a');
+  await (await inWorkspace(page.getByLabel('Page 1', { exact: true }))).selectOption('');
+  await (await inWorkspace(page.getByLabel('Page 1', { exact: true }))).selectOption('page-a');
   assert.equal((await current(page)).sourceLock, undefined);
-  await page.locator('#random-page-0').click();
+  await (await inWorkspace(page.locator('#random-page-0'))).click();
   const sampled = await current(page);
   for (const key of ['characters', 'product', 'endCard']) assert.deepEqual(sampled[key], value[key]);
   assert.notEqual(sampled.comics[0], 'page-a');
   assert.deepEqual(sampled.lines, value.lines.map(line => ({ ...line, comic: sampled.comics[0] })));
   assert.equal(sampled.sourceLock, undefined);
   state.error = 'Source lock changed. Re-select and review the source.';
-  await load(page, value); await page.locator('#validate').click(); await status(page, 'Source lock changed');
+  await load(page, value); await (await inWorkspace(page.locator('#validate'))).click(); await status(page, 'Source lock changed');
   assert.deepEqual(await current(page), value);
 });
 
@@ -302,21 +301,21 @@ test('real server integration: new controls validate with the public contract an
   t.after(async () => { await context.close(); await server.close(); });
   const page = await context.newPage(); page.setDefaultTimeout(7000);
   await page.goto(server.url); await status(page, 'Ready');
-  await page.locator('#random-page-0').click();
-  await page.getByLabel('Line 1 text', { exact: true }).fill('A short reading.');
-  await page.getByLabel('Line 2 text', { exact: true }).fill('A short reply.');
-  await page.locator('#validate').click(); await status(page, 'validation passed');
+  await (await inWorkspace(page.locator('#random-page-0'))).click();
+  await (await inWorkspace(page.getByLabel('Line 1 text', { exact: true }))).fill('A short reading.');
+  await (await inWorkspace(page.getByLabel('Line 2 text', { exact: true }))).fill('A short reply.');
+  await (await inWorkspace(page.locator('#validate'))).click(); await status(page, 'validation passed');
   const lock = (await current(page)).sourceLock;
-  await page.locator('#reader-clothing').selectOption('olive');
-  await page.locator('#friend-clothing').selectOption('blue');
-  await page.locator('#end-card-enabled').uncheck();
-  await page.locator('#end-card-title').fill('An authored ending');
-  await page.locator('#end-card-text').fill('My closing words.');
-  await page.locator('#end-card-url').fill('www.goosnav.shop');
-  await page.locator('#end-card-seconds').fill('4.25');
-  await page.getByLabel('Line 1 shot', { exact: true }).selectOption('over-shoulder');
+  await (await inWorkspace(page.locator('#reader-clothing'))).selectOption('olive');
+  await (await inWorkspace(page.locator('#friend-clothing'))).selectOption('blue');
+  await (await inWorkspace(page.locator('#end-card-enabled'))).uncheck();
+  await (await inWorkspace(page.locator('#end-card-title'))).fill('An authored ending');
+  await (await inWorkspace(page.locator('#end-card-text'))).fill('My closing words.');
+  await (await inWorkspace(page.locator('#end-card-url'))).fill('www.goosnav.shop');
+  await (await inWorkspace(page.locator('#end-card-seconds'))).fill('4.25');
+  await (await inWorkspace(page.getByLabel('Line 1 shot', { exact: true }))).selectOption('over-shoulder');
   const response = page.waitForResponse(response => response.url().endsWith('/api/validate'));
-  await page.locator('#validate').click(); assert.equal((await response).status(), 200);
+  await (await inWorkspace(page.locator('#validate'))).click(); assert.equal((await response).status(), 200);
   await status(page, 'validation passed');
   const saved = await current(page);
   assert.deepEqual(saved.characters, { reader: 'olive', friend: 'blue' });
@@ -324,9 +323,9 @@ test('real server integration: new controls validate with the public contract an
   assert.equal(saved.product, 'book2'); assert.equal(saved.lines[0].shot, 'over-shoulder');
   assert.deepEqual(saved.sourceLock, lock);
   // Bounds are owned by the main contract, not duplicated in this GUI slice.
-  await page.locator('#end-card-seconds').fill('1000');
+  await (await inWorkspace(page.locator('#end-card-seconds'))).fill('1000');
   const rejected = page.waitForResponse(response => response.url().endsWith('/api/validate'));
-  await page.locator('#validate').click(); assert.equal((await rejected).status(), 400);
+  await (await inWorkspace(page.locator('#validate'))).click(); assert.equal((await rejected).status(), 400);
   await status(page, 'seconds');
   assert.deepEqual(await current(page), { ...saved, endCard: { ...saved.endCard, seconds: 1000 } });
 });

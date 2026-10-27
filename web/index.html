@@ -12,19 +12,60 @@
 <body>
   <header class="masthead">
     <h1>3D Comic Engine</h1>
+    <div class="toolbar project-actions">
+      <button id="new-video" type="button" disabled><span aria-hidden="true">＋</span> New</button>
+      <label class="file-label" for="upload-json-top">Open JSON<input id="upload-json-top" type="file" accept=".json,application/json"></label>
+      <button id="download-json" type="button">↓ Save JSON</button>
+    </div>
   </header>
   <main>
-    <section class="panel starter" aria-labelledby="start-heading">
-      <div class="starter-heading">
-        <div><h2 id="start-heading">Start here</h2></div>
-        <button id="new-video" type="button" disabled>Start blank</button>
+    <nav class="view-nav" aria-label="Workspace">
+      <button id="nav-editor" type="button" data-view-target="editor" aria-current="page">Editor</button>
+      <button id="nav-recent" type="button" data-view-target="recent">Recent</button>
+      <button id="nav-batch" type="button" data-view-target="batch">Batch</button>
+      <button id="nav-videos" type="button" data-view-target="videos">Videos</button>
+      <button id="nav-json" type="button" data-view-target="json">{ } JSON</button>
+    </nav>
+    <p id="editor-status" class="status" role="status" aria-live="polite">Connecting to the local theatre…</p>
+    <p id="start-status" hidden></p>
+    <p id="storage-status" class="status error" role="status"></p>
+    <button id="retry" type="button" hidden>Retry connection</button>
+    <section id="view-editor" data-view="editor" aria-label="Editor">
+      <div class="project-heading">
+        <div><label for="title">Film title</label><input id="title" type="text" maxlength="500" autocomplete="off" disabled></div>
+        <span id="draft-status" class="muted" role="status">Draft saved on this device</span>
       </div>
-      <div class="starter-actions">
-        <div>
-          <label class="file-label primary" for="upload-json-top">Upload JSON<input id="upload-json-top" type="file" accept=".json,application/json" aria-describedby="upload-help"></label>
-          <p id="upload-help" class="hint">Open a saved script.</p>
-          <a class="template-link" href="./templates/blank-book-duet.json" download>Download blank JSON template</a>
-        </div>
+      <nav class="step-nav" aria-label="Editing steps">
+        <button type="button" data-step-target="scene" aria-current="step">01 <span>Scene</span></button>
+        <button type="button" data-step-target="script">02 <span>Script</span></button>
+        <button type="button" data-step-target="export">03 <span>Export</span></button>
+      </nav>
+      <fieldset id="author-fields" disabled>
+        <div data-step="scene" class="workspace">
+          <section class="panel sources" aria-labelledby="sources-heading">
+            <h2 id="sources-heading" tabindex="-1">Pages &amp; setting</h2>
+            <fieldset id="source-fields" disabled>
+          <label for="template">Template</label><select id="template"></select>
+          <p id="template-help" class="hint"></p>
+          <div class="field-pair">
+            <div><label for="scene">Scene</label><select id="scene"></select></div>
+            <div><label for="seed">Seed <span class="optional">optional</span></label><input id="seed" type="number" step="1" placeholder="Automatic"></div>
+          </div>
+          <p id="edition" class="edition"></p>
+          <div id="page-selectors"><p class="muted">Loading the local catalog…</p></div>
+          <button id="add-page" type="button" hidden>+ Add page</button>
+          <div id="page-previews" class="page-previews" aria-label="Selected page previews"></div>
+            </fieldset>
+          </section>
+          <section class="panel cast-panel" aria-labelledby="cast-heading">
+            <h2 id="cast-heading">Cast</h2>
+          <div class="field-pair">
+            <div><label for="reader-clothing">Reader character</label><select id="reader-clothing"></select></div>
+            <div><label for="friend-clothing">Friend character</label><select id="friend-clothing"></select></div>
+          </div>
+          <div id="extras-fields" class="extras-fields" role="group" aria-labelledby="extras-heading"><p id="extras-heading" class="hint">Background cameos (up to 4)</p></div>
+
+            <details class="starter"><summary>Examples &amp; shuffle</summary><div class="starter-actions">
         <div>
           <label for="example-script">Example script</label>
           <div class="example-controls">
@@ -34,7 +75,7 @@
               <option value="page-tour.example.json">Page tour · several comics</option>
               <option value="astronaut.example.json">Moon base · astronauts</option>
             </select>
-            <button id="load-example" type="button" disabled>Load example</button>
+            <button id="load-example" type="button" disabled>Open example</button>
           </div>
         </div>
         <div class="chaos-generator">
@@ -45,16 +86,101 @@
               <option value="wild" selected>Wild · escalating mayhem</option>
               <option value="unhinged">Unhinged · everything at once</option>
             </select>
-            <button id="generate-chaos" type="button" disabled>Generate chaos script</button>
+            <button id="generate-chaos" type="button" disabled>Shuffle script</button>
           </div>
-          <p class="hint">A random cast, scene, cameos, stunts and dialogue from a new seed. No AI. Review it, then render.</p>
+          <p class="hint">Random cast, scene and dialogue.</p>
         </div>
-      </div>
-      <p id="start-status" class="status">Loading the editor…</p>
+
+            </div><a class="template-link" href="./templates/blank-book-duet.json" download>Blank JSON template ↓</a></details>
+          </section>
+        </div>
+        <section data-step="script" hidden class="panel editor" aria-labelledby="editor-heading">
+          <div class="subheading"><h2 id="editor-heading" tabindex="-1">Script</h2><button id="draft" type="button" data-post title="Requires a local model; replaces dialogue.">AI Draft</button></div>
+        <details class="selection-box"><summary>Selected pages</summary>
+<div id="selected-pages" aria-live="polite">No pages selected.</div>
+          <p id="selection-help" class="hint"></p>
+          <div id="source-lock" class="source-lock">Validate to record a source lock.</div>
+        </details>          <div class="subheading dialogue-heading"><h3>Dialogue</h3><button id="add-line" type="button">+ Add dialogue</button><button id="add-action" type="button">+ Add action</button></div>
+          <div id="dialogue"></div>
+          <p class="hint">Add dialogue for each page. A blank page reference continues the previous page.</p>
+
+        </section>
+        <div data-step="export" hidden class="export-grid">
+          <section class="panel" aria-labelledby="output-heading"><h2 id="output-heading" tabindex="-1">Picture &amp; sound</h2>
+          <label for="output-preset">Format</label><select id="output-preset"></select>
+          <div id="custom-size" class="field-pair" hidden>
+            <div><label for="output-width">Width (pixels)</label><input id="output-width" type="number" min="128" max="1920" step="2"></div>
+            <div><label for="output-height">Height (pixels)</label><input id="output-height" type="number" min="128" max="1920" step="2"></div>
+          </div>
+          <details class="output-options"><summary>Frame rate &amp; look</summary>
+          <label for="output-fps">Frames per second</label><select id="output-fps"><option>12</option><option>24</option><option>30</option></select>
+          <label for="grade">Color grade</label><select id="grade"><option value="muted">Muted · slightly drab (default)</option><option value="film">Film · dusty, faded, grainy</option><option value="vivid">Vivid · original bright colours</option></select>
+          <label for="dither">Dither</label><select id="dither"><option value="subtle">Subtle · slightly crunchy (default)</option><option value="crunchy">Crunchy · strong bitcrushed pattern</option><option value="off">Off · smooth</option></select>
+          </details>
+        <div class="production">
+          <div><label for="voice">Voice</label><select id="voice"><option value="flite">On-device Flite (no model needed)</option><option value="kokoro">Local Kokoro (optional install)</option><option value="recorded">Recorded audio paths in JSON</option></select></div>
+          <div id="background-music-fields" hidden>
+            <label for="background-music">Background music (optional)</label>
+            <input id="background-music" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg" aria-describedby="background-music-help">
+            <p id="background-music-help" class="hint">Plays from the start, quietly under dialogue. Max 15 MiB / 3 minutes. Reselect after reloading.</p>
+            <button id="clear-music" type="button">Clear music</button>
+          </div>
+
+        </div>
+          </section>
+          <section class="panel" aria-labelledby="captions-heading"><h2 id="captions-heading">Captions</h2>
+          <label class="check-label" for="captions-enabled"><input id="captions-enabled" type="checkbox">Show spoken captions</label>
+          <label for="captions-position">Caption placement</label><select id="captions-position"><option value="bottom">Bottom quarter</option><option value="top">Top quarter</option></select>
+          <div class="field-pair">
+            <div><label for="captions-reader">Reader caption color</label><input id="captions-reader" type="color" value="#ffe35b"></div>
+            <div><label for="captions-friend">Friend caption color</label><input id="captions-friend" type="color" value="#6ee7ff"></div>
+          </div>
+          <details class="end-card-fields"><summary>End card</summary>
+
+            <label class="check-label" for="end-card-enabled"><input id="end-card-enabled" type="checkbox">Show end card</label>
+            <label for="product">Product</label><select id="product"><option value="book2">Goosnav Book Two</option></select>
+            <div class="field-pair">
+              <div><label for="end-card-title">End-card title</label><input id="end-card-title" type="text" autocomplete="off"></div>
+              <div><label for="end-card-seconds">End-card seconds</label><input id="end-card-seconds" type="number" step="any" inputmode="decimal"></div>
+            </div>
+            <label for="end-card-text">End-card text</label><textarea id="end-card-text" rows="2"></textarea>
+            <label for="end-card-url">End-card URL</label><input id="end-card-url" type="text" autocomplete="off" spellcheck="false">
+          </details>          </section>
+        </div>
+      </fieldset>
+      <footer class="step-footer">
+        <button id="previous-step" type="button" disabled>← Previous</button>
+        <span id="step-position" class="muted">1 / 3</span>
+          <div class="toolbar" data-step="export" hidden>
+            <button id="validate" type="button" data-post>Validate</button>
+
+            <button id="generate" class="primary" type="button" data-post>Generate video</button>
+          </div>
+        <button id="next-step" type="button">Next: Script →</button>
+      </footer>
     </section>
-    <section class="panel batch-panel" aria-labelledby="batch-heading">
+    <section id="view-json" data-view="json" hidden class="panel" aria-label="JSON editor">
+        <div class="json-heading"><h3><label for="script-json">Public script JSON</label></h3><span id="json-state" class="muted">In sync</span></div>
+        <p id="json-help" class="hint">Advanced editing. Apply or revert JSON changes to resume using the form.</p>
+        <textarea id="script-json" class="code-editor" spellcheck="false" aria-describedby="json-help" rows="15" disabled></textarea>
+        <div class="toolbar">
+          <button id="apply-json" type="button">Apply JSON</button>
+          <button id="revert-json" type="button">Revert JSON</button>
+
+          <label class="file-label" for="upload-json">Upload JSON<input id="upload-json" type="file" accept=".json,application/json"></label>
+        </div>
+        <p class="hint">Upload replaces the current script. Download saves applied changes.</p>
+
+    </section>
+    <section id="view-recent" data-view="recent" hidden class="panel" aria-labelledby="recent-heading">
+      <div class="subheading"><h2 id="recent-heading" tabindex="-1">Recent versions</h2><button id="save-version" type="button">Save version</button></div>
+      <p class="hint">Up to 20 snapshots on this device. Saved when you switch steps or replace a script. Download JSON for a permanent copy.</p>
+      <p id="recent-empty" class="muted">Your edits will appear here.</p>
+      <ol id="recent-list" class="recent-list"></ol>
+    </section>
+    <section id="view-batch" data-view="batch" hidden class="panel batch-panel" aria-labelledby="batch-heading">
       <div class="batch-heading">
-        <div><h2 id="batch-heading">Batch render JSON scripts</h2><p class="hint">Select scripts and download the finished videos together.</p></div>
+        <div><h2 id="batch-heading">Batch render</h2><p class="hint">Select scripts and download the finished videos together.</p></div>
         <span class="batch-format">JSON → MP4</span>
       </div>
       <div class="toolbar batch-imports">
@@ -85,104 +211,14 @@
       <p id="batch-runs-empty" class="batch-empty">No batches yet.</p>
       <div id="batch-runs" class="batch-runs" aria-label="Batch render results"></div>
     </section>
-    <div class="workspace">
-      <section class="panel sources" aria-labelledby="sources-heading">
-        <div class="section-heading"><span class="step">01</span><h2 id="sources-heading">Choose your pages</h2></div>
-        <fieldset id="source-fields" disabled>
-          <label for="template">Template</label><select id="template"></select>
-          <p id="template-help" class="hint"></p>
-          <div class="field-pair">
-            <div><label for="scene">Scene</label><select id="scene"></select></div>
-            <div><label for="seed">Seed <span class="optional">optional</span></label><input id="seed" type="number" step="1" placeholder="Automatic"></div>
-          </div>
-          <p id="edition" class="edition"></p>
-          <div id="page-selectors"><p class="muted">Loading the local catalog…</p></div>
-          <button id="add-page" type="button" hidden>+ Add page</button>
-          <div id="page-previews" class="page-previews" aria-label="Selected page previews"></div>
-        </fieldset>
-      </section>
-      <section class="panel editor" aria-labelledby="editor-heading">
-        <div class="section-heading"><span class="step">02</span><h2 id="editor-heading">Write the reading</h2></div>
-        <div class="selection-box">
-          <h3>Selected pages</h3><div id="selected-pages" aria-live="polite">No pages selected.</div>
-          <p id="selection-help" class="hint"></p>
-          <div id="source-lock" class="source-lock">Validate to record a source lock.</div>
-        </div>
-        <fieldset id="author-fields" disabled>
-          <label for="title">Film title</label><input id="title" type="text" maxlength="500" autocomplete="off">
-          <div class="subheading"><h3>Video size</h3></div>
-          <label for="output-preset">Format</label><select id="output-preset"></select>
-          <div class="field-pair">
-            <div><label for="output-width">Width (pixels)</label><input id="output-width" type="number" min="128" max="1920" step="2"></div>
-            <div><label for="output-height">Height (pixels)</label><input id="output-height" type="number" min="128" max="1920" step="2"></div>
-          </div>
-          <label for="output-fps">Frames per second</label><select id="output-fps"><option>12</option><option>24</option><option>30</option></select>
-          <label for="grade">Color grade</label><select id="grade"><option value="muted">Muted · slightly drab (default)</option><option value="film">Film · dusty, faded, grainy</option><option value="vivid">Vivid · original bright colours</option></select>
-          <label for="dither">Dither</label><select id="dither"><option value="subtle">Subtle · slightly crunchy (default)</option><option value="crunchy">Crunchy · strong bitcrushed pattern</option><option value="off">Off · smooth</option></select>
-          <div class="subheading"><h3>Captions</h3></div>
-          <label class="check-label" for="captions-enabled"><input id="captions-enabled" type="checkbox">Show spoken captions</label>
-          <label for="captions-position">Caption placement</label><select id="captions-position"><option value="bottom">Bottom quarter</option><option value="top">Top quarter</option></select>
-          <div class="field-pair">
-            <div><label for="captions-reader">Reader caption color</label><input id="captions-reader" type="color" value="#ffe35b"></div>
-            <div><label for="captions-friend">Friend caption color</label><input id="captions-friend" type="color" value="#6ee7ff"></div>
-          </div>
-          <div class="subheading"><h3>Characters</h3></div>
-          <div class="field-pair">
-            <div><label for="reader-clothing">Reader character</label><select id="reader-clothing"></select></div>
-            <div><label for="friend-clothing">Friend character</label><select id="friend-clothing"></select></div>
-          </div>
-          <div id="extras-fields" class="extras-fields" role="group" aria-labelledby="extras-heading"><p id="extras-heading" class="hint">Background cameos (up to 4)</p></div>
-          <div class="end-card-fields">
-            <h3>End card</h3>
-            <label class="check-label" for="end-card-enabled"><input id="end-card-enabled" type="checkbox">Show end card</label>
-            <label for="product">Product</label><select id="product"><option value="book2">Goosnav Book Two</option></select>
-            <div class="field-pair">
-              <div><label for="end-card-title">End-card title</label><input id="end-card-title" type="text" autocomplete="off"></div>
-              <div><label for="end-card-seconds">End-card seconds</label><input id="end-card-seconds" type="number" step="any" inputmode="decimal"></div>
-            </div>
-            <label for="end-card-text">End-card text</label><textarea id="end-card-text" rows="2"></textarea>
-            <label for="end-card-url">End-card URL</label><input id="end-card-url" type="text" autocomplete="off" spellcheck="false">
-          </div>
-          <div class="subheading"><h3>Dialogue</h3><button id="add-line" type="button">+ Add dialogue</button><button id="add-action" type="button">+ Add action</button></div>
-          <div id="dialogue"></div>
-          <p class="hint">Add dialogue for each page. A blank page reference continues the previous page.</p>
-        </fieldset>
-        <div class="json-heading"><h3><label for="script-json">Public script JSON</label></h3><span id="json-state" class="muted">In sync</span></div>
-        <p id="json-help" class="hint">Advanced editing. Apply or revert JSON changes to resume using the form.</p>
-        <textarea id="script-json" class="code-editor" spellcheck="false" aria-describedby="json-help" rows="15" disabled></textarea>
-        <div class="toolbar">
-          <button id="apply-json" type="button">Apply JSON</button>
-          <button id="revert-json" type="button">Revert JSON</button>
-          <button id="download-json" type="button">Download JSON</button>
-          <label class="file-label" for="upload-json">Upload JSON<input id="upload-json" type="file" accept=".json,application/json"></label>
-        </div>
-        <p class="hint">Upload replaces the current script. Download saves applied changes.</p>
-        <div class="production">
-          <div><label for="voice">Voice</label><select id="voice"><option value="flite">On-device Flite (no model needed)</option><option value="kokoro">Local Kokoro (optional install)</option><option value="recorded">Recorded audio paths in JSON</option></select></div>
-          <div id="background-music-fields" hidden>
-            <label for="background-music">Background music (optional)</label>
-            <input id="background-music" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg" aria-describedby="background-music-help">
-            <p id="background-music-help" class="hint">Plays from the start, quietly under dialogue. Max 15 MiB / 3 minutes. Reselect after reloading.</p>
-            <button id="clear-music" type="button">Clear music</button>
-          </div>
-          <div class="toolbar">
-            <button id="validate" type="button" data-post>Validate</button>
-            <button id="draft" type="button" data-post title="Requires a local model; replaces dialogue.">AI Draft</button>
-            <button id="generate" class="primary" type="button" data-post>Generate video</button>
-          </div>
-        </div>
-        <p id="editor-status" class="status" role="status" aria-live="polite">Connecting to the local theatre…</p>
-        <button id="retry" type="button" hidden>Retry connection</button>
-      </section>
-    </div>
-    <section class="panel jobs-panel" aria-labelledby="jobs-heading">
-      <div class="subheading"><div class="section-heading"><span class="step">03</span><h2 id="jobs-heading">Screening room</h2></div><button id="refresh-jobs" type="button">Refresh jobs</button></div>
+    <section id="view-videos" data-view="videos" hidden class="panel jobs-panel" aria-labelledby="jobs-heading">
+      <div class="subheading"><div class="section-heading"><h2 id="jobs-heading">Videos</h2></div><button id="refresh-jobs" type="button">Refresh jobs</button></div>
       <p id="jobs-status" class="status" role="status" aria-live="polite"></p>
       <p id="device-note" class="hint" hidden>Keep this tab visible and the screen unlocked during export. Download videos before closing.</p>
       <div id="jobs" class="jobs"><p class="muted">No jobs loaded yet.</p></div>
       <canvas id="device-canvas" hidden aria-label="Current on-device export" style="width:min(100%,432px);height:auto"></canvas>
     </section>
   </main>
-  <noscript>This on-device editor needs JavaScript enabled to load the catalog and render your script.</noscript>
+  <noscript>This editor needs JavaScript enabled.</noscript>
 </body>
 </html>
