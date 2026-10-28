@@ -81,11 +81,12 @@ test('strict MP4 export retries both H.264 profiles and rejects without recordin
   assert.deepEqual(result.tracks, ['ended', 'ended']);
 });
 
-test('browser batch records distinct authored MP4s from one click, or preflights unsupported codecs before starting', { timeout: 180000 }, async t => {
+for (const webmOnly of [false,true]) test(`browser batch records distinct authored videos from one click (WebM only: ${webmOnly})`, { timeout: 180000 }, async t => {
   const { page, catalog } = await browserFixture(t, [...entries, 'browser/backend.mjs']);
   const scripts = [shortScript, { ...shortScript, title: 'Second film', seed: 34, output: { width: 192, height: 256, fps: 24 },
     characters: { reader: 'blue-beady', friend: 'rust' } }];
-  await page.evaluate(async ({ scripts, catalog }) => {
+  await page.evaluate(async ({ scripts, catalog, webmOnly }) => {
+    if(webmOnly){const NativeRecorder=MediaRecorder;window.MediaRecorder=class extends NativeRecorder{static isTypeSupported(type){return type.startsWith('video/webm')&&NativeRecorder.isTypeSupported(type);}};}
     const { createBrowserBackend } = await import('/browser/backend.mjs');
     const NativeAudio = AudioContext;
     window.batchAudio = { created: 0, closed: 0, active: false };
@@ -105,7 +106,7 @@ test('browser batch records distinct authored MP4s from one click, or preflights
         .catch(error => { window.batchResult = { error: error.message }; });
     };
     document.body.prepend(button);
-  }, { scripts, catalog });
+  }, { scripts, catalog, webmOnly });
   await page.getByRole('button', { name: 'Start batch' }).click();
   await page.waitForFunction(() => window.batchResult, null, { timeout: 150000 });
   const result = await page.evaluate(async () => ({ ...window.batchResult, supported: window.batchSupported, audio: window.batchAudio,
@@ -114,15 +115,10 @@ test('browser batch records distinct authored MP4s from one click, or preflights
       filename: item.filename, bytes: Array.from(new Uint8Array(await (await fetch(item.video)).arrayBuffer())),
     }))),
   }));
-  if (!result.supported) {
-    assert.match(result.error, /H\.264\/AAC MP4.*desktop/i);
-    assert.equal(result.audio.created, 0); assert.deepEqual(result.jobs, []);
-    t.diagnostic('This browser lacks H.264/AAC recording. Verified preflight rejects before audio or jobs start; desktop batch provides MP4 export.');
-    return;
-  }
   assert.equal(result.batch.status, 'complete'); assert.equal(result.batch.completed, 2);
   assert.equal(result.audio.created, 1); assert.equal(result.audio.closed, 1); assert.equal(result.audio.active, true);
-  assert.deepEqual(result.files.map(file => file.filename), ['001-same.mp4', '002-same.mp4']);
+  assert.equal(result.files.length,2);
+  result.files.forEach((file,i)=>{assert.match(file.filename,new RegExp(`^00${i+1}-same\\.(mp4|webm)$`));if(webmOnly)assert.ok(file.filename.endsWith('.webm'));});
   const dir = await mkdtemp(join(tmpdir(), 'comic-batch-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   for (const [index, file] of result.files.entries()) {
@@ -130,7 +126,9 @@ test('browser batch records distinct authored MP4s from one click, or preflights
     await writeFile(filename, new Uint8Array(file.bytes));
     const probe = JSON.parse((await exec('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', filename])).stdout);
     const video = probe.streams.find(stream => stream.codec_type === 'video'), audio = probe.streams.find(stream => stream.codec_type === 'audio');
-    assert.equal(video.codec_name, 'h264'); assert.equal(audio.codec_name, 'aac');
+    if(file.filename.endsWith('.mp4')){assert.equal(video.codec_name,'h264');assert.equal(audio.codec_name,'aac');}
+    else{assert.match(video.codec_name,/^vp[89]$/);assert.equal(audio.codec_name,'opus');}
+    await exec('ffmpeg',['-v','error','-i',filename,'-f','null','-']);
     assert.equal(video.width, scripts[index].output.width); assert.equal(video.height, scripts[index].output.height);
     assert.deepEqual(result.jobs[index].script.output, scripts[index].output);
   }

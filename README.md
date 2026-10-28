@@ -199,7 +199,7 @@ npm run verify:assets
 [Verification](DEV/VERIFICATION.md) · [Directory guide](DEV/README.md)
 
 Desktop renders use the GPU (Vulkan) when headless Chromium can reach it, and
-fall back through software Chromium to offline Blender CPU automatically (`THEATRE_GPU=0` forces software).
+fall back through software Chromium to offline Blender CPU automatically (`THEATRE_GPU=0` skips the accelerated Chromium preference).
 Frames are captured with Chromium's fast screenshot path. On the development
 machine (Intel HD 530) a 1080×1920 frame renders in about 20 ms, against about
 600 ms in software. The `--grade` and `--dither` options on `render` and `batch`

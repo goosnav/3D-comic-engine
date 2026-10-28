@@ -40,10 +40,11 @@ test('public example library exposes complete scripts verbatim, excluding manife
 test('the shipped page set is available through the same desktop and static index', async () => {
   const {index, files} = await getExampleLibrary();
   const pages = index.examples.filter(example => example.group === 'pages');
-  assert.equal(pages.length, 25);
+  assert.ok(pages.length >= 25);
   for (let i = 0; i < pages.length; i++) {
-    assert.ok(pages[i].name.startsWith(`page-${String(i + 1).padStart(3, '0')}-`));
+    assert.match(pages[i].name,/^page-\d{3}-/);
     assert.deepEqual(files.get(pages[i].name), await fs.readFile(path.join(ROOT, pages[i].path)));
   }
+  for(let i=1;i<=25;i++) assert.ok(pages.some(p=>p.name.startsWith(`page-${String(i).padStart(3,'0')}-`)));
   assert.ok(!files.has('pages-001-025.batch.json'));
 });

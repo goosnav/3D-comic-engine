@@ -14,7 +14,7 @@ test('offline local voice installation resolves the required files without deman
 test('recorded audio measures real time and mouth activity, then reuses verified cache',async()=>{
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'theatre-audio-'));
  try{execFileSync('ffmpeg',['-v','error','-f','lavfi','-i','sine=frequency=330:duration=0.75','-ar','48000',path.join(root,'take.wav')]);
- const script={seed:1,cast:[{id:'reader',voice:'am_onyx'}],lines:[{id:'a',speaker:'reader',text:'Test',audio:'take.wav'}]};
+ const script={seed:1,speechRate:1,cast:[{id:'reader',voice:'am_onyx'}],lines:[{id:'a',speaker:'reader',text:'Test',audio:'take.wav'}]};
  const options={mode:'recorded',inputRoot:root,cacheRoot:path.join(root,'cache')};
  const takes=await prepareAudio(script,options);assert.equal(takes.a.duration,.75);assert.ok(takes.a.mouth.some(p=>p.value>0));
  assert.equal(takes.a.mouth[0].value,0,'speech starts at a closed mouth');
@@ -27,4 +27,8 @@ test('recorded audio measures real time and mouth activity, then reuses verified
 });
 test('missing recorded take errors rather than synthesizing or inserting silence',async()=>{
  await assert.rejects(prepareAudio({cast:[],lines:[{id:'a',speaker:'reader',text:'Hi'}]},{mode:'recorded'}),/audio|recorded/i);
+});
+
+test('cancelled audio mix does not start an encoder or publish output',async()=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'cancel-mix-'));try{const c=new AbortController();c.abort(Error('Cancelled mix'));const out=path.join(root,'mix.wav');await assert.rejects(writeMix({duration:1,events:[]},{},out,{signal:c.signal}),/Cancelled mix/);await assert.rejects(fs.access(out),/ENOENT/);}finally{await fs.rm(root,{recursive:true,force:true});}
 });

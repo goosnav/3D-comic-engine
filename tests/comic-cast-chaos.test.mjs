@@ -187,7 +187,7 @@ test('colour grade is optional, validated, and carried to the timeline', async (
     assert.deepEqual(resolveScript(resolved, catalog), resolved);
     assert.equal(compileTimeline(resolved, {'beat-0': {duration: 1}}).grade, grade);
   }
-  assert.throws(() => resolveScript({...raw, grade: 'sepia'}, catalog), /grade/);
+  assert.throws(() => resolveScript({...raw, grade: 'sepia'}, catalog,{repair:false}), /grade/);
 });
 
 test('dither is optional, validated, and carried to the timeline', async () => {
@@ -201,7 +201,7 @@ test('dither is optional, validated, and carried to the timeline', async () => {
     assert.deepEqual(resolveScript(resolved, catalog), resolved);
     assert.equal(compileTimeline(resolved, {'beat-0': {duration: 1}}).dither, dither);
   }
-  assert.throws(() => resolveScript({...raw, dither: 'max'}, catalog), /dither/);
+  assert.throws(() => resolveScript({...raw, dither: 'max'}, catalog,{repair:false}), /dither/);
   assert.equal(ditherScale(1080, 1920), 2);
   assert.equal(ditherScale(432, 768), 1);
 });

@@ -92,7 +92,7 @@ export async function processJob(id,{outputRoot=OUTPUT,progress=()=>{},backend,s
   job.warnings=scriptWarnings(script);
   await update('audio','Preparing measured voice takes');
   const takes=await prepareAudio(script,{mode:job.voice,inputRoot:job.inputRoot,progress,signal});
-  const timeline=compileTimeline(script,takes);await writeMix(timeline,takes,path.join(dir,'mix.wav'));await atomicJSON(path.join(dir,'timeline.json'),timeline);
+  const timeline=compileTimeline(script,takes);await writeMix(timeline,takes,path.join(dir,'mix.wav'),{signal});await atomicJSON(path.join(dir,'timeline.json'),timeline);
   try{await fs.access(path.join(dir,'music.bin'));await run(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-y','-i',path.join(dir,'mix.wav'),'-i',path.join(dir,'music.bin'),'-filter_complex','[1:a]volume=0.12[m];[0:a][m]amix=inputs=2:duration=first:normalize=0[a]','-map','[a]','-ar','48000',path.join(dir,'music-mix.wav')],{signal});await fs.rename(path.join(dir,'music-mix.wav'),path.join(dir,'mix.wav'));}catch(e){if(e.code!=='ENOENT')throw Object.assign(e,{stage:'speech'});}
 
   // Cache identity includes every renderer/compiler byte and exact voice content.

@@ -59,7 +59,7 @@ Each successful Cycles frame has a hash receipt bound to the render input, sourc
 | Normal/occlusion/emissive textures, transmission, clearcoat, custom shaders | Not reproduced; explicitly reported reduced fidelity |
 | Multiple-material mesh groups | Reject with the mesh name rather than silently omit |
 
-Cycles uses AgX tone mapping. Visual differences in lighting, shadows, noise, glass and text rasterization are expected. No pixel equivalence is claimed. An action is not replaced by a still or cutout. Original models and animation functions remain authoritative.
+Cycles uses AgX tone mapping and recomputes smooth mesh normals rather than retaining authored glTF normals. Visual differences in lighting, shadows, noise, glass and text rasterization are expected. No pixel equivalence is claimed. An action is not replaced by a still or cutout. Original models and animation functions remain authoritative.
 
 ## Portable jobs and recordings
 
@@ -98,3 +98,11 @@ THEATRE_CPU_SAMPLES=16 node tools/acceptance-cpu.mjs /tmp/goosnav-seven-cpu
 ```
 
 The explicit CPU suite derives seven short scenes from the existing `examples/parasite.json` setup, uses actual rigged GLBs, real Flite speech, ordinary gestures, several cameras, a head-spin action, captions and endcards. It deliberately points Chromium at a nonexistent executable, renders 320×480 at 12 fps, verifies every MP4 and writes `acceptance.json` with streams and elapsed time. It is not a full-resolution benchmark or exhaustive visual certification of every catalog scene.
+
+### Measured CPU acceptance (Linux, Blender 4.0.2)
+
+The final seven-scene run at 320×480, 12 fps and 16 Cycles samples completed in 638.13 seconds with Chromium deliberately unavailable. It produced 169 frames (14.083 seconds of video). Individual frame counts were 23, 22, 24, 24, 21, 21 and 34. All seven outputs passed H.264/AAC stream, dimensions, duration, frame-count and complete FFmpeg decode checks. This elapsed time includes speech, evaluation, rendering and encoding, with other regression tests running concurrently; it is not an isolated benchmark. No full-resolution performance claim is made.
+
+A separate real CPU cancellation test interrupted after the first rendered frame, resumed, confirmed that frame's modification time was unchanged, and verified the completed video. Source changes intentionally invalidate frame receipts, so recovery checks must run against stable code.
+
+Final regression evidence: `npm test` passed 198 tests with one optional voice-installation skip; the production build passed. The full browser run passed 114 tests with two skips and exposed two test-maintenance issues: the large animation fixture exceeded its old 180-second software-rendering timeout, and a legacy batch assertion still required MP4-only rejection. The unchanged animation assertions passed on rerun in 140 seconds with a larger bounded timeout; the replacement batch test passed both normal and forced WebM-only real two-video exports, including codec/dimension checks and full decoding. All remaining browser cases, including production static export with speech/music/endcard, passed in the full run. A separate explicit accelerated Chromium render also produced a verified H.264/AAC video.

@@ -20,6 +20,8 @@ test('optional writer rejects remote providers before making any request',async(
 test('writer receives selected exact source and cannot switch comic or template',async()=>{
  const c=await loadCatalog(),s=selectScript('book-duet',8,c),p=writerPacket(s,c);assert.equal(p.sources.length,1);assert.equal(p.sources[0].id,s.comics[0]);assert.deepEqual(p.sources[0].transcript,c.comics.find(c=>c.id===s.comics[0]).transcript);
  assert.throws(()=>acceptDraft({...s,comics:['bad']},s,c),/selection|source/i);
+ assert.throws(()=>acceptDraft({speechRate:1},s,c),/locked.*speechRate/);
+ assert.doesNotThrow(()=>acceptDraft({...s},s,c));
  const proposed={title:'A thought',lines:[{speaker:'reader',text:'That is quite a choice.',comic:s.comics[0]}]};const out=acceptDraft(proposed,s,c);assert.deepEqual(out.sourceLock,s.sourceLock);
 });
 test('new source pages carry explicit untranscribed status to the optional writer',async()=>{

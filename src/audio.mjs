@@ -9,11 +9,11 @@ export async function pythonCommand(){
  const local=path.join(ROOT,'.venv',process.platform==='win32'?'Scripts/python.exe':'bin/python');
  try{await fs.access(local);return local;}catch{return process.platform==='win32'?'python':'python3';}
 }
-async function decode(file,speechRate=1){
+async function decode(file,speechRate=1,signal){
  // Only supplied recordings need tempo processing; TTS engines set their own pace.
  // atempo preserves pitch. Never resample the voice to change speed or retime the film.
  const rate=resolveSpeechRate(speechRate),filter=rate===1?[]:['-af',`atempo=${rate}`];
- return run(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-i',file,...filter,'-f','s16le','-ac','1','-ar','48000','pipe:1']);
+ return run(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-i',file,...filter,'-f','s16le','-ac','1','-ar','48000','pipe:1'],{signal});
 }
 function measure(pcm){
  if(!pcm.length||pcm.length%2)throw Error('Empty/corrupt audio');let peak=0,clipped=0;const mouth=[];
@@ -76,7 +76,7 @@ export async function prepareAudio(script,{mode='flite',inputRoot=ROOT,cacheRoot
     progress(`Synthesizing Flite take ${p.line.id}`);
     const {synthesizeSpeech}=await import('./flite.mjs');
     pcm=speechPCM(await synthesizeSpeech(flite.module,p.line.text,{speaker:p.line.speaker,speechRate}));
-   }else pcm=await decode(p.native,p.source?speechRate:1);
+   }else pcm=await decode(p.native,p.source?speechRate:1,signal);
    const samples=new Float32Array(pcm.length/2);for(let i=0;i<samples.length;i++)samples[i]=pcm.readInt16LE(i*2)/32768;
    const [start,end]=speechBounds(samples,48000);pcm=pcm.subarray(start*2,end*2);
    const info=measure(pcm),nonce=randomUUID();await fs.writeFile(p.file+'.'+nonce,pcm);await fs.rename(p.file+'.'+nonce,p.file);await fs.writeFile(p.receipt+'.'+nonce,JSON.stringify({sha256:digest(pcm),identity,speechRate}));await fs.rename(p.receipt+'.'+nonce,p.receipt);result[p.line.id]={path:p.file,sha256:digest(pcm),...info};
@@ -84,9 +84,9 @@ export async function prepareAudio(script,{mode='flite',inputRoot=ROOT,cacheRoot
   return result;
  }finally{await fs.rm(tmp,{recursive:true,force:true});}
 }
-export async function writeMix(timeline,takes,output){
+export async function writeMix(timeline,takes,output,{signal}={}){
  if(timeline.duration>600)throw Error('Episode exceeds the 600-second resource safety bound; split into episodes. Prepared takes are cached.');
  const pcm=Buffer.alloc(Math.ceil(timeline.duration*48000)*2);
  for(const e of timeline.events.filter(e=>e.type==='line')){const t=takes[e.id],bytes=await fs.readFile(t.path);if(digest(bytes)!==t.sha256)throw Error('Take changed before mixing');bytes.copy(pcm,Math.round(e.start*48000)*2);}
- await run(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-y','-f','s16le','-ar','48000','-ac','1','-i','pipe:0','-c:a','pcm_s16le',output],{input:pcm,maxBytes:1024});
+ await run(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-y','-f','s16le','-ar','48000','-ac','1','-i','pipe:0','-c:a','pcm_s16le',output],{input:pcm,maxBytes:1024,signal});
 }

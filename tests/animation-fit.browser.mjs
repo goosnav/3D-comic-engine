@@ -6,7 +6,9 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 const root = fileURLToPath(new URL('../',import.meta.url));
-test('fitted assets, supported hands and cartoon actions render and seek', {timeout:180000}, async t=>{
+// This exercises seven scenes with hundreds of CPU SwiftShader draws. Keep a
+// bounded budget that also permits software-only hosts; assertions are unchanged.
+test('fitted assets, supported hands and cartoon actions render and seek', {timeout:600000}, async t=>{
  const catalog=JSON.parse(await readFile(resolve(root,'assets/catalog.json')));
  const server=createServer(async(req,res)=>{try{
   if(req.url==='/'){res.setHeader('Content-Type','text/html');return res.end('<style>body{margin:0}</style><script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script><canvas></canvas>');}

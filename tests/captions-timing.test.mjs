@@ -23,8 +23,8 @@ test('caption controls validate, persist through timeline, and speech has no def
  assert.equal(timeline.duration,3);assert.ok(!timeline.events.some(e=>e.type==='hold'));
  assert.deepEqual(timeline.captions,script.captions);assert.equal(timeline.events.find(e=>e.id==='beat-1').start,2);
  assert.deepEqual(resolveScript(script,catalog),script);
- for(const captions of [null,{enabled:1},{position:'middle'},{colors:{reader:'red'}},{colors:{reader:'#abc'}},{colors:{ghost:'#ffffff'}},{unknown:true}])assert.throws(()=>resolveScript({...raw,captions},catalog));
+ for(const captions of [null,{enabled:1},{position:'middle'},{colors:{reader:'red'}},{colors:{reader:'#abc'}},{colors:{ghost:'#ffffff'}},{unknown:true}])assert.throws(()=>resolveScript({...raw,captions},catalog,{repair:false}));
  for(const shot of SHOTS)assert.doesNotThrow(()=>resolveScript({...raw,lines:raw.lines.map(l=>({...l,shot}))},catalog));
  const disabled=resolveScript({...raw,captions:{enabled:false,position:'top',colors:{reader:'#123456'}}},catalog);
- assert.equal(disabled.captions.colors.friend,'#6ee7ff');assert.equal(disabled.captions.enabled,false);
+ assert.equal(disabled.captions.colors.friend,'#228B22');assert.equal(disabled.captions.enabled,false);
 });

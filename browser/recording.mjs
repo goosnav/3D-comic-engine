@@ -8,7 +8,7 @@ export function supportedRecordingTypes(Recorder = globalThis.MediaRecorder) {
   return MIME_TYPES.filter(type => Recorder?.isTypeSupported?.(type));
 }
 
-/** Batch exports promise conventional H.264/AAC MP4 files, with no WebM fallback. */
+/** Explicit MP4-only requests use this subset; ordinary single/batch exports also allow WebM. */
 export function supportedMP4RecordingTypes(Recorder = globalThis.MediaRecorder) {
   return supportedRecordingTypes(Recorder).filter(type => type.startsWith('video/mp4;'));
 }
