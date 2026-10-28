@@ -1,16 +1,25 @@
 import {makeRenderJob} from '../src/render-job.mjs';
 import {browserCapabilities} from '../browser/capabilities.mjs';
-import { EMOTIONS, GESTURES, GAZES, ACTIONS, ACTOR_ACTIONS, PARTNER_ACTIONS, OUTPUT_PRESETS } from '../src/contracts.mjs';
+import { EMOTIONS, GESTURES, GAZES, ACTIONS, ACTOR_ACTIONS, PARTNER_ACTIONS, OUTPUT_PRESETS, repairScript } from '../src/contracts.mjs';
 import { editorDefaults } from '../src/editor-defaults.mjs';
 import { comicReplacements, replaceComic, randomComic } from '../src/editor-selection.mjs';
 import { createBatchUI } from './batch.mjs';
+import { captionDefaults } from '../src/caption-defaults.mjs';
+import { appendGeneratorNotes } from './generator-notes.mjs';
+import { DEFAULT_SPEECH_RATE, MIN_SPEECH_RATE, MAX_SPEECH_RATE } from '../src/speech-timing.mjs';
 
 const $ = id => document.getElementById(id);
 const browserMode=document.querySelector('meta[name="theatre-runtime"]')?.content==='browser';
 let browserAPI;
 const draftKey='comic-theatre-editor-v1';
 let draftSaved = true;
-function saveDraft(text){try{localStorage.setItem(draftKey,text);draftSaved=true;}catch{draftSaved=false;if(browserMode)$('device-note').textContent='Browser storage is unavailable. Download your JSON to keep it. Keep the tab visible during export and download videos before closing.';}}
+function saveDraft(text) {
+  try { localStorage.setItem(draftKey, text); draftSaved = true; }
+  catch { draftSaved = false; }
+  $('draft-status').textContent = draftSaved ? 'Draft saved on this device' : 'Draft not saved · download JSON';
+  if (!draftSaved) $('storage-status').textContent = 'Browser storage is unavailable or full. Download JSON to keep your work.';
+  else if ($('storage-status').textContent.startsWith('Browser storage')) $('storage-status').textContent = '';
+}
 const el = (tag, text, className) => {
   const node = document.createElement(tag);
   if (text !== undefined) node.textContent = text;
@@ -21,6 +30,96 @@ const state = { catalog: null, script: null, pageRows: [''], token: null, dirtyJ
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const clone = value => structuredClone(value);
 const stringify = value => JSON.stringify(value, null, 2);
+const historyKey = 'comic-theatre-history-v1';
+let history = [], historyReady = false, historyWritable = true;
+try {
+  const saved = JSON.parse(localStorage.getItem(historyKey) ?? '[]');
+  if (!Array.isArray(saved) || saved.some(item => !object(item) || typeof item.text !== 'string' || typeof item.date !== 'string')) throw Error('Invalid history');
+  history = saved.slice(0, 20);
+} catch {
+  historyWritable = false;
+  $('storage-status').textContent = 'Recent versions could not be read. Download JSON to keep your work.';
+}
+function rememberVersion() {
+  if (!historyReady || !state.script || !historyWritable) return;
+  if (!state.dirtyJSON && stringify(state.script) === stringify(editorDefaults(state.catalog, state.script.template).script)) return;
+  const text = $('script-json').value;
+  if (!text || history[0]?.text === text) return;
+  const entry = { text, date: new Date().toISOString(), title: state.script.title || 'Untitled reading', unapplied: state.dirtyJSON };
+  const next = [entry, ...history.filter(item => item.text !== text)].slice(0, 20);
+  // Keep snapshots small enough to coexist with the draft and batch library.
+  while (next.length > 1 && JSON.stringify(next).length > 1000000) next.pop();
+  try {
+    if (JSON.stringify(next).length > 1000000) throw Error('Snapshot too large');
+    localStorage.setItem(historyKey, JSON.stringify(next));
+    history = next;
+  } catch { $('storage-status').textContent = 'Recent version could not be saved. Download JSON to keep a copy.'; }
+  renderHistory();
+}
+function renderHistory() {
+  $('recent-list').replaceChildren();
+  $('recent-empty').hidden = history.length > 0;
+  for (const entry of history) {
+    const row = el('li'), detail = el('div');
+    detail.append(el('strong', String(entry.title || 'Untitled reading')),
+      el('p', `${new Date(entry.date).toLocaleString()}${entry.unapplied ? ' · Unapplied JSON' : ''}`, 'muted'));
+    const open = el('button', 'Reopen'); open.type = 'button';
+    open.disabled = !state.catalog;
+    open.setAttribute('aria-label', `Reopen ${entry.title || 'Untitled reading'}`);
+    open.addEventListener('click', () => {
+      if (!confirmReplacement('Reopen this version')) return;
+      rememberVersion(); state.operation++; state.busy = false;
+      try {
+        if (entry.unapplied) throw Error('Unapplied JSON');
+        install(JSON.parse(entry.text)); showView('editor');
+        message('Version reopened.' + repairSummary());
+      } catch {
+        $('script-json').value = entry.text; state.dirtyJSON = true; state.revision++;
+        saveDraft(entry.text); controls(); showView('json');
+        message('Version reopened in JSON. Apply it when ready.');
+      }
+    });
+    row.append(detail, open); $('recent-list').append(row);
+  }
+}
+const steps = ['scene', 'script', 'export'];
+let activeStep = 'scene';
+function showView(view, focus = true) {
+  if (view === 'editor' && state.dirtyJSON) message('Apply or revert your JSON edits to use the form.');
+  for (const node of document.querySelectorAll('[data-view]')) node.hidden = node.dataset.view !== view;
+  for (const button of document.querySelectorAll('[data-view-target]')) {
+    if (button.dataset.viewTarget === view) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  }
+  if (focus) {
+    const target = view === 'editor' ? document.querySelector(`[data-step-target="${activeStep}"]`) : $(`nav-${view}`);
+    target.focus(); target.scrollIntoView({ block: 'nearest' });
+  }
+}
+function showStep(step, focus = true) {
+  activeStep = step;
+  for (const node of document.querySelectorAll('[data-step]')) node.hidden = node.dataset.step !== step;
+  for (const button of document.querySelectorAll('[data-step-target]')) {
+    if (button.dataset.stepTarget === step) button.setAttribute('aria-current', 'step');
+    else button.removeAttribute('aria-current');
+  }
+  const index = steps.indexOf(step);
+  $('previous-step').disabled = index === 0;
+  $('next-step').hidden = index === steps.length - 1;
+  $('next-step').textContent = `Next: ${index === 0 ? 'Script' : 'Export'} →`;
+  $('step-position').textContent = `${index + 1} / ${steps.length}`;
+  showView('editor', false);
+  if (focus) {
+    const heading = $(['sources-heading', 'editor-heading', 'output-heading'][index]);
+    heading.focus(); heading.scrollIntoView({ block: 'nearest' });
+  }
+}
+for (const button of document.querySelectorAll('[data-view-target]')) button.addEventListener('click', () => { rememberVersion(); showView(button.dataset.viewTarget); });
+for (const button of document.querySelectorAll('[data-step-target]')) button.addEventListener('click', () => { rememberVersion(); showStep(button.dataset.stepTarget); });
+$('previous-step').addEventListener('click', () => { rememberVersion(); showStep(steps[steps.indexOf(activeStep) - 1]); });
+$('next-step').addEventListener('click', () => { rememberVersion(); showStep(steps[steps.indexOf(activeStep) + 1]); });
+$('save-version').addEventListener('click', rememberVersion);
+window.addEventListener('pagehide', rememberVersion);
 const templates = () => state.catalog?.templates ?? [];
 const templateFor = script => templates().find(item => item.id === script.template);
 const comicFor = id => state.catalog?.comics.find(item => item.id === id);
@@ -36,6 +135,20 @@ const shots = [
 ];
 const exampleFiles = new Set(['book-duet.example.json', 'fireside.example.json', 'page-tour.example.json', 'astronaut.example.json']);
 const uploadInputs = ['upload-json-top', 'upload-json'];
+const speechRateInput = el('input');
+speechRateInput.id = 'speech-rate'; speechRateInput.type = 'number'; speechRateInput.inputMode = 'decimal';
+speechRateInput.min = String(MIN_SPEECH_RATE); speechRateInput.max = String(MAX_SPEECH_RATE); speechRateInput.step = '0.05';
+speechRateInput.value = String(DEFAULT_SPEECH_RATE); speechRateInput.disabled = true;
+speechRateInput.setAttribute('aria-describedby', 'speech-rate-help');
+const speechRateField = field('Speech speed (×)', speechRateInput);
+const speechRateHelp = el('p', `Speech only · ${MIN_SPEECH_RATE}–${MAX_SPEECH_RATE}×. Default ${DEFAULT_SPEECH_RATE}×.`, 'hint');
+speechRateHelp.id = 'speech-rate-help'; speechRateField.append(speechRateHelp);
+$('voice').parentElement.after(speechRateField);
+speechRateInput.addEventListener('input', () => {
+  if (!state.script || state.dirtyJSON || state.busy) return;
+  state.script.speechRate = Number.isFinite(speechRateInput.valueAsNumber) ? speechRateInput.valueAsNumber : null;
+  changed();
+});
 const batchUI = createBatchUI({
   api,
   isReady: () => Boolean(state.token && state.catalog),
@@ -54,9 +167,14 @@ function keepPresentation(result, original) {
     if (original[key] !== undefined) next[key] = { ...(object(next[key]) ? next[key] : {}), ...clone(original[key]) };
   }
   if (original.product !== undefined) next.product = original.product;
+  if (original.speechRate !== undefined) next.speechRate = original.speechRate;
   return next;
 }
 
+function repairSummary() {
+  const count = state.script?.warnings?.length ?? 0;
+  return count ? ` ${count} automatic corrections recorded in JSON and generator notes.` : '';
+}
 function message(text, error = false) {
   for (const id of ['editor-status', 'start-status']) {
     $(id).textContent = text;
@@ -67,7 +185,11 @@ function controls() {
   const paused = !state.script || state.dirtyJSON;
   $('source-fields').disabled = paused;
   $('author-fields').disabled = paused;
+  $('title').disabled = paused;
+  $('save-version').disabled = !state.script;
   $('script-json').disabled = !state.script;
+  $('speech-rate').disabled = paused || state.busy;
+  $('nav-json').textContent = state.dirtyJSON ? '{ } JSON •' : '{ } JSON';
   $('json-state').textContent = state.dirtyJSON ? 'Unapplied edits · form paused' : 'In sync';
   for (const button of document.querySelectorAll('[data-post]')) button.disabled = state.busy;
   $('new-video').disabled = !state.catalog;
@@ -75,6 +197,7 @@ function controls() {
   $('load-example').disabled = paused || state.busy;
   $('chaos-intensity').disabled = $('generate-chaos').disabled = !state.catalog || state.busy || state.dirtyJSON;
   for (const id of uploadInputs) $(id).disabled = !state.catalog;
+  for (const button of document.querySelectorAll('#recent-list button')) button.disabled = !state.catalog;
   batchUI.controls();
 }
 function requireReady() {
@@ -124,6 +247,7 @@ async function api(path, body, { timeoutMs = body ? 120000 : 15000 } = {}) {
 }
 
 function structureErrors(script) {
+  try { script = repairScript(script); } catch (error) { return [error.message]; }
   const errors = [];
   if (!object(script)) return ['The script must be a JSON object.'];
   if (script.version !== undefined && script.version !== 1) errors.push('Use script version 1.');
@@ -369,7 +493,7 @@ function renderLines() {
     const heading = el('div', undefined, 'line-heading'); heading.append(el('h4', `Line ${index + 1}${line.action ? ' · Action' : ''}`));
     const actions = el('div', undefined, 'line-actions');
     for (const [label, delta] of [['Move up', -1], ['Move down', 1], ['Remove', 0]]) {
-      const button = el('button', label); button.type = 'button'; button.setAttribute('aria-label', `${label} line ${index + 1}`);
+      const button = el('button', delta === -1 ? '↑' : delta === 1 ? '↓' : '×'); button.type = 'button'; button.title = label; button.setAttribute('aria-label', `${label} line ${index + 1}`);
       button.disabled = delta === -1 && index === 0 || delta === 1 && index === state.script.lines.length - 1;
       button.addEventListener('click', () => {
         if (!delta) state.script.lines.splice(index, 1);
@@ -427,7 +551,8 @@ function renderLines() {
     const shot = el('select'); shot.id = `line-${index}-shot`; shot.setAttribute('aria-label', `Line ${index + 1} shot`);
     choose(shot, shots, line.shot ?? 'auto');
     shot.addEventListener('change', () => { line.shot = shot.value; changed(); });
-    card.append(field('Shot', shot));
+    const direction = el('details', undefined, 'line-direction');
+    direction.append(el('summary', 'Camera & gaze'), field('Shot', shot));
     const gazes = el('div', undefined, 'field-pair');
     for (const role of templateFor(state.script)?.speakers ?? []) {
       const select = el('select'); select.id = `line-${index}-gaze-${role}`;
@@ -435,7 +560,7 @@ function renderLines() {
       select.addEventListener('change', () => { line.gaze = { ...line.gaze, [role]: select.value }; changed(); });
       gazes.append(field(`${role === 'reader' ? 'Reader' : 'Friend'} looks`, select));
     }
-    card.append(gazes);
+    direction.append(gazes); card.append(direction);
     $('dialogue').append(card);
   });
 }
@@ -469,16 +594,18 @@ function renderExtras() {
   }
 }
 function renderOutput() {
-  const captions=state.script.captions;
-  $('captions-enabled').checked=captions?.enabled??true;
-  $('captions-position').value=captions?.position??'bottom';
+  $('speech-rate').value = state.script.speechRate === undefined ? DEFAULT_SPEECH_RATE : state.script.speechRate ?? '';
+  const captions=captionDefaults(state.script.captions);
+  $('captions-enabled').checked=captions.enabled;
+  $('captions-position').value=captions.position;
   for(const id of ['reader','friend']){
-    $(`captions-${id}`).value=captions?.colors?.[id]??(id==='reader'?'#ffe35b':'#6ee7ff');
+    $(`captions-${id}`).value=captions.colors[id];
     $(`captions-${id}`).disabled=!templateFor(state.script)?.speakers.includes(id);
   }
   const output = state.script.output ?? {};
   const preset = output.preset ?? (output.width === undefined && output.height === undefined ? 'instagram_reels' : 'custom');
   choose($('output-preset'), [...Object.entries(OUTPUT_PRESETS).map(([id, item]) => ({id, label:item.label})), {id:'custom',label:'Custom dimensions'}], preset);
+  $('custom-size').hidden = preset !== 'custom';
   const size = OUTPUT_PRESETS[preset] ?? {width:1080,height:1920};
   for (const key of ['width','height']) { $(`output-${key}`).value = output[key] ?? size[key]; $(`output-${key}`).disabled = preset !== 'custom'; }
   $('output-fps').value = output.fps ?? 24;
@@ -486,7 +613,7 @@ function renderOutput() {
   $('dither').value = state.script.dither ?? 'subtle';
 }
 function renderForm() {
-  choose($('template'), templates().map(item => ({ id: item.id, label: `${item.id} · ${item.label}` })), state.script.template);
+  choose($('template'), templates().map(item => ({ id: item.id, label: item.label })), state.script.template);
   choose($('scene'), state.catalog.scenes, state.script.scene, 'Template default');
   $('seed').value = state.script.seed ?? '';
   $('title').value = state.script.title;
@@ -501,6 +628,7 @@ function renderForm() {
   renderPages(); renderSelection(); renderLines(); controls();
 }
 function install(script) {
+  script = repairScript(script);
   check(structureErrors(script));
   const next = clone(script);
   // Cast and timeline IDs are template/engine details. Keep sourceLock so ordinary
@@ -510,6 +638,7 @@ function install(script) {
   // An incoming lock belongs to the imported script, not the current selection.
   // Preserve even stale locks for backend rejection. Only explicit selection
   // controls (or an author's removal in JSON) may discard a previous source lock.
+  rememberVersion();
   state.script = next;
   state.pageRows = next.comics.length ? [...next.comics] : Array(Math.max(1, templateFor(next)?.minComics ?? 1)).fill('');
   state.revision++; syncJSON(); renderForm();
@@ -538,7 +667,7 @@ function confirmReplacement(action) {
 $('new-video').addEventListener('click', () => {
   if (!state.catalog) return;
   const defaults = editorDefaults(state.catalog, state.script?.template);
-  if (!confirmReplacement('Start blank')) return;
+  if (!confirmReplacement('New script')) return;
   state.operation++; state.busy = false;
   $('voice').value = defaults.voice;
   $('background-music').value = '';
@@ -550,6 +679,7 @@ $('new-video').addEventListener('click', () => {
     try { localStorage.removeItem(draftKey); removed = true; } catch {}
     message(`Blank script ready. Browser storage failed; the blank draft could not be saved. ${removed ? 'The old saved draft was removed.' : 'The old saved draft may return after reload.'} Download JSON to keep new edits.`, true);
   }
+  showStep('scene');
   $('page-0')?.focus();
 });
 $('load-example').addEventListener('click', () => operate('Load example', async () => {
@@ -569,7 +699,7 @@ $('load-example').addEventListener('click', () => operate('Load example', async 
   } finally { clearTimeout(timer); }
   unchanged(revision); check(completeErrors(script));
   if (!confirmReplacement('Load this example')) { message('Example not loaded. Your script is unchanged.'); return; }
-  install(script); batchUI.register(script, filename); message('Example loaded. Review the pages and dialogue, then validate or generate.');
+  install(script); showStep('script'); batchUI.register(script, filename); message('Example loaded. Review the pages and dialogue, then validate or generate.');
 }));
 
 $('generate-chaos').addEventListener('click', async () => {
@@ -581,7 +711,7 @@ $('generate-chaos').addEventListener('click', async () => {
     const script = generateChaos(state.catalog, { seed, intensity: $('chaos-intensity').value });
     if (!confirmReplacement('Generate a chaos script')) { message('Chaos script not generated. Your script is unchanged.'); return; }
     state.operation++;
-    install(script); batchUI.register(script, `chaos-${seed}.json`);
+    install(script); showStep('script'); batchUI.register(script, `chaos-${seed}.json`);
     message(`Chaos script ready: "${script.title}" (seed ${seed}). Review it, then validate or generate the video.`);
   } catch (error) { message(`Chaos generator: ${error.message}`, true); }
 });
@@ -608,8 +738,8 @@ $('end-card-enabled').addEventListener('change', () => {
 });
 for (const key of ['title', 'text', 'url', 'seconds']) $(`end-card-${key}`).addEventListener('input', () => {
   const input = $(`end-card-${key}`);
-  // A cleared/invalid number stays invalid until corrected; never restore a
-  // default silently or serialize NaN as a valid duration.
+  // Preserve unfinished numeric input. The shared normalizer records any
+  // fallback applied on validation/generation rather than silently fixing it here.
   const value = key === 'seconds' ? (Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : null) : input.value;
   state.script.endCard = { ...state.script.endCard, [key]: value }; changed();
 });
@@ -643,7 +773,7 @@ $('add-line').addEventListener('click', () => {
 });
 $('script-json').addEventListener('input', () => { state.revision++; state.dirtyJSON = true; saveDraft($('script-json').value); controls(); });
 $('apply-json').addEventListener('click', () => {
-  try { if (!state.catalog) throw new Error('Connect to the local theatre first.'); install(JSON.parse($('script-json').value)); message('JSON applied. Form and JSON are in sync. Validate before generating.'); }
+  try { if (!state.catalog) throw new Error('Connect to the local theatre first.'); install(JSON.parse($('script-json').value)); message('JSON applied. Form and JSON are in sync. Validate before generating.' + repairSummary()); }
   catch (error) { message(`JSON not applied: ${error.message}`, true); }
 });
 $('revert-json').addEventListener('click', () => { if (state.script) { state.revision++; syncJSON(); message('Unapplied JSON reverted to the current form script.'); } });
@@ -676,8 +806,9 @@ async function uploadJSON(event) {
     unchanged(revision); check(structureErrors(script));
     if (!confirmReplacement('Upload this JSON')) { message('Upload cancelled. Your script is unchanged.'); return; }
     install(script);
+    showStep('script');
     batchUI.register(script, file.name);
-    message('JSON uploaded. Review selected pages, then validate the script.');
+    message('JSON uploaded. Review selected pages, then validate the script.' + repairSummary());
   } catch (error) { if (operation === state.operation) message(`Upload not applied: ${error.message}`, true); }
   finally { if (operation === state.operation) input.value = ''; }
 }
@@ -688,7 +819,7 @@ $('validate').addEventListener('click', () => operate('Validate', async () => {
   check(structureErrors(result.script));
   if (result.script.template !== script.template || JSON.stringify(result.script.comics) !== JSON.stringify(script.comics)) throw new Error('Validation returned different sources or template. Response not applied; check the server.');
   install(result.script);
-  message('Server validation passed. Source lock and resolved defaults recorded; your script remains editable.');
+  message('Server validation passed. Source lock and resolved defaults recorded; your script remains editable.' + repairSummary());
 }));
 $('draft').addEventListener('click', () => operate('AI Draft', async () => {
   const script = clone(state.script); const revision = state.revision;
@@ -717,11 +848,12 @@ $('generate').addEventListener('click', () => operate('Generate video', async ()
   if(browserMode)$('device-canvas').hidden=false;
   const voice = $('voice').value;
   if (voice === 'recorded' && script.lines.some(line => !line.action && (typeof line.audio !== 'string' || !line.audio.trim()))) throw new Error('Recorded mode needs an audio path on every spoken line. Add audio in JSON, or choose Local Kokoro.');
+  rememberVersion();
   const result = await api('/api/render', { script, voice, ...(music ? { music } : {}) });
   if (!result || typeof result.id !== 'string') throw new Error('Server did not return a job ID. Refresh jobs before trying again.');
   if (revision === state.revision) message(`Submitted ${result.id} (${result.status ?? 'queued'}). It uses the script sent when you clicked Generate; later edits stay in the editor.`);
   await refreshJobs();
-  if (revision === state.revision) $('jobs-heading').closest('section').scrollIntoView({ block: 'start' });
+  if (revision === state.revision) showView('videos');
 }));
 
 function renderJobs(jobs) {
@@ -757,6 +889,7 @@ function renderJobs(jobs) {
       card.append(el('p', `Elapsed · ${Math.floor(seconds / 60)}m ${seconds % 60}s`, 'job-elapsed'));
     }
     if (job.error) card.append(el('p', `${typeof job.error === 'string' ? job.error : stringify(job.error)}\n${browserMode?'Your script is preserved. Keep the tab visible and try Generate again. If it repeats, copy this error and include your phone/browser version.':'Check the script and local server setup, then Generate again when corrected.'}`, 'status error'));
+    appendGeneratorNotes(card, job);
     if (job.video) {
       const path = browserMode&&browserAPI?.ownsURL(job.video)?job.video:localPath(job.video, '/output/');
       if (path) { const link = el('a', 'Open video ↗'); link.href = path; link.target = '_blank'; link.rel = 'noopener noreferrer'; card.append(link); }
@@ -820,5 +953,7 @@ if(browserMode){
 }
 await connect();
 if(savedDraft&&state.catalog){try{install(JSON.parse(savedDraft));message('Restored your saved draft. Validate before rendering.');}catch{$('script-json').value=savedDraft;state.dirtyJSON=true;saveDraft(savedDraft);controls();message('Saved JSON needs correction. Your text is preserved in the JSON editor.',true);}}
+historyReady = true; renderHistory();
+if (state.dirtyJSON) showView('json', false);
 await refreshJobs();
 setInterval(() => { if (!document.hidden) void refreshJobs(); }, 2500);

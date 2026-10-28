@@ -1,3 +1,4 @@
+import { inWorkspace } from './workspace-controls.mjs';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -66,7 +67,7 @@ async function fixture(t, { staticMode = false, storageBlocked = false } = {}) {
       ] });
       if (req.url.startsWith(`${prefix}examples/page-`)) return json(makeScript(`Page ${req.url.match(/page-(\d+)/)[1]} joke`));
       if (req.url.startsWith(`${prefix}templates/`)) return json(makeScript('Worked example'));
-      if (/^\/(?:nested\/)?src\/(contracts|book-pages|editor-defaults|editor-selection|gesture-performance|facial-performance|zip)\.mjs$/.test(req.url)) {
+      if (/^\/(?:nested\/)?src\/(script-normalization|caption-defaults|speech-timing|contracts|book-pages|editor-defaults|editor-selection|gesture-performance|facial-performance|zip)\.mjs$/.test(req.url)) {
         res.setHeader('Content-Type', 'text/javascript'); return res.end(await readFile(new URL(`src/${req.url.split('/').at(-1)}`, root)));
       }
       if (staticMode && req.url === `${prefix}browser/backend.mjs`) {
@@ -93,7 +94,7 @@ async function fixture(t, { staticMode = false, storageBlocked = false } = {}) {
         }`);
       }
       if (req.url.startsWith(`${prefix}assets/comics/`)) { res.setHeader('Content-Type', 'image/png'); return res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfRcAAAAASUVORK5CYII=', 'base64')); }
-      const files = { [prefix]: 'index.html', [`${prefix}app.mjs`]: 'app.mjs', [`${prefix}batch.mjs`]: 'batch.mjs', [`${prefix}style.css`]: 'style.css' };
+      const files = { [`${prefix}generator-notes.mjs`]: 'generator-notes.mjs', [prefix]: 'index.html', [`${prefix}app.mjs`]: 'app.mjs', [`${prefix}batch.mjs`]: 'batch.mjs', [`${prefix}style.css`]: 'style.css' };
       if (files[req.url]) {
         const name = files[req.url]; let source = await readFile(new URL(`web/${name}`, root), 'utf8');
         if (staticMode && name === 'index.html') source = source.replace('content="desktop"', 'content="browser"');
@@ -142,15 +143,15 @@ test('multiple JSON selection sends exact originals, honors subset and leaves ed
   const first = makeScript(), second = makeScript('Second script', { output: { width: 384, height: 480, fps: 12 } });
   await upload(page, [file('first.json', first), file('second.json', second), file('broken.json', '{bad'), file('manifest.json', [{ script: 'first.json' }])]);
   assert.equal(await page.locator('#batch-library .batch-script').count(), 3);
-  assert.equal(await page.getByRole('checkbox', { name: 'Select broken.json', exact: true }).isDisabled(), true);
+  assert.equal(await page.getByRole('checkbox', { includeHidden: true,  name: 'Select broken.json', exact: true }).isDisabled(), true);
   assert.match(await page.locator('#batch-import-status').textContent(), /batch manifest skipped/);
   assert.deepEqual(await current(page), blank);
   assert.match(await page.locator('#batch-library').textContent(), /640 × 800 · 30 fps/);
-  await page.getByRole('checkbox', { name: 'Select first.json', exact: true }).uncheck();
+  await (await inWorkspace(page.getByRole('checkbox', { includeHidden: true,  name: 'Select first.json', exact: true }))).uncheck();
   const dirty = '{"my unapplied edit":';
-  await page.locator('#script-json').fill(dirty);
-  await page.locator('#batch-voice').selectOption('kokoro');
-  await page.locator('#batch-render').click(); await started(page);
+  await (await inWorkspace(page.locator('#script-json'))).fill(dirty);
+  await (await inWorkspace(page.locator('#batch-voice'))).selectOption('kokoro');
+  await (await inWorkspace(page.locator('#batch-render'))).click(); await started(page);
   assert.deepEqual(state.submissions, [{ entries: [{ name: 'second.json', script: second }], voice: 'kokoro' }]);
   assert.equal(await page.locator('#script-json').inputValue(), dirty);
   assert.equal(await page.locator('#batch-render').isDisabled(), true);
@@ -177,16 +178,16 @@ test('folder imports skip manifests and non-JSONs, preserve duplicate basenames,
   assert.match(await page.locator('#batch-import-status').textContent(), /non-JSON file skipped/);
   assert.match(await page.locator('#batch-library').textContent(), /2 MiB per-script limit/);
   assert.deepEqual(await current(page), blank);
-  await page.locator('#batch-clear-selection').click();
+  await (await inWorkspace(page.locator('#batch-clear-selection'))).click();
   assert.equal(await page.locator('#batch-library input:checked').count(), 0);
-  await page.locator('#batch-select-all').click();
-  await page.locator('#batch-library input:not(:disabled)').first().uncheck();
+  await (await inWorkspace(page.locator('#batch-select-all'))).click();
+  await (await inWorkspace(page.locator('#batch-library input:not(:disabled)').first())).uncheck();
   const selectedName = await page.locator('#batch-library input:checked').getAttribute('aria-label');
   await page.reload(); await page.waitForFunction(() => !document.querySelector('#batch-files').disabled);
   assert.equal(await page.locator('#batch-library .batch-script').count(), 4);
   assert.equal(await page.locator('#batch-library input:checked').count(), 1);
   assert.equal(await page.locator('#batch-library input:checked').getAttribute('aria-label'), selectedName);
-  await page.locator('#batch-remove-selected').click();
+  await (await inWorkspace(page.locator('#batch-remove-selected'))).click();
   assert.equal(await page.locator('#batch-library .batch-script').count(), 3);
 });
 
@@ -194,22 +195,22 @@ test('completed and failed items remain visible, one ZIP contains all successful
   const { page, state } = await fixture(t);
   await upload(page, [file('same.json', makeScript('One')), file('same.json', makeScript('Two')), file('third.json', makeScript('Three'))]);
   assert.equal(await page.locator('#batch-library .batch-script').count(), 3);
-  await page.locator('#batch-render').click(); await started(page);
+  await (await inWorkspace(page.locator('#batch-render'))).click(); await started(page);
   const batch = state.batches[0];
   batch.status = 'partial'; batch.completed = 2; batch.failed = 1;
   batch.items = batch.items.map((item, index) => index === 1 ? { ...item, status: 'failed', error: 'Speech failed for this script; the queue continued.' } : { ...item, status: 'complete', video: `/output/job-${index}/video.mp4`, filename: `${String(index + 1).padStart(3, '0')}-${index ? 'third' : 'same'}.mp4` });
-  await page.locator('#batch-refresh').click();
+  await (await inWorkspace(page.locator('#batch-refresh'))).click();
   await page.waitForFunction(() => document.querySelector('#batch-runs').textContent.includes('2 completed · 1 failed'));
   assert.equal(await page.locator('#batch-runs a[download]').count(), 2);
   assert.match(await page.locator('#batch-runs').textContent(), /queue continued/);
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download 2 completed videos (.zip)', exact: true }).click();
+  await (await inWorkspace(page.getByRole('button', { includeHidden: true,  name: 'Download 2 completed videos (.zip)', exact: true }))).click();
   const download = await downloadPromise;
   assert.equal(download.suggestedFilename(), 'comic-batch-batch-1.zip');
   const files = zipEntries(await readFile(await download.path()));
   assert.deepEqual([...files.keys()], ['001-same.mp4', '003-third.mp4']);
   for (const data of files.values()) assert.deepEqual(data, mp4);
-  await page.locator('#batch-render').click();
+  await (await inWorkspace(page.locator('#batch-render'))).click();
   await page.waitForFunction(() => document.querySelectorAll('#batch-runs .batch-run').length === 2);
   assert.equal(await page.locator('#batch-runs a[download]').count(), 2);
   if (process.env.THEATRE_BATCH_SCREENSHOT) await page.locator('.batch-panel').screenshot({ path: process.env.THEATRE_BATCH_SCREENSHOT });
@@ -224,10 +225,10 @@ test('nested browser installation imports chosen scripts and starts from the ori
   await upload(page,[file('page-01-joke.json',makeScript('Page 01 joke')),file('page-02-joke.json',makeScript('Page 02 joke'))]);
   assert.deepEqual(await current(page), blank);
   assert.equal(await page.locator('#batch-voice option').count(), 1);
-  await page.locator('#batch-clear-selection').click();
-  await page.getByRole('checkbox', { name: 'Select page-01-joke.json', exact: true }).check();
-  await page.getByRole('checkbox', { name: 'Select page-02-joke.json', exact: true }).check();
-  await page.locator('#batch-render').click(); await started(page);
+  await (await inWorkspace(page.locator('#batch-clear-selection'))).click();
+  await (await inWorkspace(page.getByRole('checkbox', { includeHidden: true,  name: 'Select page-01-joke.json', exact: true }))).check();
+  await (await inWorkspace(page.getByRole('checkbox', { includeHidden: true,  name: 'Select page-02-joke.json', exact: true }))).check();
+  await (await inWorkspace(page.locator('#batch-render'))).click(); await started(page);
   assert.equal(await page.evaluate(() => window.batchRequestInClick), true);
   const submissions = await page.evaluate(() => window.batchSubmissions);
   assert.deepEqual(submissions[0], { entries: [
@@ -238,7 +239,7 @@ test('nested browser installation imports chosen scripts and starts from the ori
   await page.evaluate(() => window.completeDeviceBatch());
   await page.waitForFunction(() => document.querySelectorAll('#batch-runs a[download]').length === 2);
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download 2 completed videos (.zip)', exact: true }).click();
+  await (await inWorkspace(page.getByRole('button', { includeHidden: true,  name: 'Download 2 completed videos (.zip)', exact: true }))).click();
   const download = await downloadPromise;
   const files = zipEntries(await readFile(await download.path()));
   assert.deepEqual([...files.keys()], ['001-device.mp4', '002-device.mp4']);
@@ -253,11 +254,11 @@ test('single upload registers its original fields and editor snapshots do not ch
   await page.locator('#upload-json-top').setInputFiles(file('original.json', original));
   await page.waitForFunction(() => document.querySelector('#batch-library .batch-script'));
   assert.equal((await current(page)).cast, undefined);
-  await page.locator('#title').fill('Changed in the editor');
-  await page.locator('#batch-add-editor').click();
+  await (await inWorkspace(page.locator('#title'))).fill('Changed in the editor');
+  await (await inWorkspace(page.locator('#batch-add-editor'))).click();
   assert.equal(await page.locator('#batch-library .batch-script').count(), 2);
-  await page.getByRole('checkbox', { name: 'Select Changed-in-the-editor.json', exact: true }).uncheck();
-  await page.locator('#batch-render').click(); await started(page);
+  await (await inWorkspace(page.getByRole('checkbox', { includeHidden: true,  name: 'Select Changed-in-the-editor.json', exact: true }))).uncheck();
+  await (await inWorkspace(page.locator('#batch-render'))).click(); await started(page);
   assert.deepEqual(state.submissions[0].entries, [{ name: 'original.json', script: original }]);
 });
 
@@ -266,8 +267,8 @@ test('storage quota warnings leave imported scripts renderable and stop-after-cu
   await upload(page, [file('one.json', makeScript('One')), file('two.json', makeScript('Two'))]);
   assert.match(await page.locator('#batch-storage-status').textContent(), /could not be saved/);
   assert.equal(await page.locator('#batch-render').isDisabled(), false);
-  await page.locator('#batch-render').click(); await started(page);
-  await page.getByRole('button', { name: 'Stop after current', exact: true }).click();
+  await (await inWorkspace(page.locator('#batch-render'))).click(); await started(page);
+  await (await inWorkspace(page.getByRole('button', { includeHidden: true,  name: 'Stop after current', exact: true }))).click();
   await page.waitForFunction(() => document.querySelector('#batch-runs').textContent.includes('1 cancelled'));
   assert.equal(state.batches[0].items[0].status, 'running');
   assert.equal(state.batches[0].items[1].status, 'cancelled');
@@ -279,12 +280,12 @@ test('selection is bounded to 100 and an author can choose a different subset wi
   await upload(page, Array.from({ length: 101 }, (_, index) => file(`script-${index + 1}.json`, makeScript(`Script ${index + 1}`))));
   assert.equal(await page.locator('#batch-library .batch-script').count(), 101);
   assert.equal(await page.locator('#batch-library input:checked').count(), 100);
-  await page.getByRole('checkbox', { name: 'Select script-101.json', exact: true }).click();
+  await (await inWorkspace(page.getByRole('checkbox', { includeHidden: true,  name: 'Select script-101.json', exact: true }))).click();
   assert.equal(await page.locator('#batch-library input:checked').count(), 100);
   assert.match(await page.locator('#batch-import-status').textContent(), /Choose up to 100/);
-  await page.getByRole('checkbox', { name: 'Select script-1.json', exact: true }).uncheck();
-  await page.getByRole('checkbox', { name: 'Select script-101.json', exact: true }).check();
-  await page.locator('#batch-render').click(); await started(page);
+  await (await inWorkspace(page.getByRole('checkbox', { includeHidden: true,  name: 'Select script-1.json', exact: true }))).uncheck();
+  await (await inWorkspace(page.getByRole('checkbox', { includeHidden: true,  name: 'Select script-101.json', exact: true }))).check();
+  await (await inWorkspace(page.locator('#batch-render'))).click(); await started(page);
   assert.equal(state.submissions[0].entries.length, 100);
   assert.equal(state.submissions[0].entries[0].name, 'script-2.json');
   assert.deepEqual(state.submissions[0].entries.at(-1), { name: 'script-101.json', script: makeScript('Script 101') });
@@ -299,9 +300,9 @@ test('batch outputs reject external URLs and WebM results instead of presenting 
     { index: 1, name: 'webm.json', status: 'complete', video: '/output/job/video.webm', filename: 'renamed.mp4' },
   ];
   state.batches.push(batch);
-  await page.locator('#batch-refresh').click();
+  await (await inWorkspace(page.locator('#batch-refresh'))).click();
   await page.waitForFunction(() => document.querySelector('#batch-runs .batch-run'));
   assert.equal(await page.locator('#batch-runs a[download]').count(), 0);
-  assert.equal(await page.getByRole('button', { name: 'Download 2 completed videos (.zip)', exact: true }).isDisabled(), true);
+  assert.equal(await page.getByRole('button', { includeHidden: true,  name: 'Download 2 completed videos (.zip)', exact: true }).isDisabled(), true);
   assert.match(await page.locator('#batch-runs').textContent(), /no longer available/);
 });

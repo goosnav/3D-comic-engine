@@ -172,3 +172,30 @@ complete script (cast, scene, cameos, stunts, dialogue) from a seed. Use
 `chaos --count 20 --out-dir chaos-films` for a folder of scripts plus a
 `batch.json` to render them all. The GUI's **Generate chaos script** button does
 the same with a fresh seed.
+
+
+## Five new book-based scripts (2026-10-26)
+
+These five additional performances keep the original comic images intact and
+use the Book Two catalog's verified page IDs and source hashes. They are
+new skits **about** the comics, not extra canonical panels or transcripts.
+Pages 020, 036, and 095 have reviewed dialogue in the catalog. Page 022's
+premise follows the earlier page-022 skit; that page has no reviewed transcript.
+
+| Script | Comic pages | Performance |
+| --- | --- | --- |
+| [The Cookie Decision](page-020-the-cookie-decision.json) | 020 | Little Billy and a reader treat a cookie as a historic decision. |
+| [A Country of One](page-022-a-country-of-one.json) | 022 | Two astronauts discover a reason to invent a country. |
+| [Second Opinion](page-036-second-opinion.json) | 036 | A brain parasite obtains an absurd supervisory structure. |
+| [Proper Preparation](page-095-proper-preparation.json) | 095 | A solo reader decides to repaint the walls the wrong way first. |
+| [The Finished Man](tour-pages-020-036-095-the-finished-man.json) | 020, 036, 095 | A three-page survey chooses the only applicant who finished anything. |
+
+Render all five via the [batch manifest](book-two-five-new-skits.batch.json):
+
+```sh
+node bin/theatre.mjs batch examples/book-two-five-new-skits.batch.json --preview --json
+```
+
+These are plain portable inputs, suitable for the desktop GUI, browser script
+library, or CLI. The page-tour switches nonadjacent comics with explicit
+source cuts, rather than pretending to flip directly between those spreads.

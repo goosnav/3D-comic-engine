@@ -1,0 +1,184 @@
+{
+  "version": 1,
+  "template": "page-tour",
+  "title": "Pages 020, 036, 095 — The Finished Man",
+  "comics": [
+    "book2-020",
+    "book2-036",
+    "book2-095"
+  ],
+  "seed": 2026102036,
+  "scene": "diner",
+  "characters": {
+    "reader": "blue-beady",
+    "friend": "rust"
+  },
+  "product": "book2",
+  "grade": "muted",
+  "dither": "subtle",
+  "lines": [
+    {
+      "speaker": "reader",
+      "comic": "book2-020",
+      "text": "This one says his life will define an era.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 0.55
+    },
+    {
+      "speaker": "friend",
+      "text": "Has he started?",
+      "emotion": "curious",
+      "gesture": "head_tilt",
+      "shot": "speaker",
+      "pause": 0.2
+    },
+    {
+      "speaker": "reader",
+      "text": "He'll have it figured out by thirty-five.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "two-shot",
+      "pause": 0.35
+    },
+    {
+      "speaker": "friend",
+      "text": "Next.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 0.3
+    },
+    {
+      "speaker": "reader",
+      "comic": "book2-036",
+      "text": "This one's eating dirt and grubs. His brain parasite says you're toxic.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 0.6
+    },
+    {
+      "speaker": "friend",
+      "text": "Does he have a plan?",
+      "emotion": "skeptical",
+      "gesture": "head_tilt",
+      "shot": "two-shot",
+      "pause": 0.25
+    },
+    {
+      "speaker": "reader",
+      "text": "The parasite does.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 0.3
+    },
+    {
+      "speaker": "friend",
+      "text": "Next.",
+      "emotion": "neutral",
+      "gesture": "none",
+      "shot": "speaker",
+      "pause": 0.2
+    },
+    {
+      "action": "read",
+      "seconds": 0.65,
+      "shot": "book"
+    },
+    {
+      "speaker": "reader",
+      "comic": "book2-095",
+      "text": "This man repainted every wall. Egg-shell to ivory.",
+      "emotion": "neutral",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 0.6
+    },
+    {
+      "speaker": "friend",
+      "text": "Did he finish?",
+      "emotion": "curious",
+      "gesture": "head_tilt",
+      "shot": "two-shot",
+      "pause": 0.25
+    },
+    {
+      "speaker": "reader",
+      "text": "He says he loves a job well done.",
+      "emotion": "neutral",
+      "gesture": "nod",
+      "shot": "book",
+      "pause": 0.4
+    },
+    {
+      "speaker": "friend",
+      "text": "Put him in charge.",
+      "emotion": "pleased",
+      "gesture": "explain",
+      "shot": "speaker",
+      "pause": 0.3
+    },
+    {
+      "speaker": "reader",
+      "text": "Of what?",
+      "emotion": "skeptical",
+      "gesture": "head_tilt",
+      "shot": "close-up",
+      "pause": 0.2
+    },
+    {
+      "speaker": "friend",
+      "text": "Anything. He finished something.",
+      "emotion": "dry",
+      "gesture": "none",
+      "shot": "two-shot",
+      "pause": 1.7,
+      "reaction": {
+        "actor": "reader",
+        "emotion": "thoughtful",
+        "gesture": "page_glance",
+        "at": "line_end",
+        "duration": 1.2
+      }
+    },
+    {
+      "action": "close",
+      "seconds": 0.85,
+      "shot": "book"
+    }
+  ],
+  "output": {
+    "preset": "landscape",
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": true,
+    "title": "Goosnav Book Two",
+    "text": "A book of comics.",
+    "url": "www.goosnav.shop",
+    "seconds": 2
+  },
+  "sourceLock": [
+    {
+      "id": "book2-020",
+      "sha256": "e5148320fc451303e9ea6f4c2bf225d86701db09ff7c351f80e4caa33661c472",
+      "pdfPage": 24,
+      "pdfSha256": "0b9edc67fc3ba74f8ec257d1c2cc86b35c5e7b1fa894f0395b622cc3125bb3a5"
+    },
+    {
+      "id": "book2-036",
+      "sha256": "dd6aac6b9e90ed82d99c40cfb119bc353eee4fee14f064efb173c54bc42280c5",
+      "pdfPage": 40,
+      "pdfSha256": "0b9edc67fc3ba74f8ec257d1c2cc86b35c5e7b1fa894f0395b622cc3125bb3a5"
+    },
+    {
+      "id": "book2-095",
+      "sha256": "894a6001bd944001e73a79c5090f803a418822f0903221360a214970fddcbda5",
+      "pdfPage": 99,
+      "pdfSha256": "0b9edc67fc3ba74f8ec257d1c2cc86b35c5e7b1fa894f0395b622cc3125bb3a5"
+    }
+  ]
+}

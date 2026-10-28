@@ -60,7 +60,7 @@ Optional higher-quality local voice: Python 3.10–3.12,
 
 ## Batch JSON → MP4 in the app
 
-Use **Batch render JSON scripts** near the top of the app:
+Open the **Batch** view:
 
 1. Choose **Add JSON files** to select several files, **Add folder** to include the
    JSONs in a folder and its subfolders.
@@ -144,7 +144,8 @@ free dependency downloads; rendering does not contact external services.
 
 **[Step-by-step JSON and GUI tutorial](TUTORIAL.md)**
 
-- Start at the top of the editor: upload your JSON, load a worked example, or start a blank script with dialogue fields ready to fill in. JSON upload is also available beside the JSON editor.
+- Use **New** or **Open JSON**, then move through **Scene → Script → Export** with Next/Previous. Examples and **Shuffle script** are under **Scene → Examples & shuffle**. Advanced editing has its own **JSON** view.
+- **Recent** reopens up to 20 local script snapshots, saved when switching steps/views or replacing a script. Unapplied JSON is preserved. The current draft still autosaves; **Save JSON** downloads a permanent copy. History is limited to roughly 2 MB and may retain fewer large scripts. Music attachments must be reselected after reload.
 - Each selected page has its own **Random comic** button. It picks a different verified comic, keeps your words and settings, and updates that page's script references. Physical page turns limit the choices to compatible spreads.
 - **[JSON templates and complete field reference](templates/README.md)**: an editable blank duet plus four runnable examples covering a duet, a solo reading, a multi-page tour, and astronauts on the moon.
 - Three templates: book duet, solo fireside reader, and multi-page tour.
@@ -161,7 +162,7 @@ free dependency downloads; rendering does not contact external services.
 - Background cameos: an orange-billed goose, Glove Bot, the two-legged walker and the shoe-hat creature.
 - Colour grading: a slightly drab `muted` look by default, plus `film` and `vivid`; page inserts stay exact.
 - Ordered dither over picture, captions and end card for a slightly crunchy digital look (`subtle`, `crunchy`, `off`).
-- Automatic chaos scripts from a seed (`chaos` command / **Generate chaos script** button), no AI.
+- Automatic chaos scripts from a seed (`chaos` command / **Shuffle script** button), no AI.
 - Editable retro end card using the actual spinning-book video.
 - Exact source hashes and embedded-book page checks; no silent page substitutions.
 - Optional local image-capable writer; remote providers are rejected.

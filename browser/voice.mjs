@@ -1,4 +1,4 @@
-import {speechBounds} from '../src/speech-timing.mjs';
+import {speechBounds,resolveSpeechRate} from '../src/speech-timing.mjs';
 function measured(take) {
   const [start,end]=speechBounds(take.samples,take.sampleRate);
   take={...take,samples:take.samples.slice(start,end)};
@@ -21,6 +21,7 @@ function measured(take) {
 // Terminating the dedicated worker also cancels synchronous WASM synthesis.
 export async function prepareSpeech(script, { signal, onProgress = () => {} } = {}) {
   signal?.throwIfAborted();
+  const speechRate = resolveSpeechRate(script.speechRate);
   const lines = script.lines.filter(line => !line.action);
   if (lines.some(line => line.audio)) throw new Error('Browser speech cannot load desktop audio filenames; remove audio fields to use on-device speech');
   if (!lines.length) throw new Error('At least one speech line is required');
@@ -51,7 +52,7 @@ export async function prepareSpeech(script, { signal, onProgress = () => {} } = 
         } catch (error) { reject(error); }
       };
       resetTimeout();
-      worker.postMessage({ lines });
+      worker.postMessage({ lines, speechRate });
     });
   } finally {
     clearTimeout(timer);

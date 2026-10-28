@@ -1,4 +1,4 @@
-import {speechBounds} from './speech-timing.mjs';
+import {speechBounds,resolveSpeechRate} from './speech-timing.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
@@ -9,7 +9,12 @@ export async function pythonCommand(){
  const local=path.join(ROOT,'.venv',process.platform==='win32'?'Scripts/python.exe':'bin/python');
  try{await fs.access(local);return local;}catch{return process.platform==='win32'?'python':'python3';}
 }
-async function decode(file){return run(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-i',file,'-f','s16le','-ac','1','-ar','48000','pipe:1']);}
+async function decode(file,speechRate=1){
+ // Only supplied recordings need tempo processing; TTS engines set their own pace.
+ // atempo preserves pitch. Never resample the voice to change speed or retime the film.
+ const rate=resolveSpeechRate(speechRate),filter=rate===1?[]:['-af',`atempo=${rate}`];
+ return run(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-i',file,...filter,'-f','s16le','-ac','1','-ar','48000','pipe:1']);
+}
 function measure(pcm){
  if(!pcm.length||pcm.length%2)throw Error('Empty/corrupt audio');let peak=0,clipped=0;const mouth=[];
  for(let off=0;off<pcm.length;off+=1920){let sum=0,n=0;for(let k=off;k<Math.min(off+1920,pcm.length);k+=2){const a=pcm.readInt16LE(k)/32768;peak=Math.max(peak,Math.abs(a));if(Math.abs(a)>.999)clipped++;sum+=a*a;n++;}mouth.push({t:off/96000,value:Math.min(1,Math.sqrt(sum/n)*12)});}
@@ -40,6 +45,7 @@ function speechPCM({samples,sampleRate}){
 }
 export async function prepareAudio(script,{mode='flite',inputRoot=ROOT,cacheRoot=path.join(ROOT,'.cache/audio'),progress=()=>{},signal}={}){
  if(!['recorded','kokoro','flite'].includes(mode))throw Error('voice: choose flite, kokoro or recorded');
+ const speechRate=resolveSpeechRate(script.speechRate);
  const lines=script.lines.filter(l=>l.text);if(mode==='recorded'&&lines.some(l=>!l.audio))throw Error('Recorded mode requires an audio filename on every dialogue line');
  await fs.mkdir(cacheRoot,{recursive:true});const tmp=await fs.mkdtemp(path.join(cacheRoot,'prepare-'));let identity=null;const result={},pending=[];
  try{
@@ -53,14 +59,14 @@ export async function prepareAudio(script,{mode='flite',inputRoot=ROOT,cacheRoot
    signal?.throwIfAborted();
    let source=null;if(line.audio){if(!/\.(wav|flac|mp3|ogg|m4a)$/i.test(line.audio))throw Error('Recorded audio needs WAV, FLAC, MP3, OGG or M4A');source=await safePath(inputRoot,line.audio);}
    const voice=script.cast.find(c=>c.id===line.speaker)?.voice;if(!source&&!voice)throw Error('Missing voice profile');
-   const key=digest(JSON.stringify({v:3,text:line.text,voice:source?null:voice,speaker:mode==='flite'&&!source?line.speaker:null,identity,source:source?digest(await fs.readFile(source)):null}));
+   const key=digest(JSON.stringify({v:4,speechRate,text:line.text,voice:source?null:voice,speaker:mode==='flite'&&!source?line.speaker:null,identity,source:source?digest(await fs.readFile(source)):null}));
    const file=path.join(cacheRoot,key+'.pcm'),receipt=path.join(cacheRoot,key+'.json');let pcm;
    try{const meta=JSON.parse(await fs.readFile(receipt));const b=await fs.readFile(file);if(meta.sha256===digest(b))pcm=b;}catch{}
    if(pcm){result[line.id]={path:file,sha256:digest(pcm),...measure(pcm)};continue;}
    const native=source??path.join(tmp,`${line.id}.wav`);pending.push({line,key,file,receipt,native,source,voice});
   }
   const synth=pending.filter(p=>!p.source);if(synth.length&&mode==='kokoro'){
-   progress(`Synthesizing ${synth.length} local voice takes`);const request=path.join(tmp,'request.json');await fs.writeFile(request,JSON.stringify(synth.map(p=>({text:p.line.text,voice:p.voice,output:p.native}))));
+   progress(`Synthesizing ${synth.length} local voice takes`);const request=path.join(tmp,'request.json');await fs.writeFile(request,JSON.stringify(synth.map(p=>({text:p.line.text,voice:p.voice,speed:speechRate,output:p.native}))));
    await run(await pythonCommand(),[path.join(ROOT,'voices/kokoro_worker.py'),request],{signal,timeout:600000,env:{...process.env,HF_HUB_OFFLINE:'1',TRANSFORMERS_OFFLINE:'1'}});
   }
   for(const p of pending){
@@ -69,11 +75,11 @@ export async function prepareAudio(script,{mode='flite',inputRoot=ROOT,cacheRoot
    if(!p.source&&mode==='flite'){
     progress(`Synthesizing Flite take ${p.line.id}`);
     const {synthesizeSpeech}=await import('./flite.mjs');
-    pcm=speechPCM(await synthesizeSpeech(flite.module,p.line.text,{speaker:p.line.speaker}));
-   }else pcm=await decode(p.native);
+    pcm=speechPCM(await synthesizeSpeech(flite.module,p.line.text,{speaker:p.line.speaker,speechRate}));
+   }else pcm=await decode(p.native,p.source?speechRate:1);
    const samples=new Float32Array(pcm.length/2);for(let i=0;i<samples.length;i++)samples[i]=pcm.readInt16LE(i*2)/32768;
    const [start,end]=speechBounds(samples,48000);pcm=pcm.subarray(start*2,end*2);
-   const info=measure(pcm),nonce=randomUUID();await fs.writeFile(p.file+'.'+nonce,pcm);await fs.rename(p.file+'.'+nonce,p.file);await fs.writeFile(p.receipt+'.'+nonce,JSON.stringify({sha256:digest(pcm),identity}));await fs.rename(p.receipt+'.'+nonce,p.receipt);result[p.line.id]={path:p.file,sha256:digest(pcm),...info};
+   const info=measure(pcm),nonce=randomUUID();await fs.writeFile(p.file+'.'+nonce,pcm);await fs.rename(p.file+'.'+nonce,p.file);await fs.writeFile(p.receipt+'.'+nonce,JSON.stringify({sha256:digest(pcm),identity,speechRate}));await fs.rename(p.receipt+'.'+nonce,p.receipt);result[p.line.id]={path:p.file,sha256:digest(pcm),...info};
   }
   return result;
  }finally{await fs.rm(tmp,{recursive:true,force:true});}

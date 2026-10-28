@@ -62,20 +62,26 @@ The launcher opens the browser. If it cannot, open the printed loopback address,
 `http://127.0.0.1:8777`. Keep the terminal open while jobs run. This is a local app,
 not a public web service: do not expose its port to the internet. No account needed.
 
-The **Start here** panel offers **Upload JSON**, a worked-example chooser, and
-**Start blank**. Use an example to see a complete script in the form; use the blank
-JSON download if you prefer writing in your own editor. Imports and examples are
-checked before replacing your draft, and replacing authored work asks for confirmation.
-The lower JSON section also has an upload control with the same behavior.
+Use **New** to start a script or **Open JSON** to reopen a file. The editor has
+three steps: **Scene** for pages and cast, **Script** for dialogue and actions,
+and **Export** for picture, captions, audio and rendering. Next/Previous moves
+between steps; you can also click a step directly. **JSON**, **Batch** and
+**Videos** have separate views. Imports are checked before replacing your draft.
 
-**Generate chaos script** writes a whole film for you from a fresh random seed:
+Open **Scene → Examples & shuffle** for worked examples and the blank JSON
+template. **Recent** keeps up to 20 local snapshots when you change steps/views
+or replace a script, including unapplied JSON. **Reopen** restores a snapshot;
+**Save version** records the current draft. Storage is bounded, so fewer large
+scripts may fit. Use **Save JSON** for a permanent copy.
+
+**Shuffle script** writes a whole film for you from a fresh random seed:
 cast (including Little Billy and the gooby-hat guy), scene, background cameos
 (the goose, Glove Bot, the walker, the shoe-hat creature), gmod-style stunts and
 dialogue from built-in phrase banks. No AI is involved. Pick **Mild**, **Wild** or
 **Unhinged** first. The result loads into the form like an example, so you can
 edit any line before rendering. The CLI equivalent is `node bin/theatre.mjs chaos`.
 
-**Color grade** (under Video size) sets the look of the 3D scenes. **Muted** is the
+**Color grade** (under Export → Picture) sets the look of the 3D scenes. **Muted** is the
 default: slightly desaturated with soft blacks and a drab warm cast, so bright
 costumes don't read like a kids' show. **Film** is dustier and grainier; **Vivid**
 is the original bright look. The JSON field is `grade`. Comic page inserts,
@@ -100,13 +106,13 @@ Only selected pages show a preview, with printed/PDF page numbers and a stable I
 Clicking the artwork does not leave the editor. The page-tour template supports
 two or three pages: a blank tour starts with two empty page slots, and **+ Add page**
 adds a third. New drafts include an empty dialogue row for each speaker. Fill them
-in, then use **+ Add dialogue** as needed; speaker, emotion, gesture and shot are dropdowns.
+in, then use **+ Add dialogue** as needed; speaker, emotion and gesture are dropdowns. Expand **Camera & gaze** for shot and look direction.
 You can still edit JSON directly. Validate, download a copy of your script, and
-generate the video. The jobs area shows named loading stages and progress bars.
+generate the video. The **Videos** view shows named loading stages and progress bars.
 Percentages describe the current stage; an indeterminate bar means the stage's
 remaining work cannot yet be measured. Browser downloads prefer compatible MP4,
 with clearly labeled WebM fallback. Desktop downloads are MP4.
-Use **Start blank** to begin another script in the currently selected template.
+Use **New** to begin another script in the currently selected template.
 It clears selected pages, dialogue, JSON edits, cast, scene/seed, voice, music and
 end-card customization, then provides empty dialogue rows for that template's cast.
 Confirm discarding authored inputs, or Cancel to keep them. Finished downloads
@@ -123,7 +129,7 @@ It does not silently replace manual work or activate while rendering.
 
 ### Render several JSON scripts without opening them one by one
 
-Open **Batch render JSON scripts** near the top of the app. **Add JSON files**
+Open the **Batch** view. **Add JSON files**
 accepts a multiple-file selection. **Add folder** reads JSON files throughout the
 chosen folder and its subfolders. Non-JSON files and CLI manifest arrays are
 skipped, so you can choose the repository's `examples/` folder directly.

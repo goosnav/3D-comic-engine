@@ -18,8 +18,8 @@ test('JSON source locks compare values independently of object key order',()=>{
   assert.throws(()=>resolveScript({...script,sourceLock:value},catalog),/Source lock changed/);
  }
 });
-test('typos and unsupported facial fields fail with helpful options',()=>{
- assert.throws(()=>resolveScript({...input(),lines:[{speaker:'reader',text:'Hi',emotion:'smuggg'}]},catalog),/emotion.*neutral/i);
+test('strict auditing rejects unsupported performance values and unknown face fields',()=>{
+ assert.throws(()=>resolveScript({...input(),lines:[{speaker:'reader',text:'Hi',emotion:'smuggg'}]},catalog,{repair:false}),/emotion.*neutral/i);
  assert.throws(()=>resolveScript({...input(),lines:[{speaker:'reader',text:'Hi',face:{jaw:9}}]},catalog),/face/i);
 });
 test('template restrictions and undeclared pages are enforced',()=>{
@@ -36,7 +36,7 @@ test('book rails reject impossible hand state and incomplete selected content',(
  assert.throws(()=>resolveScript({...input(),lines:[{action:'close'}]},catalog),/dialogue|line/i);
 });
 test('held book constrains listener hands too, and turn requires a target',()=>{
- assert.throws(()=>resolveScript({...input(),lines:[{action:'hold'},{speaker:'friend',text:'Hi',reaction:{actor:'reader',gesture:'shrug'}}]},catalog),/hands|held/i);
+ assert.throws(()=>resolveScript({...input(),lines:[{action:'hold'},{speaker:'friend',text:'Hi',reaction:{actor:'reader',gesture:'shrug'}}]},catalog,{repair:false}),/hands|held/i);
  assert.throws(()=>resolveScript({...input(),lines:[{action:'turn'},{speaker:'reader',text:'Hi'}]},catalog),/target|comic/i);
 });
 test('adjacent turns use the actual book spread numbering',()=>{

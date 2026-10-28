@@ -8,6 +8,7 @@ import {randomUUID} from 'node:crypto';
 import lockfile from 'proper-lockfile';
 import {ROOT,digest,loadCatalog,verifyCatalog,safePath} from './library.mjs';
 import {previewOutput,resolveScript} from './contracts.mjs';
+import {scriptWarnings,correctionNote} from './script-normalization.mjs';
 import {prepareAudio,writeMix} from './audio.mjs';
 import {compileTimeline} from './timeline.mjs';
 export const OUTPUT=path.join(ROOT,'output');
@@ -33,7 +34,7 @@ export async function createJob(raw,{outputRoot=OUTPUT,inputRoot=ROOT,voice='fli
  const id=`${slug}-${new Date().toISOString().replace(/[:.]/g,'-')}-${randomUUID().slice(0,8)}`;
  const dir=path.join(outputRoot,id);await fs.mkdir(dir,{recursive:true}).catch(e=>{throw Object.assign(e,{stage:'output'});});await atomicJSON(path.join(dir,'script.json'),script);
  if(!script.lines.some(line=>line.audio))await atomicJSON(path.join(dir,'portable.render-job.json'),await makeRenderJob(script,catalog,{voice}));
- const job={id,status:'queued',created:new Date().toISOString(),title:script.title,voice,backend,inputRoot,pid:process.pid,progress:'Waiting for production slot'};
+ const job={id,status:'queued',warnings:scriptWarnings(script),created:new Date().toISOString(),title:script.title,voice,backend,inputRoot,pid:process.pid,progress:'Waiting for production slot'};
  await atomicJSON(path.join(dir,'job.json'),job);return job;
 }
 export const MAX_BATCH_JOBS=100;
@@ -88,6 +89,7 @@ export async function processJob(id,{outputRoot=OUTPUT,progress=()=>{},backend,s
   const catalog=await loadCatalog();await verifyCatalog(catalog).catch(e=>{throw Object.assign(e,{stage:'assets'});});const script=resolveScript(JSON.parse(await fs.readFile(path.join(dir,'script.json'))),catalog);
   signal?.throwIfAborted();
   const encoding=await probeCapability('ffmpeg');if(!encoding.available)throw Object.assign(Error(encoding.error),{stage:'encoding'});
+  job.warnings=scriptWarnings(script);
   await update('audio','Preparing measured voice takes');
   const takes=await prepareAudio(script,{mode:job.voice,inputRoot:job.inputRoot,progress,signal});
   const timeline=compileTimeline(script,takes);await writeMix(timeline,takes,path.join(dir,'mix.wav'));await atomicJSON(path.join(dir,'timeline.json'),timeline);
@@ -110,7 +112,7 @@ export async function processJob(id,{outputRoot=OUTPUT,progress=()=>{},backend,s
   }
 
   signal?.throwIfAborted();
-  job={...job,selectedBackend:video.backend,status:'complete',progress:'Complete video verified locally; not uploaded',video:`/output/${id}/${path.basename(video.path)}`,verification:video,updated:new Date().toISOString()};await atomicJSON(path.join(dir,'job.json'),job);return job;
+  job={...job,selectedBackend:video.backend,status:'complete',exitNote:correctionNote(script)||'No automatic JSON corrections.',progress:'Complete video verified locally; not uploaded',video:`/output/${id}/${path.basename(video.path)}`,verification:video,updated:new Date().toISOString()};await atomicJSON(path.join(dir,'job.json'),job);if(job.warnings.length)progress(job.exitNote);return job;
  }catch(e){if(runRelease){job={...job,status:signal?.aborted?'cancelled':'failed',stage:e.stage??(['EACCES','EROFS','ENOSPC','ENOTDIR'].includes(e.code)?'output':job.status==='audio'?'speech':job.status==='rendering'?'frame rendering':'input'),error:e.message,progress:'Stopped with checkpoints preserved',updated:new Date().toISOString()};await atomicJSON(path.join(dir,'job.json'),job);}throw e;}
  finally{if(release)await release();if(runRelease)await runRelease();}
 }

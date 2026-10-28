@@ -1,4 +1,5 @@
 import { resolveScript, selectScript } from '../src/contracts.mjs';
+import { scriptWarnings, correctionNote } from '../src/script-normalization.mjs';
 import { verifyAssetCatalog } from './assets.mjs';
 import { progressReporter } from './progress.mjs';
 import { supportedRecordingTypes, isCompatibleMP4Type } from './recording.mjs';
@@ -85,7 +86,7 @@ export function createBrowserBackend({ catalog, canvas, onChange = () => {},
   const updateItem = (record, batch) => {
     const { item, job } = record;
     item.status = job.status;
-    for (const key of ['video', 'error', 'filename']) if (job[key] !== undefined) item[key] = job[key];
+    for (const key of ['video', 'error', 'filename', 'warnings', 'exitNote']) if (job[key] !== undefined) item[key] = job[key];
     countBatch(batch);
     notify();
   };
@@ -102,7 +103,7 @@ export function createBrowserBackend({ catalog, canvas, onChange = () => {},
   async function renderJob({ job, script, jobCatalog, audioContext, resumed, format, music, changed = notify }) {
     const controller = new AbortController();
     controllers.set(job.id, controller);
-    job.status = 'running'; job.startedAt = Date.now();
+    job.status = 'running'; job.startedAt = Date.now(); job.warnings = scriptWarnings(script);
     const report = progressReporter(job, changed);
     report('Starting audio', { phase: 'audio', progress: null });
     let snapshot;
@@ -124,6 +125,7 @@ export function createBrowserBackend({ catalog, canvas, onChange = () => {},
       job.filename ??= `${script.title.normalize('NFKD').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').slice(0, 70) || 'comic'}-${job.id}.${result.extension}`;
       if (job.filename) job.filename = job.filename.replace(/\.(mp4|webm)$/i, `.${result.extension}`);
       job.backend = 'webgl'; job.format = result.extension;
+      job.exitNote = correctionNote(script) || 'No automatic JSON corrections.';
       job.status = 'complete';
       report(`Ready — ${result.extension.toUpperCase()}. Download before closing this page.${result.extension === 'webm' ? ' This browser cannot start MP4 recording; desktop export always produces MP4.' : ''}`, { phase: 'complete', progress: 1 });
     } catch (error) {
@@ -160,7 +162,7 @@ export function createBrowserBackend({ catalog, canvas, onChange = () => {},
       const script = resolveScript(data.script, catalog);
       if (script.lines.some(line => line.audio)) throw new Error('Recorded audio paths need the desktop app. Remove audio fields to use browser speech.');
       const { audioContext, resumed } = startAudio();
-      const job = { id: id('device'), status: 'running', startedAt: Date.now(), script };
+      const job = { id: id('device'), status: 'running', startedAt: Date.now(), script, warnings: scriptWarnings(script) };
       jobs.unshift(job);
       const operation = activeExport = { kind: 'single' };
       void (async () => {
@@ -189,6 +191,7 @@ export function createBrowserBackend({ catalog, canvas, onChange = () => {},
           script = resolveScript(entry.script, jobCatalog);
           if (script.lines.some(line => line.audio)) throw new Error('This JSON references recorded audio files. Use the desktop app for this script; browser batch export preserves these fields and cannot load local audio paths.');
           job.script = script;
+          item.warnings = job.warnings = scriptWarnings(script);
         } catch (error) {
           item.status = job.status = 'failed'; item.error = job.error = error?.message ?? String(error); job.finishedAt = Date.now();
         }

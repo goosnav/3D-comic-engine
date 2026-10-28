@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "template": "fireside-reader",
+  "title": "Page 095 — Proper Preparation",
+  "comics": [
+    "book2-095"
+  ],
+  "seed": 2026109501,
+  "scene": "fireside",
+  "characters": {
+    "reader": "gooby"
+  },
+  "product": "book2",
+  "grade": "muted",
+  "dither": "subtle",
+  "lines": [
+    {
+      "action": "open",
+      "comic": "book2-095",
+      "seconds": 1.15,
+      "shot": "book"
+    },
+    {
+      "action": "hold",
+      "seconds": 0.85,
+      "shot": "book"
+    },
+    {
+      "speaker": "reader",
+      "text": "He painted his walls from egg-shell to ivory.",
+      "emotion": "thoughtful",
+      "gesture": "page_glance",
+      "shot": "source",
+      "pause": 0.5,
+      "gaze": {
+        "reader": "book"
+      }
+    },
+    {
+      "speaker": "reader",
+      "text": "Mine are already ivory.",
+      "emotion": "neutral",
+      "gesture": "head_tilt",
+      "shot": "speaker",
+      "pause": 0.9
+    },
+    {
+      "action": "read",
+      "seconds": 1.15,
+      "shot": "book"
+    },
+    {
+      "speaker": "reader",
+      "text": "I suppose I'll have to paint them egg-shell first.",
+      "emotion": "pleased",
+      "gesture": "nod",
+      "shot": "close-up",
+      "pause": 1.75
+    },
+    {
+      "action": "place",
+      "seconds": 0.85,
+      "shot": "book"
+    },
+    {
+      "action": "close",
+      "seconds": 0.9,
+      "shot": "book"
+    }
+  ],
+  "output": {
+    "preset": "instagram_reels",
+    "fps": 24
+  },
+  "endCard": {
+    "enabled": false
+  },
+  "sourceLock": [
+    {
+      "id": "book2-095",
+      "sha256": "894a6001bd944001e73a79c5090f803a418822f0903221360a214970fddcbda5",
+      "pdfPage": 99,
+      "pdfSha256": "0b9edc67fc3ba74f8ec257d1c2cc86b35c5e7b1fa894f0395b622cc3125bb3a5"
+    }
+  ]
+}
