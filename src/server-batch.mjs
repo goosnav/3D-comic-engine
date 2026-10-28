@@ -1,3 +1,4 @@
+import {BACKENDS} from './capabilities.mjs';
 import {randomUUID} from 'node:crypto';
 import {resolveScript} from './contracts.mjs';
 import {OUTPUT,MAX_BATCH_JOBS,createJob,processJob,readJob} from './jobs.mjs';
@@ -14,8 +15,9 @@ function outputFilename(name,index){
 }
 
 function snapshotEntries(data){
- if(!isObject(data)||Object.keys(data).some(key=>!['entries','voice'].includes(key)))throw Error('Batch must contain entries and an optional voice');
+ if(!isObject(data)||Object.keys(data).some(key=>!['entries','voice','backend'].includes(key)))throw Error('Batch must contain entries and an optional voice');
  if(!Array.isArray(data.entries)||data.entries.length<1||data.entries.length>MAX_BATCH_JOBS)throw Error(`Batch must contain 1–${MAX_BATCH_JOBS} scripts`);
+ if(!BACKENDS.includes(data.backend??'auto'))throw Error('Invalid backend');
  if(!voices.includes(data.voice??'flite'))throw Error('voice: choose flite, kokoro or recorded');
  // Check the complete envelope before adding any work to the queue. Invalid
  // script contents belong to their own item, rather than rejecting the batch.
@@ -55,7 +57,7 @@ export function createServerBatchQueue({catalog,outputRoot=OUTPUT,create=createJ
    const item=batch.items.find(item=>item.status==='queued');
    item.status='running';
    try{
-    const job=await create(item.script,{outputRoot,voice:batch.voice});
+    const job=await create(item.script,{outputRoot,voice:batch.voice,backend:batch.backend});
     if(typeof job?.id!=='string'||!/^[A-Za-z0-9_-]{1,180}$/.test(job.id))throw Error('Renderer did not create a valid job');
     item.jobId=job.id;
     await process(job.id,{outputRoot});
@@ -90,7 +92,7 @@ export function createServerBatchQueue({catalog,outputRoot=OUTPUT,create=createJ
     if(item.status==='failed')continue;
     try{item.script=resolveScript(item.script,catalog);}catch(error){item.status='failed';item.error=message(error);delete item.script;}
    }
-   const batch={id:`batch-${randomUUID()}`,createdAt:new Date().toISOString(),status:'running',voice:data.voice??'flite',items};
+   const batch={id:`batch-${randomUUID()}`,createdAt:new Date().toISOString(),status:'running',voice:data.voice??'flite',backend:data.backend??'auto',items};
    batches.set(batch.id,batch);finish(batch);schedule();
    return publicBatch(batch);
   },

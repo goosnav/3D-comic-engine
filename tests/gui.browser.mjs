@@ -60,6 +60,9 @@ async function fixture(t, { clock = false, extraComics = [] } = {}) {
   const json = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
   const server = http.createServer(async (req, res) => {
     try {
+      const sharedModule = /\/(src\/render-job|browser\/capabilities|browser\/recording)\.mjs$/.exec(req.url);
+      if(sharedModule){res.setHeader('Content-Type','text/javascript');return res.end(await readFile(new URL(sharedModule[1]+'.mjs',root)));}
+
       const path = new URL(req.url, 'http://localhost').pathname;
       if (req.method === 'POST') {
         let raw = ''; for await (const chunk of req) raw += chunk;

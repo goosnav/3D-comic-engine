@@ -11,8 +11,8 @@ shots and timing. The desktop and browser share the same animation engine.
 
 | Mode | Requirements | Speech and export |
 | --- | --- | --- |
-| Desktop GUI / CLI | Node 22.12+, FFmpeg + ffprobe, installed Chromium | Free Flite by default; optional Kokoro or recordings; verified MP4 |
-| Static website | Modern browser with WebGL2, WASM, Web Audio and MediaRecorder | Free Flite on device; single-video preview supports WebM fallback; batch requires H.264/AAC MP4 and uses each JSON's output settings |
+| Desktop GUI / CLI | Node 22.12+, FFmpeg + ffprobe, Chromium and/or Blender | Free Flite by default; optional Kokoro or recordings; verified MP4 |
+| Static website | Modern browser with WebGL2, WASM, Web Audio and MediaRecorder | Free Flite on device; single and batch exports prefer H.264/AAC MP4 and support WebM fallback |
 
 Browser mode needs **no local server installation**. Hosting only serves static
 files. Keep the tab visible and phone unlocked during recording; interruptions
@@ -23,6 +23,21 @@ frame-exact high-resolution rendering.
 The browser's spinning-book end card uses frames extracted from the original
 video, not autoplay. It needs no video playback permission or extra tap. Desktop
 exports retain the full-resolution original video.
+
+## Offline CPU fallback
+
+```sh
+npm ci --no-audit --no-fund
+# Install Blender 4.x, FFmpeg and ffprobe on PATH, then:
+node bin/theatre.mjs render examples/parasite.json --backend blender-cpu --json
+npm start
+```
+
+The CPU CLI needs no Chromium, WebGL, display or loopback server. `npm start`
+launches the local browser GUI, which can also select Blender CPU. Hosted pages
+cannot launch Blender; download a portable render job for a matching local clone.
+[Capability matrix, setup, format, recovery and fidelity limits](DEV/CPU_RENDERING.md).
+No pixel-identical output or full-resolution performance is promised.
 
 ## Desktop quick start
 
@@ -76,11 +91,11 @@ appears if storage is full or unavailable. Keep the source JSONs as your backup.
 Desktop batches continue through a GUI refresh while the local server stays
 running; batch summaries last for that server session and rendered jobs remain
 on disk. Browser batches run in the open, visible tab, use one audio activation
-for the whole queue, and require a browser with H.264/AAC recording support.
-If that support is missing, the app explains the requirement before starting;
-batch export never substitutes WebM. Download browser videos before closing or
-reloading the tab. Use desktop for frame-exact rendering or work that should
-continue while you use another tab.
+for the whole queue, and prefer H.264/AAC MP4 with supported WebM fallback.
+The download extension and MIME type identify the actual format. Download browser
+videos before closing or reloading the tab. If WebGL is unavailable, editing and
+validation remain available: use **Download local render job** and the local CLI.
+
 
 ## Automation
 
@@ -162,13 +177,10 @@ node bin/theatre.mjs validate templates/book-duet.example.json --json
 node bin/theatre.mjs render templates/book-duet.example.json --preview --json
 ```
 
-MP4 requires the browser to expose an H.264/AAC encoder. A generic MP4 container
-with unusual codecs is not substituted. For a single-video preview, unsupported
-MP4 encoding can fall back to a clearly labeled WebM. Batch rendering requires
-MP4 support; desktop always exports MP4. Browser background
-music accepts supported audio files up to 15 MiB and three minutes, uses only the
-part that fits the film, and never uploads the file. Attachments are session-only
-and are not embedded in portable JSON.
+Browser MP4 requires an H.264/AAC encoder. Single and batch exports can fall
+back to correctly labeled WebM. Local exports use FFmpeg to produce actual MP4.
+Browser background music accepts supported audio up to 15 MiB and three minutes.
+Music is embedded in portable render jobs, but not ordinary script JSON.
 
 Creative snapshots live in assets/, with editable originals already published in
 Goosnav-3D-assets. No archived model paths or sibling checkout is required.
@@ -186,7 +198,7 @@ npm run verify:assets
 [Verification](DEV/VERIFICATION.md) · [Directory guide](DEV/README.md)
 
 Desktop renders use the GPU (Vulkan) when headless Chromium can reach it, and
-fall back to software rendering automatically (`THEATRE_GPU=0` forces software).
+fall back through software Chromium to offline Blender CPU automatically (`THEATRE_GPU=0` forces software).
 Frames are captured with Chromium's fast screenshot path. On the development
 machine (Intel HD 530) a 1080×1920 frame renders in about 20 ms, against about
 600 ms in software. The `--grade` and `--dither` options on `render` and `batch`

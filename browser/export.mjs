@@ -1,3 +1,4 @@
+import {invalidateBrowserCapabilities} from './capabilities.mjs';
 import { resolveScript } from '../src/contracts.mjs';
 import { compileTimeline } from '../src/timeline.mjs';
 import { createPlayer } from '../src/player.mjs';
@@ -75,7 +76,7 @@ async function recordFilm({ canvas, script: input, catalog: inputCatalog, assetB
   listen(context, 'statechange', () => {
     if (audioRunning && context.state !== 'running') fail(new Error('Export interrupted: audio was suspended or closed'));
   });
-  listen(canvas, 'webglcontextlost', () => fail(new Error('Export interrupted: graphics context was lost')));
+  listen(canvas, 'webglcontextlost', () => {invalidateBrowserCapabilities();fail(new Error('Export interrupted: graphics context was lost. Download a local render job for Blender CPU.'));});
   if (signal) listen(signal, 'abort', () => fail(signal.reason ?? new DOMException('Export cancelled', 'AbortError')));
   try {
     // Called before synthesis/loading so the click's user activation can resume audio.

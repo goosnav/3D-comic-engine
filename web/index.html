@@ -55,7 +55,7 @@
     <section class="panel batch-panel" aria-labelledby="batch-heading">
       <div class="batch-heading">
         <div><h2 id="batch-heading">Batch render JSON scripts</h2><p class="hint">Select scripts and download the finished videos together.</p></div>
-        <span class="batch-format">JSON → MP4</span>
+        <span class="batch-format">JSON → video</span>
       </div>
       <div class="toolbar batch-imports">
         <label class="file-label primary" for="batch-files">Add JSON files<input id="batch-files" type="file" accept=".json,application/json" multiple disabled></label>
@@ -77,9 +77,9 @@
       <ul id="batch-library" class="batch-library" aria-label="Uploaded script library"></ul>
       <div class="batch-start">
         <div><label for="batch-voice">Batch voice</label><select id="batch-voice" disabled><option value="flite">On-device Flite (no model needed)</option><option value="kokoro">Local Kokoro (optional install)</option><option value="recorded">Recorded audio paths in JSON</option></select></div>
-        <button id="batch-render" class="primary" type="button" disabled>Render selected scripts to MP4</button>
+        <button id="batch-render" class="primary" type="button" disabled>Render selected scripts to video</button>
       </div>
-      <p id="batch-device-note" class="hint" hidden>Keep this tab visible and your device awake until the queue finishes. Download your videos before closing the tab. Batch rendering requires MP4 support in your browser.</p>
+      <p id="batch-device-note" class="hint" hidden>Keep this tab visible and your device awake until the queue finishes. Download your videos before closing the tab. MP4 is preferred; supported WebM is also available.</p>
       <div class="batch-results-heading"><h3>Batch results</h3><button id="batch-refresh" type="button">Refresh batches</button></div>
       <p id="batch-runs-status" class="status" role="status"></p>
       <p id="batch-runs-empty" class="batch-empty">No batches yet.</p>
@@ -153,11 +153,13 @@
         <div class="toolbar">
           <button id="apply-json" type="button">Apply JSON</button>
           <button id="revert-json" type="button">Revert JSON</button>
+          <button id="download-render-job" type="button">Download local render job</button>
           <button id="download-json" type="button">Download JSON</button>
           <label class="file-label" for="upload-json">Upload JSON<input id="upload-json" type="file" accept=".json,application/json"></label>
         </div>
         <p class="hint">Upload replaces the current script. Download saves applied changes.</p>
         <div class="production">
+          <div id="backend-control"><label for="backend">Renderer</label><select id="backend"><option value="auto">Automatic capability fallback</option><option value="chromium-gpu">Chromium GPU</option><option value="chromium-software">Chromium software</option><option value="blender-cpu">Blender CPU (offline)</option></select></div>
           <div><label for="voice">Voice</label><select id="voice"><option value="flite">On-device Flite (no model needed)</option><option value="kokoro">Local Kokoro (optional install)</option><option value="recorded">Recorded audio paths in JSON</option></select></div>
           <div id="background-music-fields" hidden>
             <label for="background-music">Background music (optional)</label>
@@ -183,6 +185,7 @@
       <canvas id="device-canvas" hidden aria-label="Current on-device export" style="width:min(100%,432px);height:auto"></canvas>
     </section>
   </main>
+  <script>if(location.protocol==='file:'){document.addEventListener('DOMContentLoaded',()=>{document.body.textContent='Start the local GUI with npm start from the checkout, or serve dist over localhost. Opening this HTML file directly cannot load its modules and assets.';});}</script>
   <noscript>This on-device editor needs JavaScript enabled to load the catalog and render your script.</noscript>
 </body>
 </html>

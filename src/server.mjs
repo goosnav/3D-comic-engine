@@ -28,7 +28,8 @@ export async function startServer({port=0,outputRoot=OUTPUT,renderCatalog,batchJ
  const catalog=renderCatalog??await loadCatalog(),token=randomBytes(32).toString('hex');let origin;
  const assets=await freezeAssets(catalog);
  const examples=await getExampleLibrary({catalog});
- const batches=createServerBatchQueue({catalog,outputRoot,...batchJobs});
+ const workers=new AbortController();
+ const batches=createServerBatchQueue({catalog,outputRoot,process:(id,options)=>processJob(id,{...options,signal:workers.signal}),...batchJobs});
  const server=http.createServer(async(req,res)=>{
   try{
    if(req.headers.host!==new URL(origin).host){json(res,403,{error:'Invalid Host'});return;}
@@ -39,7 +40,7 @@ export async function startServer({port=0,outputRoot=OUTPUT,renderCatalog,batchJ
     if(p==='/api/select')return json(res,200,{script:selectScript(data.template,data.seed,catalog)});
     if(p==='/api/validate')return json(res,200,{script:resolveScript(data.script,catalog)});
     if(p==='/api/draft')return json(res,200,{script:await draftScript(data.script,catalog)});
-    if(p==='/api/render'){const job=await createJob(data.script,{outputRoot,voice:data.voice??'flite'});json(res,202,{id:job.id,status:job.status});processJob(job.id,{outputRoot}).catch(e=>console.error(`Run ${job.id}: ${e.message}`));return;}
+    if(p==='/api/render'){const job=await createJob(data.script,{outputRoot,voice:data.voice??'flite',backend:data.backend??'auto'});json(res,202,{id:job.id,status:job.status});processJob(job.id,{outputRoot,signal:workers.signal}).catch(e=>console.error(`Run ${job.id}: ${e.message}`));return;}
     if(p==='/api/batch')return json(res,202,{batch:batches.submit(data)});
     if(p==='/api/batch/cancel')return json(res,200,{batch:batches.cancel(data.id)});
     return json(res,404,{error:'Unknown action'});
@@ -63,10 +64,10 @@ export async function startServer({port=0,outputRoot=OUTPUT,renderCatalog,batchJ
    const web={'/':'web/index.html','/app.mjs':'web/app.mjs','/batch.mjs':'web/batch.mjs','/style.css':'web/style.css'};
    if(web[p])return file(req,res,await safePath(ROOT,web[p]));
    if(scriptTemplates.has(p))return file(req,res,await safePath(ROOT,p.slice(1)));
-   if(['/src/contracts.mjs','/src/editor-defaults.mjs','/src/editor-selection.mjs','/src/gesture-performance.mjs','/src/player.mjs','/src/stunts.mjs','/src/captions.mjs','/src/speech-timing.mjs','/src/actor.mjs','/src/facial-performance.mjs','/src/endcard.mjs','/src/endcard-video.mjs','/src/endcard-frames.mjs','/src/book.mjs','/src/book-pages.mjs','/src/zip.mjs','/src/extras.mjs','/src/goose.mjs','/src/chaos.mjs','/src/grade.mjs'].includes(p)||p.startsWith('/node_modules/three/')&&p.endsWith('.js'))return file(req,res,await safePath(ROOT,p.slice(1)));
+   if(['/src/scene-evaluator.mjs','/src/render-job.mjs','/browser/capabilities.mjs','/browser/recording.mjs','/src/contracts.mjs','/src/editor-defaults.mjs','/src/editor-selection.mjs','/src/gesture-performance.mjs','/src/player.mjs','/src/stunts.mjs','/src/captions.mjs','/src/speech-timing.mjs','/src/actor.mjs','/src/facial-performance.mjs','/src/endcard.mjs','/src/endcard-video.mjs','/src/endcard-frames.mjs','/src/book.mjs','/src/book-pages.mjs','/src/zip.mjs','/src/extras.mjs','/src/goose.mjs','/src/chaos.mjs','/src/grade.mjs'].includes(p)||p.startsWith('/node_modules/three/')&&p.endsWith('.js'))return file(req,res,await safePath(ROOT,p.slice(1)));
    json(res,404,{error:'Not found'});
   }catch(e){if(!res.headersSent)json(res,e.statusCode??(e.code==='ENOENT'?404:400),{error:e.message});else res.destroy();}
  });
  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,'127.0.0.1',resolve);});origin=`http://127.0.0.1:${server.address().port}`;
- return {url:origin,close:()=>new Promise(resolve=>{server.close(resolve);server.closeAllConnections();})};
+ return {url:origin,close:()=>new Promise(resolve=>{workers.abort(Error('Local server stopped'));server.close(resolve);server.closeAllConnections();})};
 }

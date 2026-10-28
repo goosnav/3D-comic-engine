@@ -38,7 +38,7 @@ function speechPCM({samples,sampleRate}){
  }
  return pcm;
 }
-export async function prepareAudio(script,{mode='flite',inputRoot=ROOT,cacheRoot=path.join(ROOT,'.cache/audio'),progress=()=>{}}={}){
+export async function prepareAudio(script,{mode='flite',inputRoot=ROOT,cacheRoot=path.join(ROOT,'.cache/audio'),progress=()=>{},signal}={}){
  if(!['recorded','kokoro','flite'].includes(mode))throw Error('voice: choose flite, kokoro or recorded');
  const lines=script.lines.filter(l=>l.text);if(mode==='recorded'&&lines.some(l=>!l.audio))throw Error('Recorded mode requires an audio filename on every dialogue line');
  await fs.mkdir(cacheRoot,{recursive:true});const tmp=await fs.mkdtemp(path.join(cacheRoot,'prepare-'));let identity=null;const result={},pending=[];
@@ -47,9 +47,10 @@ export async function prepareAudio(script,{mode='flite',inputRoot=ROOT,cacheRoot
   if(mode==='flite'&&lines.some(l=>!l.audio)){
    progress('Loading bundled Flite speech');flite=await loadFlite();identity=flite.identity;
   }else if(lines.some(l=>!l.audio)){
-   progress('Checking local voice model');const raw=await run(await pythonCommand(),[path.join(ROOT,'voices/kokoro_worker.py'),'--identity'],{timeout:60000,env:{...process.env,HF_HUB_OFFLINE:'1',TRANSFORMERS_OFFLINE:'1'}});identity=JSON.parse(raw.toString());
+   progress('Checking local voice model');const raw=await run(await pythonCommand(),[path.join(ROOT,'voices/kokoro_worker.py'),'--identity'],{signal,timeout:60000,env:{...process.env,HF_HUB_OFFLINE:'1',TRANSFORMERS_OFFLINE:'1'}});identity=JSON.parse(raw.toString());
   }
   for(const line of lines){
+   signal?.throwIfAborted();
    let source=null;if(line.audio){if(!/\.(wav|flac|mp3|ogg|m4a)$/i.test(line.audio))throw Error('Recorded audio needs WAV, FLAC, MP3, OGG or M4A');source=await safePath(inputRoot,line.audio);}
    const voice=script.cast.find(c=>c.id===line.speaker)?.voice;if(!source&&!voice)throw Error('Missing voice profile');
    const key=digest(JSON.stringify({v:3,text:line.text,voice:source?null:voice,speaker:mode==='flite'&&!source?line.speaker:null,identity,source:source?digest(await fs.readFile(source)):null}));
@@ -60,9 +61,10 @@ export async function prepareAudio(script,{mode='flite',inputRoot=ROOT,cacheRoot
   }
   const synth=pending.filter(p=>!p.source);if(synth.length&&mode==='kokoro'){
    progress(`Synthesizing ${synth.length} local voice takes`);const request=path.join(tmp,'request.json');await fs.writeFile(request,JSON.stringify(synth.map(p=>({text:p.line.text,voice:p.voice,output:p.native}))));
-   await run(await pythonCommand(),[path.join(ROOT,'voices/kokoro_worker.py'),request],{timeout:600000,env:{...process.env,HF_HUB_OFFLINE:'1',TRANSFORMERS_OFFLINE:'1'}});
+   await run(await pythonCommand(),[path.join(ROOT,'voices/kokoro_worker.py'),request],{signal,timeout:600000,env:{...process.env,HF_HUB_OFFLINE:'1',TRANSFORMERS_OFFLINE:'1'}});
   }
   for(const p of pending){
+   signal?.throwIfAborted();
    let pcm;
    if(!p.source&&mode==='flite'){
     progress(`Synthesizing Flite take ${p.line.id}`);

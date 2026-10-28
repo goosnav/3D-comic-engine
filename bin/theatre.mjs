@@ -31,6 +31,9 @@ Exit codes: 0 success; 1 production/runtime failure (including any failed batch 
 2 invalid command, input JSON/contract or manifest; Ctrl+C normally exits 130.
 Flite is free bundled speech with no model/Python. Kokoro is optional local speech.
 --grade muted|film|vivid and --dither subtle|crunchy|off override the scripts' look.
+--backend auto|chromium-gpu|chromium-software|blender-cpu selects rendering independently of MP4 encoding.
+Batch --resume reuses verified results from the same manifest/output directory.
+Portable .render-job.json files are accepted by render.
 Renders use the GPU when available (THEATRE_GPU=0 forces software rendering).
 'chaos' writes complete seeded scripts (dialogue, stunts, cast, cameos) with no model.
 Rendering calls no paid service. 'draft' explicitly enables an optional local model.
@@ -39,6 +42,8 @@ Default output: ${OUTPUT}. Reuse --output-dir for status/resume of custom output
 First run: node tools/setup.mjs. See launchers/README.md and TUTORIAL.md.
 `;
 const args=process.argv.slice(2),json=args.includes('--json');
+const controller=new AbortController();
+process.on('SIGINT',()=>{controller.abort(new Error('Cancelled by Ctrl+C'));process.exitCode=130;});
 const progress=message=>console.error(message);
 const emit=(value,human)=>console.log(json?JSON.stringify(value):human??JSON.stringify(value,null,2));
 class UsageError extends Error {}
@@ -52,7 +57,7 @@ const readJSON=async(file,maxBytes=256000)=>{
 };
 try{
  const command=args.shift()??'help',positional=[],options={};
- const allowed={gui:['port','no-open','output-dir'],select:['seed','out'],chaos:['seed','out','template','intensity','count','out-dir'],validate:[],render:['voice','preview','output-dir','grade','dither'],batch:['voice','preview','output-dir','grade','dither'],resume:['output-dir'],status:['output-dir'],draft:['out','template','seed'],assets:[],doctor:[],help:[]};
+ const allowed={gui:['port','no-open','output-dir'],select:['seed','out'],chaos:['seed','out','template','intensity','count','out-dir'],validate:[],render:['backend','voice','preview','output-dir','grade','dither'],batch:['resume','backend','voice','preview','output-dir','grade','dither'],resume:['backend','output-dir'],status:['output-dir'],draft:['out','template','seed'],assets:[],doctor:[],help:[]};
  if(command==='--help'||command==='-h'||command==='help'){emit({help},help);}
  else{
   if(!Object.hasOwn(allowed,command))invalid(`Unknown command '${command}'`);
@@ -63,13 +68,14 @@ try{
     const key=a.replace(/^--/,'');
     if(![...allowed[command],'json'].includes(key))invalid(`Unknown option ${a}`);
     if(Object.hasOwn(options,key))invalid(`Duplicate option ${a}`);
-    if(['json','preview','no-open'].includes(key))options[key]=true;
+    if(['json','preview','no-open','resume'].includes(key))options[key]=true;
     else{if(!args[i+1]||args[i+1].startsWith('--'))invalid(`${a} needs a value`);options[key]=args[++i];}
    }else positional.push(a);
   }
   if(options.help){emit({help},help);}
   else{
    if(positional.length>1||(['gui','assets','doctor'].includes(command)&&positional.length))invalid('Too many positional arguments');
+   if(options.backend&&!['auto','chromium-gpu','chromium-software','blender-cpu'].includes(options.backend))invalid('Invalid --backend');
    if(options.voice&&!['flite','kokoro','recorded'].includes(options.voice))invalid('--voice: choose flite, kokoro or recorded');
    if(options.grade&&!GRADES.includes(options.grade))invalid(`--grade: choose ${GRADES.join(', ')}`);
    if(options.dither&&!DITHERS.includes(options.dither))invalid(`--dither: choose ${DITHERS.join(', ')}`);
@@ -86,6 +92,7 @@ try{
     if(!Number.isInteger(port)||port<0||port>65535)invalid('--port must be 0–65535');
     const {startServer}=await import('../src/server.mjs');
     const server=await startServer({port,outputRoot});
+    controller.signal.addEventListener('abort',()=>{void server.close();},{once:true});
     emit({ok:true,url:server.url},`Comic Theatre: ${server.url}`);
     progress('Keep this terminal open. Ctrl+C stops the GUI; interrupted jobs can be resumed.');
     if(!options['no-open'])await openBrowser(server.url).catch(e=>progress(`Could not open browser: ${e.message}. Open ${server.url} manually.`));
@@ -124,31 +131,34 @@ try{
     let raw;if(options.template){try{raw=selectScript(options.template,options.seed===undefined?undefined:Number(options.seed),catalog);}catch(e){invalid(e.message);}}else raw=await validate(await readJSON(positional[0]));
     await save(await draftScript(raw,catalog));
    }else if(command==='render'){
-    const raw=await readJSON(positional[0]);if(options.preview&&raw&&typeof raw==='object'&&!Array.isArray(raw))raw.output=previewOutput(raw.output);
+    let raw=await readJSON(positional[0],24*1024*1024);let portable;
+    if(raw?.kind==='goosnav-render-job'){portable=await (await import('../src/render-job.mjs')).readRenderJob(raw,await loadCatalog());raw=portable.script;}
+    if(options.preview&&raw&&typeof raw==='object'&&!Array.isArray(raw))raw.output=previewOutput(raw.output);
     if(raw&&typeof raw==='object'&&!Array.isArray(raw))Object.assign(raw,look);
     await validate(raw);
-    const job=await createJob(raw,{voice:options.voice??'flite',inputRoot:path.dirname(path.resolve(positional[0])),outputRoot});
-    progress(`Run ${job.id}`);const finished=await processJob(job.id,{outputRoot,progress});emit(finished,finished.verification.path);
+    const job=await createJob(raw,{backend:options.backend??'auto',voice:options.voice??portable?.voice??'flite',inputRoot:path.dirname(path.resolve(positional[0])),outputRoot});
+    if(portable?.music)await fs.writeFile(path.join(outputRoot,job.id,'music.bin'),Buffer.from(portable.music.base64,'base64'));
+    progress(`Run ${job.id}`);const finished=await processJob(job.id,{outputRoot,progress,signal:controller.signal});emit(finished,finished.verification.path);
    }else if(command==='batch'){
     const entries=await readJSON(positional[0],1024*1024);
     if(!Array.isArray(entries)||entries.length<1||entries.length>MAX_BATCH_JOBS)invalid(`Batch manifest must be an array of 1–${MAX_BATCH_JOBS} entries`);
-    const report=await runBatch(entries,{baseDir:path.dirname(path.resolve(positional[0])),outputRoot,voice:options.voice??'flite',preview:options.preview,look,progress});
+    const report=await runBatch(entries,{baseDir:path.dirname(path.resolve(positional[0])),outputRoot,voice:options.voice??'flite',preview:options.preview,resume:options.resume,look,backend:options.backend??'auto',signal:controller.signal,progress});
     emit(report);if(!report.ok)process.exitCode=1;
    }else if(command==='resume'){
     if(!positional[0])invalid('Supply RUN_ID from status');
-    const job=await processJob(positional[0],{outputRoot,progress});emit(job,job.verification?.path??job.status);
+    const job=await processJob(positional[0],{outputRoot,progress,backend:options.backend,signal:controller.signal});emit(job,job.verification?.path??job.status);
    }else if(command==='status'){
     emit(positional[0]?await readJob(positional[0],outputRoot):await listJobs(outputRoot));
    }else if(command==='doctor'){
     await run(process.env.FFMPEG??'ffmpeg',['-version']);await run(process.env.FFPROBE??'ffprobe',['-version']);await verifyCatalog(await loadCatalog());
     await WebAssembly.compile(await fs.readFile(new URL('../node_modules/@echogarden/flite-wasi/flite.wasm',import.meta.url)));
-    const {chromium}=await import('playwright');const browser=await chromium.launch({headless:true,...(process.env.THEATRE_BROWSER?{executablePath:process.env.THEATRE_BROWSER}:{})});await browser.close();
-    emit({ok:true,node:process.version,root:ROOT,voice:'flite'},'FFmpeg, ffprobe, Chromium, bundled Flite and verified assets OK. Optional Kokoro: python tools/setup_voice.py.');
+    const {selectBackend,probeCapability}=await import('../src/capabilities.mjs');const selected=await selectBackend();const encoder=await probeCapability('ffmpeg');if(!encoder.available)throw Error(encoder.error);
+    emit({ok:true,node:process.version,root:ROOT,voice:'flite',...selected,encoder},`Backend: ${selected.backend}; FFmpeg, ffprobe, Flite and verified assets OK.`);
    }
   }
  }
 }catch(e){
- process.exitCode=e instanceof UsageError?2:1;
+ process.exitCode=controller.signal.aborted?130:e instanceof UsageError?2:1;
  progress(`Error: ${e.message}\nUse --help for options. Completed run stages remain in their output directory.`);
- if(json)emit({ok:false,error:e.message,exitCode:process.exitCode});
+ if(json)emit({ok:false,error:e.message,stage:e.stage??(e instanceof UsageError?'input':'output'),exitCode:process.exitCode});
 }

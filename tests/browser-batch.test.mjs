@@ -83,7 +83,7 @@ test('browser batch snapshots all authored scripts, renders serially, and reuses
   const { batch } = await pending;
   await until(() => f.calls.length === 1);
   assert.deepEqual(f.calls[0].script, expected[0]);
-  assert.equal(f.calls[0].format, 'mp4');
+  assert.equal(f.calls[0].format, undefined);
   assert.equal(f.calls[0].music, undefined);
   assert.equal((await f.api('/api/jobs')).jobs.length, 2, 'queued items appear in the existing jobs list');
   gates[0].resolve();
@@ -163,15 +163,14 @@ test('cancelling an individual batch job still advances automatically to the nex
   assert.equal(done.completed, 1); assert.equal(done.cancelled, 1); assert.equal(f.contexts.length, 1);
 });
 
-test('unsupported browser MP4 rejects a batch before audio starts but single export retains WebM fallback', async t => {
+test('browser batch accepts WebM when MP4 is unavailable and labels every download honestly', async t => {
   const f = await fixture(t, { exportFilm: async () => film('webm') });
   MediaRecorder.isTypeSupported = type => type.startsWith('video/webm');
-  await assert.rejects(f.api('/api/batch', { entries: [{ name: 'film.json', script: script('Film') }] }), /H\.264\/AAC MP4.*desktop/i);
-  assert.equal(f.contexts.length, 0); assert.deepEqual(await f.api('/api/batches'), { batches: [] });
-  assert.deepEqual(await f.api('/api/jobs'), { jobs: [] });
-  const { id } = await f.api('/api/render', { script: script('Single fallback'), voice: 'flite' });
-  const job = await until(async () => { const job = (await f.api('/api/jobs')).jobs.find(job => job.id === id); return job.status !== 'running' && job; });
-  assert.equal(job.status, 'complete'); assert.match(job.filename, /\.webm$/); assert.equal(f.calls[0].format, undefined);
+  const { batch } = await f.api('/api/batch', { entries: [{ name: 'film.json', script: script('Film') }] });
+  const done = await completedBatch(f.api, batch.id);
+  assert.equal(done.status, 'complete');
+  assert.match(done.items[0].filename, /\.webm$/);
+  assert.equal(f.calls[0].format, undefined);
 });
 
 test('a mislabeled or fallback WebM result cannot become a batch MP4 and does not stop later entries', async t => {

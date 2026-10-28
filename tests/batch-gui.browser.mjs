@@ -36,6 +36,9 @@ async function fixture(t, { staticMode = false, storageBlocked = false } = {}) {
   const prefix = staticMode ? '/nested/studio/' : '/';
   const server = http.createServer(async (req, res) => {
     try {
+      const sharedModule = /\/(src\/render-job|browser\/capabilities|browser\/recording)\.mjs$/.exec(req.url);
+      if(sharedModule){res.setHeader('Content-Type','text/javascript');return res.end(await readFile(new URL(sharedModule[1]+'.mjs',root)));}
+
       state.requests.push(req.url);
       const json = value => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(value)); };
       if (req.url === '/api/session') return json({ token: 'fixture' });
@@ -200,7 +203,7 @@ test('completed and failed items remain visible, one ZIP contains all successful
   assert.equal(await page.locator('#batch-runs a[download]').count(), 2);
   assert.match(await page.locator('#batch-runs').textContent(), /queue continued/);
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download 2 completed MP4s (.zip)', exact: true }).click();
+  await page.getByRole('button', { name: 'Download 2 completed videos (.zip)', exact: true }).click();
   const download = await downloadPromise;
   assert.equal(download.suggestedFilename(), 'comic-batch-batch-1.zip');
   const files = zipEntries(await readFile(await download.path()));
@@ -235,7 +238,7 @@ test('nested browser installation imports chosen scripts and starts from the ori
   await page.evaluate(() => window.completeDeviceBatch());
   await page.waitForFunction(() => document.querySelectorAll('#batch-runs a[download]').length === 2);
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download 2 completed MP4s (.zip)', exact: true }).click();
+  await page.getByRole('button', { name: 'Download 2 completed videos (.zip)', exact: true }).click();
   const download = await downloadPromise;
   const files = zipEntries(await readFile(await download.path()));
   assert.deepEqual([...files.keys()], ['001-device.mp4', '002-device.mp4']);
@@ -299,6 +302,6 @@ test('batch outputs reject external URLs and WebM results instead of presenting 
   await page.locator('#batch-refresh').click();
   await page.waitForFunction(() => document.querySelector('#batch-runs .batch-run'));
   assert.equal(await page.locator('#batch-runs a[download]').count(), 0);
-  assert.equal(await page.getByRole('button', { name: 'Download 2 completed MP4s (.zip)', exact: true }).isDisabled(), true);
+  assert.equal(await page.getByRole('button', { name: 'Download 2 completed videos (.zip)', exact: true }).isDisabled(), true);
   assert.match(await page.locator('#batch-runs').textContent(), /no longer available/);
 });

@@ -18,6 +18,7 @@
   "dependencies": {
     "@bjorn3/browser_wasi_shim": "0.4.2",
     "@echogarden/flite-wasi": "0.1.1",
+    "@napi-rs/canvas": "1.0.13",
     "esbuild": "0.28.2",
     "playwright": "1.62.1",
     "proper-lockfile": "4.1.2",

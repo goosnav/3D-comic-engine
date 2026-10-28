@@ -1,7 +1,7 @@
 import { resolveScript, selectScript } from '../src/contracts.mjs';
 import { verifyAssetCatalog } from './assets.mjs';
 import { progressReporter } from './progress.mjs';
-import { supportedMP4RecordingTypes, isCompatibleMP4Type } from './recording.mjs';
+import { supportedRecordingTypes, isCompatibleMP4Type } from './recording.mjs';
 
 async function waitForAudio(promise, signal) {
   let timer, abort;
@@ -85,7 +85,7 @@ export function createBrowserBackend({ catalog, canvas, onChange = () => {},
   const updateItem = (record, batch) => {
     const { item, job } = record;
     item.status = job.status;
-    for (const key of ['video', 'error']) if (job[key] !== undefined) item[key] = job[key];
+    for (const key of ['video', 'error', 'filename']) if (job[key] !== undefined) item[key] = job[key];
     countBatch(batch);
     notify();
   };
@@ -117,12 +117,13 @@ export function createBrowserBackend({ catalog, canvas, onChange = () => {},
         ...(format ? { format } : {}), ...(music ? { music } : {}), signal: controller.signal, onProgress: report });
       controller.signal.throwIfAborted();
       if (disposed) throw new Error('Browser renderer was closed.');
-      if (format === 'mp4' && (result.extension !== 'mp4' || !isCompatibleMP4Type(result.mimeType) ||
-        !isCompatibleMP4Type(result.blob?.type))) {
+      if (!['mp4', 'webm'].includes(result.extension) || !result.mimeType?.startsWith(`video/${result.extension}`) || !result.blob?.type?.startsWith(`video/${result.extension}`) || (result.extension === 'mp4' && !isCompatibleMP4Type(result.mimeType))) {
         throw new Error('The browser did not return an H.264/AAC MP4. Use the desktop app for batch MP4 export.');
       }
       job.video = URL.createObjectURL(result.blob); urls.add(job.video);
       job.filename ??= `${script.title.normalize('NFKD').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').slice(0, 70) || 'comic'}-${job.id}.${result.extension}`;
+      if (job.filename) job.filename = job.filename.replace(/\.(mp4|webm)$/i, `.${result.extension}`);
+      job.backend = 'webgl'; job.format = result.extension;
       job.status = 'complete';
       report(`Ready — ${result.extension.toUpperCase()}. Download before closing this page.${result.extension === 'webm' ? ' This browser cannot start MP4 recording; desktop export always produces MP4.' : ''}`, { phase: 'complete', progress: 1 });
     } catch (error) {
@@ -172,8 +173,8 @@ export function createBrowserBackend({ catalog, canvas, onChange = () => {},
       assertIdle();
       const entries = batchEntries(data), voice = data.voice ?? 'flite';
       if (voice !== 'flite') throw new Error('Browser batches use on-device Flite. Use the desktop app for other voices or recorded audio.');
-      if (!supportedMP4RecordingTypes().length) {
-        throw new Error('Batch export requires H.264/AAC MP4 recording, which this browser does not support. Open the desktop app to batch export these JSON scripts as MP4.');
+      if (!supportedRecordingTypes().length) {
+        throw new Error('No supported audio/video recording format. Download a render job and use the local CLI.');
       }
       const jobCatalog = structuredClone(catalog), createdAt = Date.now();
       const batch = { id: id('device-batch'), status: 'running', createdAt, total: entries.length,
@@ -209,7 +210,7 @@ export function createBrowserBackend({ catalog, canvas, onChange = () => {},
             if (record.item.status !== 'queued') continue;
             if (disposed) { cancelQueued(state); break; }
             await renderJob({ job: record.job, script: record.script, jobCatalog, audioContext: audio.audioContext,
-              resumed: ready, format: 'mp4', changed: () => updateItem(record, batch) });
+              resumed: ready, changed: () => updateItem(record, batch) });
           }
         } finally {
           state.controller.abort();

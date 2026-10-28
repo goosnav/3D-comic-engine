@@ -1,3 +1,5 @@
+import {makeRenderJob} from '../src/render-job.mjs';
+import {browserCapabilities} from '../browser/capabilities.mjs';
 import { EMOTIONS, GESTURES, GAZES, ACTIONS, ACTOR_ACTIONS, PARTNER_ACTIONS, OUTPUT_PRESETS } from '../src/contracts.mjs';
 import { editorDefaults } from '../src/editor-defaults.mjs';
 import { comicReplacements, replaceComic, randomComic } from '../src/editor-selection.mjs';
@@ -97,6 +99,7 @@ function localPath(value, prefix) {
 
 async function api(path, body, { timeoutMs = body ? 120000 : 15000 } = {}) {
   if(browserMode){if(!browserAPI)throw Error('On-device runtime has not loaded. Reload the page.');return browserAPI(path,body);}
+  if(body&&['/api/render','/api/batch'].includes(path)&&$('backend').value!=='auto')body={...body,backend:$('backend').value};
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -644,6 +647,15 @@ $('apply-json').addEventListener('click', () => {
   catch (error) { message(`JSON not applied: ${error.message}`, true); }
 });
 $('revert-json').addEventListener('click', () => { if (state.script) { state.revision++; syncJSON(); message('Unapplied JSON reverted to the current form script.'); } });
+$('download-render-job').addEventListener('click', async () => {
+  try {
+    requireReady();
+    const job=await makeRenderJob(state.script,state.catalog,{music:$('background-music').files[0]});
+    const url=URL.createObjectURL(new Blob([JSON.stringify(job)],{type:'application/json'}));
+    const link=el('a');link.href=url;link.download='comic.render-job.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    message('Render job saved. In a matching local checkout: node bin/theatre.mjs render comic.render-job.json --backend auto');
+  } catch(error){message(error.message,true);}
+});
 $('download-json').addEventListener('click', () => {
   try {
     requireReady();
@@ -726,6 +738,8 @@ function renderJobs(jobs) {
     const phase = typeof detail?.phase === 'string' ? detail.phase.replace(/[_-]+/g, ' ').replace(/^./, c => c.toUpperCase()) : '';
     const terminal = ['complete', 'failed', 'cancelled'].includes(job.status);
     card.append(el('p', String(job.status ?? 'unknown')));
+    if(job.selectedBackend||job.backend)card.append(el('p',`Renderer: ${job.selectedBackend??job.backend} · ${job.verification?.format??job.format??'MP4'}`));
+    for(const warning of job.verification?.reducedFidelity??[])card.append(el('p',warning,'hint'));
     if (finite || !terminal) {
       const meter = el('progress'); meter.max = 100;
       if (finite) meter.value = percent;
@@ -793,7 +807,10 @@ $('retry').addEventListener('click', connect);
 $('clear-music').addEventListener('click', () => { $('background-music').value = ''; });
 let savedDraft;try{savedDraft=localStorage.getItem(draftKey);}catch{}
 if(browserMode){
+ $('backend-control').hidden=true;
  $('background-music-fields').hidden=false;
+ const caps=browserCapabilities();
+ if(!caps.webgl)$('device-note').textContent='WebGL is unavailable. Editing and validation remain available. Download a local render job, then use the CLI with Blender CPU.';
  $('device-note').hidden=false;$('draft').hidden=true;
  for(const option of [...$('voice').options])if(option.value!=='flite')option.remove();
  try{

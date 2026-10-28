@@ -40,7 +40,7 @@ test('desktop batch snapshots exact authored settings and serializes overlapping
  assert.equal(maxActive,1);
  assert.deepEqual(events,['start:job-1','end:job-1','start:job-2','end:job-2','start:job-3','end:job-3']);
  assert.deepEqual(created[0].script,expected);assert.deepEqual(created[1].script,expected);
- assert.deepEqual(created[0].options,{outputRoot:'/test/output',voice:'recorded'});
+ assert.deepEqual(created[0].options,{outputRoot:'/test/output',voice:'recorded',backend:'auto'});
  assert.equal(created[2].options.voice,'kokoro');
  const finished=queue.list().find(batch=>batch.id===first.id);
  assert.equal(finished.status,'complete');assert.equal(finished.completed,2);assert.equal(finished.failed,0);assert.equal(finished.cancelled,0);assert.ok(finished.finishedAt);

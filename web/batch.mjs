@@ -96,7 +96,7 @@ export function createBatchUI({ api, isReady, getEditorScript, browserMode, owns
     $('batch-remove-selected').disabled = busy || !selected;
     $('batch-voice').disabled = !ready || submitting || running();
     $('batch-render').disabled = !ready || busy || running() || !selected;
-    $('batch-render').textContent = submitting ? 'Starting batch…' : `Render ${selected ? plural(selected, 'selected script') : 'selected scripts'} to MP4`;
+    $('batch-render').textContent = submitting ? 'Starting batch…' : `Render ${selected ? plural(selected, 'selected script') : 'selected scripts'} to video`;
     $('batch-selection-count').textContent = `${selected} selected · ${entries.length} in library${entries.some(entry => entry.error) ? ` · ${entries.filter(entry => entry.error).length} invalid` : ''}`;
     $('batch-library-empty').hidden = entries.length > 0;
   }
@@ -193,7 +193,7 @@ export function createBatchUI({ api, isReady, getEditorScript, browserMode, owns
   }
 
   function videoLink(item) {
-    if (item.status !== 'complete' || typeof item.filename !== 'string' || !/\.mp4$/i.test(item.filename) || /[\\/:\u0000-\u001f\u007f]/.test(item.filename)) return null;
+    if (item.status !== 'complete' || typeof item.filename !== 'string' || !/\.(mp4|webm)$/i.test(item.filename) || /[\\/:\u0000-\u001f\u007f]/.test(item.filename)) return null;
     if (browserMode) return ownsURL(item.video) ? item.video : null;
     const path = localPath(item.video, '/output/');
     return path && /\.mp4$/i.test(path) ? path : null;
@@ -237,13 +237,13 @@ export function createBatchUI({ api, isReady, getEditorScript, browserMode, owns
         if (item.error) content.append(node('p', String(item.error), 'batch-validation-error'));
         row.append(content);
         const href = videoLink(item);
-        if (href) { const link = node('a', 'Download MP4'); link.href = href; link.download = item.filename; row.append(link); }
+        if (href) { const link = node('a', `Download ${item.filename.split('.').at(-1).toUpperCase()}`); link.href = href; link.download = item.filename; row.append(link); }
         else if (item.status === 'complete') content.append(node('p', 'This video is no longer available in this session. Render the script again to download it.', 'hint'));
         list.append(row);
       }
       article.append(list);
       if (completed.length) {
-        const button = node('button', downloading.has(batch.id) ? 'Preparing ZIP…' : `Download ${plural(completed.length, 'completed MP4')} (.zip)`, 'primary');
+        const button = node('button', downloading.has(batch.id) ? 'Preparing ZIP…' : `Download ${plural(completed.length, 'completed video')} (.zip)`, 'primary');
         button.type = 'button'; button.dataset.downloadBatch = batch.id;
         button.disabled = downloading.has(batch.id) || !completed.some(videoLink);
         button.addEventListener('click', () => downloadBatch(batch)); article.append(button);
@@ -307,8 +307,8 @@ export function createBatchUI({ api, isReady, getEditorScript, browserMode, owns
       const files = [], names = new Set();
       for (const [index, item] of completed.entries()) {
         const url = videoLink(item);
-        if (!url) throw new Error(`${item.name} has no available local MP4. The ZIP was not downloaded; other videos can still be downloaded individually.`);
-        update(`Collecting MP4 ${index + 1} of ${completed.length}…`);
+        if (!url) throw new Error(`${item.name} has no available local video. The ZIP was not downloaded; other videos can still be downloaded individually.`);
+        update(`Collecting video ${index + 1} of ${completed.length}…`);
         const response = await fetch(url, { credentials: 'same-origin' });
         if (!response.ok) throw new Error(`${item.name} could not be downloaded (${response.status}). Try again.`);
         const blob = await response.blob();
@@ -318,12 +318,12 @@ export function createBatchUI({ api, isReady, getEditorScript, browserMode, owns
         while (names.has(filename)) filename = `copy-${filename}`;
         names.add(filename); files.push({ name: filename, blob });
       }
-      update(`Packing ${plural(files.length, 'MP4')} into one ZIP…`);
-      const zip = await createZip(files, { onProgress: ({ completed, total }) => update(`Packing MP4 ${completed} of ${total} into one ZIP…`) });
+      update(`Packing ${plural(files.length, 'video')} into one ZIP…`);
+      const zip = await createZip(files, { onProgress: ({ completed, total }) => update(`Packing video ${completed} of ${total} into one ZIP…`) });
       const url = URL.createObjectURL(zip);
       const link = node('a'); link.href = url; link.download = `comic-batch-${batch.id.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 80)}.zip`;
       document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
-      update(`ZIP ready: ${plural(files.length, 'MP4')}. Your browser will save the download.`);
+      update(`ZIP ready: ${plural(files.length, 'video')}. Your browser will save the download.`);
     } catch (error) { update(error.message, true); }
     finally { downloading.delete(batch.id); renderBatches(); }
   }

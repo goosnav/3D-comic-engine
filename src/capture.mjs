@@ -11,8 +11,9 @@ export async function probeVideo(file){return JSON.parse((await run(process.env.
 // back to software automatically. Pixels may differ slightly between the two.
 const GPU_ARGS=['--use-angle=vulkan','--enable-features=Vulkan','--ignore-gpu-blocklist','--disable-dev-shm-usage'];
 const SOFTWARE_ARGS=['--enable-unsafe-swiftshader','--disable-dev-shm-usage'];
-export async function captureVideo({dir,id,timeline,catalog,inputKey,progress=()=>{}}){
- const server=await startServer({outputRoot:path.dirname(dir),renderCatalog:catalog});let browser,page,cdp,useGPU=process.env.THEATRE_GPU!=='0';
+export async function captureVideo({dir,id,timeline,catalog,inputKey,backend,allowFallback=true,signal,progress=()=>{}}){
+ const encodeRun=(command,args,options={})=>run(command,args,{...options,signal}).catch(e=>{throw Object.assign(e,{stage:'encoding'});});
+ const server=await startServer({outputRoot:path.dirname(dir),renderCatalog:catalog}).catch(e=>{throw Object.assign(e,{stage:/EACCES|EPERM/.test(e.code)?'permissions':'renderer startup'});});let browser,page,cdp,useGPU=backend?backend==='chromium-gpu':process.env.THEATRE_GPU!=='0';
  const closeBrowser=async()=>{if(browser){const previous=browser;browser=null;await withDeadline(previous.close(),5000,'Browser shutdown').catch(()=>{});}};
  const segmentsDir=path.join(dir,'segments');await fs.mkdir(segmentsDir,{recursive:true});
  try{
@@ -28,7 +29,7 @@ export async function captureVideo({dir,id,timeline,catalog,inputKey,progress=()
   const load=async()=>{
    if(useGPU){
     try{await open(true);await progress('Rendering on the GPU');return;}
-    catch(e){useGPU=false;await progress(`GPU rendering unavailable (${e.message.split('\n')[0]}); using software rendering`);}
+    catch(e){if(!allowFallback)throw e;if(/Operation not permitted|Permission denied|EACCES|EPERM|executable.*doesn.t exist/i.test(e.message))throw e;useGPU=false;await progress(`GPU rendering unavailable (${e.message.split('\n')[0]}); using software rendering`);}
    }
    await open(false);
   };
@@ -38,36 +39,37 @@ export async function captureVideo({dir,id,timeline,catalog,inputKey,progress=()
    const shot=await withDeadline(cdp.send('Page.captureScreenshot',{format:'png',optimizeForSpeed:true,captureBeyondViewport:false,clip:{x:0,y:0,width:timeline.width,height:timeline.height,scale:1}}),30000,'Frame capture',closeBrowser);
    await fs.writeFile(file,Buffer.from(shot.data,'base64'));
   };
-  await load();const parts=[],ranges=segmentRanges(timeline.frames,timeline.fps);
+  try{await load();}catch(e){throw Object.assign(e,{stage:/Operation not permitted|Permission denied|EACCES|EPERM/.test(e.message)?'permissions':'renderer startup'});}const parts=[],ranges=segmentRanges(timeline.frames,timeline.fps);
   for(const [index,[start,end]]of ranges.entries()){
    const name=`segment-${String(index).padStart(4,'0')}`,mp4=path.join(segmentsDir,name+'.mp4'),receipt=path.join(segmentsDir,name+'.json');let valid=false;
    try{const r=JSON.parse(await fs.readFile(receipt));valid=r.inputKey===inputKey&&r.start===start&&r.end===end&&r.sha256===digest(await fs.readFile(mp4));}catch{}
    if(!valid){
-    let error;for(let attempt=0;attempt<3;attempt++){
+    let error;for(let attempt=0;attempt<(allowFallback&&useGPU?2:1);attempt++){
      const framesDir=path.join(segmentsDir,name+'-frames');await fs.mkdir(framesDir,{recursive:true});
      try{
       // A retry after a GPU failure continues in software.
       if(attempt){await progress(`Retry ${attempt}/2 of segment ${index+1}`);useGPU=false;await load();}
       for(let f=start;f<end;f++){
-       await withDeadline(page.evaluate(f=>window.player.renderAt(f),f),30000,`Frame ${f}`,closeBrowser);
+       signal?.throwIfAborted();
+       try{await withDeadline(page.evaluate(f=>window.player.renderAt(f),f),30000,`Frame ${f}`,closeBrowser);}catch(e){throw Object.assign(e,{stage:'frame rendering'});}
        await capture(path.join(framesDir,`frame-${String(f-start).padStart(6,'0')}.png`));
        if((f-start)%timeline.fps===0)await progress(`Rendering frame ${f+1}/${timeline.frames} · segment ${index+1}/${ranges.length}`);
       }
-      await run(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-y','-framerate',String(timeline.fps),'-i',path.join(framesDir,'frame-%06d.png'),'-frames:v',String(end-start),'-c:v','libx264','-preset','veryfast','-crf','19','-pix_fmt','yuv420p','-threads','2','-an',mp4]);
+      await encodeRun(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-y','-framerate',String(timeline.fps),'-i',path.join(framesDir,'frame-%06d.png'),'-frames:v',String(end-start),'-c:v','libx264','-preset','veryfast','-crf','19','-pix_fmt','yuv420p','-threads','2','-an',mp4]);
       const p=await probeVideo(mp4),v=p.streams.find(s=>s.codec_type==='video');if(Number(v?.nb_read_frames)!==end-start)throw Error('Segment frame count mismatch');
       await atomicJSON(receipt,{inputKey,start,end,sha256:digest(await fs.readFile(mp4))});await fs.rm(framesDir,{recursive:true});error=null;break;
-     }catch(e){error=e;if(attempt<2)await new Promise(r=>setTimeout(r,500*(attempt+1)));}
+     }catch(e){error=e;if(signal?.aborted||/ffmpeg|encoding|permission|Operation not permitted/i.test(e.message))throw e;if(e.stage==='encoding')throw e;}
     }
-    if(error)throw error;
+    if(error)throw Object.assign(error,{stage:error.stage??'frame rendering'});
    }
    parts.push(`file '${name}.mp4'`);
   }
   await progress('Encoding and checking the complete video');const list=path.join(segmentsDir,'concat.txt');await fs.writeFile(list,parts.join('\n')+'\n');
   const dest=path.join(dir,id+'.mp4'),partial=path.join(dir,'final.partial.mp4');
-  await run(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-y','-f','concat','-safe','1','-i',list,'-i',path.join(dir,'mix.wav'),'-map','0:v:0','-map','1:a:0','-c:v','copy','-c:a','aac','-b:a','192k','-af','apad','-t',String(timeline.frames/timeline.fps),'-movflags','+faststart',partial]);
+  await encodeRun(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-y','-f','concat','-safe','1','-i',list,'-i',path.join(dir,'mix.wav'),'-map','0:v:0','-map','1:a:0','-c:v','copy','-c:a','aac','-b:a','192k','-af','apad','-t',String(timeline.frames/timeline.fps),'-movflags','+faststart',partial]);
   const p=await probeVideo(partial),v=p.streams.find(s=>s.codec_type==='video'),a=p.streams.find(s=>s.codec_type==='audio');
   if(!a||v?.width!==timeline.width||v?.height!==timeline.height||Number(v?.nb_read_frames)!==timeline.frames||Math.abs(Number(p.format.duration)-timeline.frames/timeline.fps)>.1)throw Error('Final audio/video verification failed');
-  await run(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-i',partial,'-f','null','-'],{timeout:120000});
-  await fs.rename(partial,dest);return {path:dest,sha256:digest(await fs.readFile(dest)),frames:timeline.frames,duration:Number(p.format.duration),width:v.width,height:v.height,sources:timeline.sources,sourceLock:catalog.comics.filter(c=>timeline.sources.includes(c.id)).map(c=>({id:c.id,sha256:c.sha256})),delivery:'local-only'};
+  await encodeRun(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-i',partial,'-f','null','-'],{timeout:120000});
+  signal?.throwIfAborted();await fs.rename(partial,dest);return {backend:useGPU?'chromium-gpu':'chromium-software',format:'mp4',path:dest,sha256:digest(await fs.readFile(dest)),frames:timeline.frames,duration:Number(p.format.duration),width:v.width,height:v.height,sources:timeline.sources,sourceLock:catalog.comics.filter(c=>timeline.sources.includes(c.id)).map(c=>({id:c.id,sha256:c.sha256})),delivery:'local-only'};
  }finally{await closeBrowser();await server.close();}
 }

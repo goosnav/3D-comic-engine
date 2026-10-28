@@ -25,6 +25,9 @@ async function fixture(t, { staticMode = false } = {}) {
   const prefix = staticMode ? '/nested/studio/' : '/';
   const server = http.createServer(async (req, res) => {
     try {
+      const sharedModule = /\/(src\/render-job|browser\/capabilities|browser\/recording)\.mjs$/.exec(req.url);
+      if(sharedModule){res.setHeader('Content-Type','text/javascript');return res.end(await readFile(new URL(sharedModule[1]+'.mjs',root)));}
+
       state.requests.push(req.url);
       const json = value => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(value)); };
       if (req.url === '/api/session') return json({ token: 'fixture' });
