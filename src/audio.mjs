@@ -46,7 +46,7 @@ function speechPCM({samples,sampleRate}){
 export async function prepareAudio(script,{mode='flite',inputRoot=ROOT,cacheRoot=path.join(ROOT,'.cache/audio'),progress=()=>{},signal}={}){
  if(!['recorded','kokoro','flite'].includes(mode))throw Error('voice: choose flite, kokoro or recorded');
  const speechRate=resolveSpeechRate(script.speechRate);
- const lines=script.lines.filter(l=>l.text);if(mode==='recorded'&&lines.some(l=>!l.audio))throw Error('Recorded mode requires an audio filename on every dialogue line');
+ const lines=script.lines.filter(l=>l.text?.trim()||l.audio);if(mode==='recorded'&&lines.some(l=>!l.audio))throw Error('Recorded mode requires an audio filename on every dialogue line');
  await fs.mkdir(cacheRoot,{recursive:true});const tmp=await fs.mkdtemp(path.join(cacheRoot,'prepare-'));let identity=null;const result={},pending=[];
  try{
   let flite;

@@ -1,23 +1,34 @@
 # JSON authoring templates
 
-Start with `blank-book-duet.json` to write your own dialogue, or copy a worked
+Start with `conversation.example.json` for a book-free exchange,
+`blank-book-duet.json` for a reading, or copy a worked
 example to see a complete input. These are ordinary input JSON files for both the
 web editor and the CLI. They need no writer model or paid API.
 
 | File | Format | Demonstrates |
 | --- | --- | --- |
+| [`conversation.example.json`](conversation.example.json) | Two characters, no book | Two silent two-second speaker shots; add dialogue to either row. |
+| [`greeting.example.json`](greeting.example.json) | Two characters, no book | A high five followed by a silent response. |
+| [`button-demo.example.json`](button-demo.example.json) | Two characters, no book | Reach, press a physical button, then react. |
 | [`blank-book-duet.json`](blank-book-duet.json) | One comic, two readers | An editable draft with empty dialogue, a selected source, and explicit settings. |
 | [`book-duet.example.json`](book-duet.example.json) | One comic, two readers | A complete starter, book opening/closing, source coverage, face controls, and a listener reaction. |
 | [`fireside.example.json`](fireside.example.json) | One comic, one reader | Holding and placing the book, a silent reading beat, and an episode without an end card. |
 | [`page-tour.example.json`](page-tour.example.json) | Three comics, two readers | Explicit subject changes between nonadjacent pages, inherited comic IDs, and a diner scene. |
 | [`astronaut.example.json`](astronaut.example.json) | One comic, two astronauts | A compatible moon setting, mixed eye styles, and restrained acting. |
 
-The blank file is deliberately **not ready to render**: fill in both empty `text`
-values, or remove a row you do not need. Empty text is rejected by validation so
-unfinished dialogue cannot accidentally become speech. `book2-036` is an initial
-selection, not a required source. Change it in both `comics` and any explicit
-line/action `comic` fields when choosing another page. Review that page and rewrite
-the dialogue to match it.
+Blank, whitespace-only or omitted `text` makes a silent two-second beat, with
+idle movement and the chosen gesture. Optional `seconds` (0.3–30) changes its
+length; `pause` and listener reactions still apply. No speech synthesis runs for
+silent rows. A supplied recording still plays even without caption text. An
+omitted or empty `lines` array becomes one silent reader shot. Non-string text
+is an error. The blank book file now renders unchanged.
+
+General presets use `comics: []`, no physical book and no end card by default.
+They reject book actions and `book`/`source` shots explicitly. The v12 defaults
+are `reader: "v12-beady"` and `friend: "v12"`. Book presets keep their previous
+cast defaults and source validation. `book2-036` in the blank reading is an
+editable initial selection; update both `comics` and explicit row references
+when choosing another page, then review it before writing dialogue.
 
 The worked examples are demonstrations, not approved campaign scripts. Their
 source quotations come from the catalog's reviewed transcripts for pages
@@ -41,9 +52,10 @@ node bin/theatre.mjs render templates/book-duet.example.json
 
 `--preview` keeps the full script and aspect ratio normally at up to 768 pixels and 12 fps. The normal render uses
 the dimensions/fps in your JSON. Run `validate` first: it catches unsupported
-fields, scene/cast mismatches, missing dialogue, and impossible book actions
-before production starts. These examples have fixed seeds for repeatability;
-changing a seed changes automatic variation, not dialogue or selected comics.
+fields, scene/cast mismatches, malformed dialogue, and impossible book actions
+before production starts. The worked book examples have fixed seeds; the general
+starters omit the seed for fresh variation. Set `seed` for repeatability. Changing
+it changes automatic variation, not dialogue or selected comics.
 
 ## Top-level fields
 
@@ -53,14 +65,14 @@ JSON has no comments. Put notes in a separate file; fields such as `notes`,
 | Field | Required? | Meaning and accepted values |
 | --- | --- | --- |
 | `version` | No | `1`; omitted also means version 1. |
-| `template` | Yes | `book-duet`, `fireside-reader`, or `page-tour`; see the next table. |
+| `template` | Yes | `conversation`, `greeting`, `button-demo`, `book-duet`, `fireside-reader`, or `page-tour`; see the next table. |
 | `title` | Yes | A nonempty title, at most 160 characters. Used to identify the episode. |
-| `comics` | Yes | Distinct verified catalog IDs. One for either single-comic format; two or three for `page-tour`. Every selected comic needs a spoken line. |
+| `comics` | Book formats | Distinct verified catalog IDs. Empty or omitted for general formats; one for single-comic formats, two or three for `page-tour`. Every selected comic needs a dialogue row, which may be silent. |
 | `seed` | No | Integer from 0 through 4294967295. Omit for fresh variation; the resolved script records the seed. |
 | `scene` | No | An allowed setting for the format and cast. If omitted, the resolver chooses a compatible scene. |
 | `characters` | No | Maps cast IDs such as `reader` and `friend` to catalog variants. This chooses appearance, not voice. |
 | `product` | No | `book2` is the only supported product. |
-| `lines` | Yes | 1-200 ordered dialogue/action objects. At least one must be dialogue. |
+| `lines` | No | Up to 200 ordered dialogue/action objects. Empty or omitted becomes one silent reader shot. Action-only scenes are supported. |
 | `captions` | No | Enabled by default; `position` is `top` or `bottom`, with `colors.reader` and `colors.friend` as six-digit hex colors. |
 | `output` | No | `{ "width": 1080, "height": 1920, "fps": 24 }` by default. Width/height must be even integers from 128 through 1920. FPS is 12, 24, or 30. |
 | `endCard` | No | Optional final product card. See below. |
@@ -72,16 +84,21 @@ JSON has no comments. Put notes in a separate file; fields such as `notes`,
 
 | `template` | Comics | `speaker` IDs | Compatible scenes |
 | --- | --- | --- | --- |
+| `conversation`, `greeting`, `button-demo` | 0 | `reader`, `friend` | `studio`, `library`, `fireside` |
 | `book-duet` | 1 | `reader`, `friend` | `library`, `fireside`, `diner`, `basement`, `moon-base`, `tv-studio`, `space`, `black-pyramids`, `red-mesas`, `backrooms`, `starter-overgrown-courtyard` |
 | `fireside-reader` | 1 | `reader` | `fireside`, `diner`, `basement`, `moon-base`, `tv-studio`, `space`, `black-pyramids`, `red-mesas`, `backrooms`, `starter-overgrown-courtyard` |
 | `page-tour` | 2-3 | `reader`, `friend` | `library`, `fireside`, `diner`, `basement`, `moon-base`, `tv-studio`, `space`, `black-pyramids`, `red-mesas`, `backrooms`, `starter-overgrown-courtyard` |
 
-Appearance variants are `blue`, `rust`, `olive`, `cowboy`, `glasses`, `crooked`,
+The new general defaults use `v12` and `v12-beady`, with the original v12 jaw,
+nose and mouth morph rig. These designs intentionally have no visible eyebrows;
+brow channels do not draw replacement artwork.
+
+Other appearance variants are `blue`, `rust`, `olive`, `cowboy`, `glasses`, `crooked`,
 and `astronaut`, plus a `-beady` version of each. The comic cast adds `billy`
 (Little Billy: about half height, rainbow propeller cap that always spins) and
 `gooby` (beady-eyed guy with a slime-green goo hat whose stalk always wobbles).
-Short characters such as Billy stand on a wooden crate so they can reach the
-table, hold the book and stay above the table edge in close-ups. `astronaut` and
+Short characters such as Billy stand on a wooden crate when using the book or
+button, so their hands can reach the prop. `astronaut` and
 `astronaut-beady` support `moon-base`, `tv-studio`, `space`, `black-pyramids`, `red-mesas`, `backrooms`, and `starter-overgrown-courtyard`. Their clear helmets enclose noses squashed against the glass. The solo format has no
 `friend`, so it cannot use listener reactions. Avoid adding inactive cast entries.
 
@@ -92,18 +109,19 @@ the displayed comic says.
 
 ## Dialogue rows
 
-Each dialogue row needs `speaker` and `text`. The fully populated duet example
+Each dialogue row needs `speaker`; `text` is optional. The fully populated duet example
 shows how the optional fields fit together.
 
 | Field | Meaning |
 | --- | --- |
 | `speaker` | A cast ID allowed by the chosen format. |
-| `text` | The actual spoken words, 1-1000 characters, not whitespace alone. Stage directions would be spoken too; express them through the other fields. |
+| `text` | The spoken words, up to 1000 characters. Empty, whitespace-only or omitted means a silent beat. Stage directions would be spoken too; express them through the other fields. |
 | `comic` | Optional selected comic ID. The first line inherits the first item in `comics`; subsequent lines inherit the last active comic. Explicitly set this when changing subject. |
 | `emotion` | Visible facial preset; default `neutral`. It does not guarantee emotional voice delivery. |
 | `gesture` | Visible body/head gesture; default `none`. |
 | `shot` | `auto`, `close-up`, `medium`, `wide`, `extreme-wide`, `speaker`, `two-shot`, `over-shoulder`, `book`, or `source`; default `auto`. `source` shows the unchanged comic page flat, while `book` shows the physical book. |
-| `pause` | Silence after the spoken line, 0-5 seconds; default 0. A longer line-end reaction receives its full duration. |
+| `seconds` | Silent-row length, 0.3–30 seconds; default 2. Spoken rows use their measured audio duration. |
+| `pause` | Silence after the spoken or silent row, 0-5 seconds; default 0. A longer line-end reaction receives its full duration. |
 | `face` | Optional overrides for individual facial channels; see below. |
 | `reaction` | Optional performance by the other actor; see below. |
 | `audio` | Optional relative recording filename, such as `takes/reader-01.wav`. See recorded audio below. |
@@ -258,6 +276,7 @@ A dialogue or action beat can set both characters' gaze:
 and holding poses for that beat. A listener reaction can also set `"gaze":"camera"`;
 the beat's explicit actor gaze takes priority.
 
+- `{"action":"press_button","actor":"reader","seconds":2.4}` reaches and depresses a button on a pedestal. The prop is staged beside the acting character at each cut.
 - `{"action":"throw","seconds":1.8}` closes and rockets a held book out of frame.
   Use `hold` first and `open` before further dialogue.
 - `{"action":"slam"}` rapidly closes an open table book.
@@ -284,7 +303,7 @@ Garry's Mod-style stunts (one actor, no target):
 - `{"action":"helicopter","actor":"friend"}` spins up with rotor arms and lifts off through the ceiling. Billy's propeller goes wild.
 - `{"action":"goose_chase","actor":"reader"}` startles the actor, who sprints off-frame with the goose honking on their heels. Adds the `goose` extra automatically.
 
-Place the book before character actions. They accept 0.8–8 seconds, `actor`, optional `gaze`, and `shot`. `punch`, `nose_touch`, `high_five`, `handshake`, and `ascend` accept `target`, defaulting to the other character. For ascent, `actor` rises and `target` watches. Partner actions require a two-character template. Book actions use the reader. These are repeatable cartoon poses, not a physics simulation. Characters reset at the next beat with no return animation; the missing book resets when the next book action starts. Deliberate continuity cuts are part of the effect.
+For book formats, place the book before character actions. They accept 0.8–8 seconds, `actor`, optional `gaze`, and `shot`. `punch`, `nose_touch`, `high_five`, `handshake`, and `ascend` accept `target`, defaulting to the other character. For ascent, `actor` rises and `target` watches. Partner actions require a two-character template. Book actions use the reader. These are repeatable cartoon poses, not a physics simulation. Characters reset at the next beat with no return animation; the missing book resets when the next book action starts. Deliberate continuity cuts are part of the effect.
 
 ### Background cameos (`extras`)
 

@@ -103,7 +103,7 @@ test('Start blank clears authored and unapplied inputs and persists editable bla
   await (await inWorkspace(page.locator('#voice'))).selectOption('recorded');
   await (await inWorkspace(page.locator('#script-json'))).fill('{broken');
   await (await inWorkspace(page.locator('#new-video'))).click();
-  const blank = {version:1,template:'book-duet',title:'Untitled reading',comics:[],lines:[{speaker:'reader',text:''},{speaker:'friend',text:''}]};
+  const blank = {version:1,template:'book-duet',title:'Untitled reading',comics:['page-a'],lines:[{speaker:'reader',text:''},{speaker:'friend',text:''}]};
   assert.deepEqual(await current(page), blank);
   assert.equal(await page.locator('#voice').inputValue(), 'flite');
   assert.equal(await page.locator('#source-fields').isDisabled(), false);
@@ -115,6 +115,7 @@ test('Start blank rejects a late example response without overwriting its status
   const path = '/templates/book-duet.example.json';
   state.hold(path);
   const sent = page.waitForRequest(`**${path}`);
+  await (await inWorkspace(page.locator('#example-script'))).selectOption('book-duet.example.json');
   await (await inWorkspace(page.locator('#load-example'))).click(); await sent;
   await (await inWorkspace(page.locator('#new-video'))).click();
   const blank = await current(page);
@@ -178,8 +179,8 @@ async function download(page) {
 for (const legacy of [false, true]) test(`clothing and Book Two defaults display without rewriting old scripts (legacy catalog: ${legacy})`, async t => {
   const { page, state } = await fixture(t, { legacy });
   const value = script(); await load(page, value);
-  assert.equal(await page.getByLabel('Reader character', { exact: true }).inputValue(), 'blue');
-  assert.equal(await page.getByLabel('Friend character', { exact: true }).inputValue(), 'rust');
+  assert.equal(await page.getByLabel('First character', { exact: true }).inputValue(), 'blue');
+  assert.equal(await page.getByLabel('Second character', { exact: true }).inputValue(), 'rust');
   assert.deepEqual(await page.locator('#reader-clothing option').evaluateAll(nodes => nodes.map(node => node.value)), legacy ? ['blue', 'rust', 'olive'] : catalog.variants.map(v => v.id));
   if (!legacy) assert.equal(await page.locator('#reader-clothing option').first().textContent(), 'blue clothes');
   assert.equal(await page.locator('#product').inputValue(), 'book2');
@@ -194,8 +195,8 @@ for (const legacy of [false, true]) test(`clothing and Book Two defaults display
 
 test('real form input, every shot, upload and download preserve advanced fields and source locks', async t => {
   const { page } = await fixture(t); const value = authored(); await load(page, value);
-  await (await inWorkspace(page.getByLabel('Reader character', { exact: true }))).selectOption('rust-beady');
-  await (await inWorkspace(page.getByLabel('Friend character', { exact: true }))).selectOption('olive');
+  await (await inWorkspace(page.getByLabel('First character', { exact: true }))).selectOption('rust-beady');
+  await (await inWorkspace(page.getByLabel('Second character', { exact: true }))).selectOption('olive');
   await (await inWorkspace(page.getByLabel('Show end card', { exact: true }))).check();
   const text = { title: 'A custom title', text: 'A custom closing line.', url: 'www.goosnav.shop/custom', seconds: 5.5 };
   for (const [key, val] of Object.entries(text)) await (await inWorkspace(page.locator(`#end-card-${key}`))).fill(String(val));
@@ -272,6 +273,7 @@ for (const endpoint of ['draft', 'validate', 'example']) test(`${endpoint} canno
   const { page, state } = await fixture(t); await load(page, authored()); state.writer = true;
   const path = endpoint === 'example' ? '/templates/book-duet.example.json' : `/api/${endpoint}`; state.hold(path);
   const sent = page.waitForRequest(request => request.url().endsWith(path));
+  if(endpoint === 'example') await (await inWorkspace(page.locator('#example-script'))).selectOption('book-duet.example.json');
   await (await inWorkspace(page.locator(endpoint === 'example' ? '#load-example' : `#${endpoint}`))).click(); await sent;
   await (await inWorkspace(page.locator('#reader-clothing'))).selectOption('rust');
   await (await inWorkspace(page.locator('#end-card-text'))).fill('Keep this newer ending.');

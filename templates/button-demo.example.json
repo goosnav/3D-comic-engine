@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "template": "button-demo",
+  "title": "Untitled scene",
+  "comics": [],
+  "scene": "studio",
+  "characters": {
+    "reader": "v12-beady",
+    "friend": "v12"
+  },
+  "endCard": {
+    "enabled": false
+  },
+  "lines": [
+    {
+      "action": "press_button",
+      "actor": "reader",
+      "seconds": 2.4,
+      "shot": "two-shot"
+    },
+    {
+      "speaker": "friend",
+      "text": "",
+      "gesture": "shrug"
+    }
+  ]
+}

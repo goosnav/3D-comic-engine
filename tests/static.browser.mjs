@@ -43,7 +43,8 @@ test('static GUI exports speech, music and spinning endcard even when video play
  await page.goto(origin+'/');await page.waitForFunction(()=>document.querySelector('#template').options.length>0);
  assert.equal(await page.locator('#page-previews img').count(),0,'no source images load before selection');
  // Exercise packaged authoring inputs under a subdirectory before the real export.
- await (await inWorkspace(page.locator('#load-example'))).click();
+ await (await inWorkspace(page.locator('#example-script'))).selectOption('book-duet.example.json');
+  await (await inWorkspace(page.locator('#load-example'))).click();
  await page.waitForFunction(()=>document.querySelector('#editor-status').textContent.startsWith('Example loaded.'));
  const example=JSON.parse(await page.locator('#script-json').inputValue());
  assert.deepEqual(example,JSON.parse(await fs.readFile(path.join(ROOT,'templates/book-duet.example.json'),'utf8')));

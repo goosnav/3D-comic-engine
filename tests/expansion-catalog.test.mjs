@@ -16,7 +16,7 @@ test('bundled expansion offers both eye styles and all nine optional scenes',asy
     const scene=catalog.scenes.find(s=>s.id===id);
     assert.equal(scene.default,false);
     assert.ok(catalog.assets[scene.asset]?.path.startsWith('assets/environments/'));
-    assert.ok(catalog.templates.every(t=>t.scenes.includes(id)));
+    assert.ok(catalog.templates.filter(t=>t.book!==false).every(t=>t.scenes.includes(id)));
   }
   const script=JSON.parse(await readFile(new URL('../examples/moon-reading.json',import.meta.url),'utf8'));
   const resolved=resolveScript(script,catalog);

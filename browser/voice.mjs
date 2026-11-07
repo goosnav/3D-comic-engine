@@ -22,9 +22,9 @@ function measured(take) {
 export async function prepareSpeech(script, { signal, onProgress = () => {} } = {}) {
   signal?.throwIfAborted();
   const speechRate = resolveSpeechRate(script.speechRate);
-  const lines = script.lines.filter(line => !line.action);
+  const lines = script.lines.filter(line => !line.action && (line.text?.trim() || line.audio));
   if (lines.some(line => line.audio)) throw new Error('Browser speech cannot load desktop audio filenames; remove audio fields to use on-device speech');
-  if (!lines.length) throw new Error('At least one speech line is required');
+  if (!lines.length) return {};
   const worker = new Worker(new URL('./browser/voice-worker.mjs', document.baseURI), { type: 'module' });
   let timer, abort;
   try {

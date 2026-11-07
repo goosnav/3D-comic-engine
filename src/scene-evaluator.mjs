@@ -9,7 +9,7 @@ const material = color => new THREE.MeshStandardMaterial({ color, roughness: .83
 
 export function sceneAsset(catalog, id) {
   const entry = catalog?.scenes?.find(s => s.id === id);
-  if (entry?.asset !== undefined || !['library', 'fireside'].includes(id)) {
+  if (entry?.asset !== undefined || !['library', 'fireside','studio'].includes(id)) {
     if (!entry) throw new Error(`Unknown scene treatment: ${id}`);
     const asset = catalog.assets?.[entry.asset];
     if (!entry.asset || !asset?.path) throw new Error(`Missing scene asset: ${id}`);
@@ -203,6 +203,30 @@ function buildSet(scene, treatment) {
   return { table, rug };
 }
 
+function buildStudio(scene){
+  const box=(name,size,position,color)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(...size),material(color));o.name=name;o.position.set(...position);o.receiveShadow=o.castShadow=true;scene.add(o);};
+  box('studio-floor',[20,.12,20],[0,-.08,0],0x78817d);
+  box('studio-backdrop',[12,5,.1],[0,2.4,-2],0x34565b);
+  box('studio-baseboard',[12,.16,.12],[0,.08,-1.92],0xb89d71);
+  for(const x of [-2.5,2.5])box('studio-column',[.22,3,.22],[x,1.5,-1.6],0xb89d71);
+}
+function createButton(scene,actors){
+  const pedestal=new THREE.Mesh(new THREE.CylinderGeometry(.16,.20,.90,16),material(0x58646b));pedestal.name='button-pedestal';scene.add(pedestal);
+  const button=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,.06,24),material(0xcc4934));button.name='interaction-button';scene.add(button);
+  pedestal.castShadow=pedestal.receiveShadow=button.castShadow=true;
+  const home=actors[0].root.position.clone(),z=actors.some(actor=>actor.stature<.8)?.04:.18;
+  return {apply(event,time){
+    const actor=actors.find(a=>a.root.name===`actor-${event?.actor}`)??actors[0];
+    const pressing=event?.rail==='press_button',position=pressing?actor.root.position:home;
+    const leftSide=position.x<0,x=position.x+(leftSide?.20:-.20);
+    const p=event?.rail==='press_button'?Math.max(0,Math.min(1,(time-event.start)/(event.end-event.start))):0;
+    const ramp=(a,b,v)=>{const t=Math.max(0,Math.min(1,(v-a)/(b-a)));return t*t*(3-2*t);};
+    const reach=ramp(.08,.38,p)*(1-ramp(.70,.96,p)),press=ramp(.40,.47,p)*(1-ramp(.64,.72,p));
+    pedestal.position.set(x,.45,z);button.position.set(x,.94-.035*press,z);
+    if(event?.rail==='press_button'){actor.root.updateMatrixWorld(true);const target=button.position.clone().add(new THREE.Vector3(0,.035,0));actor.grip(leftSide?[target,actor.bones.handR.getWorldPosition(new THREE.Vector3())]:[actor.bones.handL.getWorldPosition(new THREE.Vector3()),target],reach);}
+  }};
+}
+
 export function validate(timeline, catalog) {
   if (!timeline || !Array.isArray(timeline.events) || !Number.isInteger(timeline.fps) || timeline.fps <= 0 ||
       !Number.isInteger(timeline.frames) || timeline.frames < 1) throw new Error('Timeline requires events, positive integer fps and frames');
@@ -210,7 +234,7 @@ export function validate(timeline, catalog) {
   sceneAsset(catalog, timeline.scene);
   if (timeline.grade !== undefined && !GRADES.includes(timeline.grade)) throw new Error(`Unknown grade: ${timeline.grade}`);
   if (timeline.dither !== undefined && !DITHERS.includes(timeline.dither)) throw new Error(`Unknown dither: ${timeline.dither}`);
-  if (!catalog?.assets?.book?.path) throw new Error('Catalog must supply book GLB');
+  if (timeline.book!==false&&!catalog?.assets?.book?.path) throw new Error('Catalog must supply book GLB');
   if (!Array.isArray(timeline.cast) || !timeline.cast.includes('reader') || timeline.cast.some(id => !['reader', 'friend'].includes(id)) || new Set(timeline.cast).size !== timeline.cast.length) throw new Error('Cast must contain reader and optionally friend');
   timeline.cast.forEach(id => actorAsset(catalog, timeline, id));
   for (const id of timeline.extras ?? []) {
@@ -247,18 +271,18 @@ export function createSceneEvaluator({timeline, catalog, scene, camera, environm
     const fill = new THREE.DirectionalLight(0xc7e4ef, 1.6); fill.position.set(2, 2, 2); scene.add(fill);
     const rim = new THREE.DirectionalLight(0xf9bd77, 2); rim.position.set(0, 3, -2); scene.add(rim);
     if (environmentRoot) scene.add(environmentRoot);
+    else if(timeline.scene==='studio')buildStudio(scene);
     else buildSet(scene, timeline.scene);
     const actors = timeline.cast.map((id, i) => {
       const actor = createActor(actorModels.get(selections[i].asset.path), id, i);
       actor.variant = selections[i].variant;
       // Preserve the reader's established reach to the book; close the duet by
       // bringing the listening actor inward instead of disturbing the grip rig.
-      actor.root.position.set(id === 'reader' ? -.64 : .08, 0, -.02);
+      actor.root.position.set(timeline.book===false?(i===0?-.48:.48):(id === 'reader' ? -.64 : .08), 0, -.02);
       actor.root.rotation.y = id === 'reader' ? .30 : -.30;
       actor.headgearFrame = headgearFraming(actor);
-      if (actor.stature < .8) {
-        // Short characters stand on a crate: the reader can reach the table and
-        // hold the book, and nobody's face hides behind the table edge.
+      if ((timeline.book!==false||timeline.events.some(e=>e.rail==='press_button'&&e.actor===id))&&actor.stature < .8) {
+        // A support keeps short characters within reach of the book or button.
         const height = .45, crate = new THREE.Mesh(new THREE.BoxGeometry(.5, height, .42), material(0x8a6239));
         crate.name = `${id}-crate`; crate.castShadow = crate.receiveShadow = true;
         crate.position.set(actor.root.position.x, height / 2, actor.root.position.z); crate.rotation.y = actor.root.rotation.y;
@@ -268,7 +292,9 @@ export function createSceneEvaluator({timeline, catalog, scene, camera, environm
     });
     const extras = createExtras({ scene, timeline, catalog, models: extraModels, actors });
     const stunts = createStunts(actors);
-    const book = createBook(bookGLTF, timeline, comics); scene.add(book.root);
+    const book = timeline.book===false?{root:new THREE.Group(),evaluate:()=>({held:0}),apply:()=>{},diagnostics:()=>({enabled:false})}:createBook(bookGLTF, timeline, comics);
+    scene.add(book.root);
+    const button=timeline.events.some(e=>e.rail==='press_button')?createButton(scene,actors):null;
     function evaluate(frame) {
       if (!Number.isInteger(frame) || frame < 0 || frame >= timeline.frames) throw new RangeError('Frame outside timeline');
       const time = frame / timeline.fps;
@@ -282,7 +308,7 @@ export function createSceneEvaluator({timeline, catalog, scene, camera, environm
     const action = current.find(e => e.type === 'action');
     let shot = sourceEvent ? sourceEvent.shot || 'source' : active?.shot || action?.shot || 'two-shot';
     if (shot === 'auto') shot = 'two-shot';
-    const reacting = active?.type === 'hold' && active.reaction?.at === 'line_end' && time-active.start < active.reaction.duration;
+    const reacting = active?.type === 'hold' && !active.silent && active.reaction?.at === 'line_end' && time-active.start < active.reaction.duration;
     const focusId = reacting ? active.reaction.actor : active?.speaker || action?.actor;
     const framingEvent = sourceEvent || active || action;
     // Compose from the neutral cast at the cut. Stunts and head/arm poses never steer the camera.
@@ -297,7 +323,8 @@ export function createSceneEvaluator({timeline, catalog, scene, camera, environm
       held: timeline.cast[i] === 'reader' ? bookState.held : 0,
       reading: sourceEvent?.shot === 'book' || (timeline.cast[i] === 'reader' && bookState.rail === 'read' && bookState.progress < 1),
       seed: timeline.seed || 0 }));
-    stunts.apply(action, time);
+    if(action?.rail!=='press_button')stunts.apply(action, time);
+    button?.apply(action,time);
     extras.apply(time, action, camera);
     book.apply(time, reader);
     scene.updateMatrixWorld(true);

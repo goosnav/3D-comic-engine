@@ -78,9 +78,8 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
       const gltf = await loader.loadAsync(assetURL(assetBase, catalog.assets[entry.asset].path));
       extraModels.set(id, gltf); loadedRoots.push(gltf.scene);
     }
-    loading('Loading book');
-    const bookGLTF = await loader.loadAsync(assetURL(assetBase, catalog.assets.book.path));
-    loadedRoots.push(bookGLTF.scene);
+    let bookGLTF;
+    if(timeline.book!==false){loading('Loading book');bookGLTF=await loader.loadAsync(assetURL(assetBase,catalog.assets.book.path));loadedRoots.push(bookGLTF.scene);}
     const textureLoader = new THREE.TextureLoader(manager);
     for (const id of timeline.sources || []) {
       loading(`Loading comic page ${id}`);

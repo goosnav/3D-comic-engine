@@ -77,7 +77,7 @@ test('strict mode remains available for contract auditing',()=>{
  assert.throws(()=>resolveScript({...input(),lines:[{speaker:'reader',text:'Hi',emotion:'happy'}]},catalog,{repair:false}),/emotion/);
 });
 test('source identity, actors, text, actions and book transitions are never guessed',()=>{
- for(const extra of [{sourceLock:[{...lock,sha256:'wrong'}]},{comics:['unknown']},{lines:[{speaker:'ghost',text:'Hi'}]},{lines:[{speaker:'reader',text:''}]},{lines:[{action:'unknown'}]},{lines:[{action:'place'},{speaker:'reader',text:'Hi'}]},{lines:[{action:'close'},{speaker:'reader',text:'Hi'}]},{output:{width:129}},{template:'unknown'}]){
+ for(const extra of [{sourceLock:[{...lock,sha256:'wrong'}]},{comics:['unknown']},{lines:[{speaker:'ghost',text:'Hi'}]},{lines:[{speaker:'reader',text:12}]},{lines:[{action:'unknown'}]},{lines:[{action:'place'},{speaker:'reader',text:'Hi'}]},{lines:[{action:'close'},{speaker:'reader',text:'Hi'}]},{output:{width:129}},{template:'unknown'}]){
   assert.throws(()=>resolveScript({...input(),...extra},catalog));
  }
  assert.throws(()=>resolve({face:{jaw:9}}),/face/);

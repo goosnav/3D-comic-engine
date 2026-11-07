@@ -152,7 +152,7 @@ async function status(page, pattern) {
 test('selected pages show actual previews with literal transcripts; template changes preserve selected IDs', async t => {
   const f = await fixture(t); if (!f) return;
   const { page, state } = f; await ready(page);
-  assert.equal(await page.locator('#page-previews img').count(), 0);
+  assert.equal(await page.locator('#page-previews img').count(), 1);
   await (await inWorkspace(page.getByLabel('Page 1', { exact: true }))).selectOption('page-a');
   await page.waitForFunction(() => document.querySelector('#page-previews img')?.naturalWidth > 0);
   assert.equal(await page.locator('#page-previews img').count(), 1);
@@ -333,14 +333,17 @@ for (const input of ['upload-json-top', 'upload-json']) test(`${input} validates
 test('example loading is explicit, preserves malformed/current drafts, and respects replacement cancellation', async t => {
   const f = await fixture(t); if (!f) return;
   const { page, state } = f; await ready(page);
+  await (await inWorkspace(page.locator('#example-script'))).selectOption('book-duet.example.json');
   await (await inWorkspace(page.locator('#load-example'))).click(); await status(page, 'Example loaded');
   assert.deepEqual(JSON.parse(await page.locator('#script-json').inputValue()), state.example);
   await (await inWorkspace(page.locator('#title'))).fill('Keep my own title');
   const before = await page.locator('#script-json').inputValue();
   page.once('dialog', dialog => dialog.dismiss());
+  await (await inWorkspace(page.locator('#example-script'))).selectOption('book-duet.example.json');
   await (await inWorkspace(page.locator('#load-example'))).click(); await status(page, 'Example not loaded');
   assert.equal(await page.locator('#script-json').inputValue(), before);
   state.example = { ...script(), comics: ['missing'] };
+  await (await inWorkspace(page.locator('#example-script'))).selectOption('book-duet.example.json');
   await (await inWorkspace(page.locator('#load-example'))).click(); await status(page, 'Unknown catalog page');
   assert.equal(await page.locator('#script-json').inputValue(), before);
   assert.equal(state.requests.length, 0, 'Loading an example must not generate, validate remotely, or request AI');

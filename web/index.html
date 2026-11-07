@@ -61,8 +61,8 @@
           <section class="panel cast-panel" aria-labelledby="cast-heading">
             <h2 id="cast-heading">Cast</h2>
           <div class="field-pair">
-            <div><label for="reader-clothing">Reader character</label><select id="reader-clothing"></select></div>
-            <div><label for="friend-clothing">Friend character</label><select id="friend-clothing"></select></div>
+            <div><label for="reader-clothing">First character</label><select id="reader-clothing"></select></div>
+            <div><label for="friend-clothing">Second character</label><select id="friend-clothing"></select></div>
           </div>
           <div id="extras-fields" class="extras-fields" role="group" aria-labelledby="extras-heading"><p id="extras-heading" class="hint">Background cameos (up to 4)</p></div>
 
@@ -71,6 +71,9 @@
           <label for="example-script">Example script</label>
           <div class="example-controls">
             <select id="example-script" disabled>
+              <option value="conversation.example.json">Conversation · no book</option>
+              <option value="greeting.example.json">Meet and greet · no book</option>
+              <option value="button-demo.example.json">Press the button · no book</option>
               <option value="book-duet.example.json">Book duet · two voices</option>
               <option value="fireside.example.json">Fireside · solo reader</option>
               <option value="page-tour.example.json">Page tour · several comics</option>
@@ -103,7 +106,7 @@
           <div id="source-lock" class="source-lock">Validate to record a source lock.</div>
         </details>          <div class="subheading dialogue-heading"><h3>Dialogue</h3><button id="add-line" type="button">+ Add dialogue</button><button id="add-action" type="button">+ Add action</button></div>
           <div id="dialogue"></div>
-          <p class="hint">Add dialogue for each page. A blank page reference continues the previous page.</p>
+          <p id="script-hint" class="hint">Dialogue is optional. Empty rows make two-second silent shots.</p>
 
         </section>
         <div data-step="export" hidden class="export-grid">

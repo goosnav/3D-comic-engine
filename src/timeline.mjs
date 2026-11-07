@@ -9,15 +9,23 @@ export function compileTimeline(script,takes){
  const shotFor=line=>{
   if(line.shot&&line.shot!=='auto'){if(line.shot==='two-shot')established=true;previous=line.shot;return line.shot;}
   if(!established&&script.cast.length>1){established=true;previous='two-shot';return previous;}
-  if(!bag.length){bag=script.cast.length>1?['speaker','over-shoulder','two-shot']:['speaker','book'];for(let i=bag.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}}
+  if(!bag.length){bag=script.cast.length>1?['speaker','over-shoulder','two-shot']:script.book===false?['speaker','medium']:['speaker','book'];for(let i=bag.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}}
   let index=bag.findIndex(s=>s!==previous);if(index<0){bag=[];return shotFor(line);}
   previous=bag.splice(index,1)[0];return previous;
  };
  const add=(event,duration)=>{const start=cursor;cursor+=ticks(duration);events.push({...event,start:start/RATE,end:cursor/RATE});};
  for(const line of script.lines){
   if(line.action){finishCoverage();add({...line,type:'action',rail:line.action},line.seconds);continue;}
+  if(!line.text?.trim()&&!line.audio){
+   finishCoverage();
+   const shot=line.shot&&line.shot!=='auto'?line.shot:'speaker';
+   add({...line,shot,type:'hold',silent:true,mouth:[],captions:[]},line.seconds??2);
+   const pause=Math.max(line.pause??0,line.reaction?.at==='line_end'?line.reaction.duration:0);
+   if(pause)add({...line,shot,id:`hold-${line.id}`,type:'hold',mouth:[],captions:[]},pause);
+   continue;
+  }
   const take=takes[line.id];if(!take||!Number.isFinite(take.duration)||take.duration<=0)throw Error(`Missing or invalid take duration: ${line.id}`);
-  if(lastComic!==line.comic){
+  if(script.book!==false&&lastComic!==line.comic){
    finishCoverage();
    // Visual coverage overlaps speech; never add silence to measured takes.
    coverage={id:`source-${line.id}`,type:'source',shot:'book',visualOnly:true,comic:line.comic,bookState:line.bookState??'table-open',start:cursor/RATE,end:cursor/RATE+5};
@@ -33,5 +41,5 @@ export function compileTimeline(script,takes){
  // An explicit first shot may cancel a zero-length automatic reveal.
  for(let i=events.length-1;i>=0;i--)if(events[i].end<=events[i].start)events.splice(i,1);
  if(script.endCard?.enabled)add({...script.endCard,id:'end-card',type:'endcard'},script.endCard.seconds);
- return {version:1,...script.output,duration:cursor/RATE,frames:Math.ceil(cursor/RATE*script.output.fps),seed:script.seed,scene:script.scene,template:script.template,cast:script.cast.map(c=>c.id),characters:script.characters,captions:script.captions,product:script.product,endCard:script.endCard,...(script.extras?.length?{extras:script.extras}:{}),...(script.grade?{grade:script.grade}:{}),...(script.dither?{dither:script.dither}:{}),sources:script.comics,events};
+ return {version:1,...script.output,...(script.book===false?{book:false}:{}),duration:cursor/RATE,frames:Math.ceil(cursor/RATE*script.output.fps),seed:script.seed,scene:script.scene,template:script.template,cast:script.cast.map(c=>c.id),characters:script.characters,captions:script.captions,product:script.product,endCard:script.endCard,...(script.extras?.length?{extras:script.extras}:{}),...(script.grade?{grade:script.grade}:{}),...(script.dither?{dither:script.dither}:{}),sources:script.comics,events};
 }

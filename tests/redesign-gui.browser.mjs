@@ -82,13 +82,13 @@ async function load(page, value = script) {
   await page.waitForFunction(() => document.querySelector('#editor-status').textContent.startsWith('JSON applied.'));
 }
 
-// Catches eager image loads, catalog order leaking into menus, and accidental initial selection.
-test('page menus start empty, sort by PDF page and fetch only the selected preview', async t => {
+// Book presets select a valid source; menus remain sorted and fetch only that preview.
+test('book presets preselect a page, menus sort by PDF page and fetch only the selected preview', async t => {
   const { page, state } = await fixture(t);
   assert.equal(await page.locator('#page-selectors select').count(), 1);
-  assert.equal(await page.getByLabel('Page 1', { exact: true }).inputValue(), '');
-  assert.deepEqual(await current(page).then(s => s.comics), []);
-  assert.equal(await page.locator('#page-previews img').count(), 0); assert.deepEqual(state.assets, []);
+  assert.equal(await page.getByLabel('Page 1', { exact: true }).inputValue(), 'p30');
+  assert.deepEqual(await current(page).then(s => s.comics), ['p30']);
+  assert.equal(await page.locator('#page-previews img').count(), 1);
   assert.deepEqual(await page.locator('#page-selectors select option').evaluateAll(nodes => nodes.map(n => n.value)), ['', 'p2', 'p4', 'p11', 'p30', 'p50']);
   assert.equal(await page.locator('option[value="p4"]').isDisabled(), true);
   await (await inWorkspace(page.getByLabel('Page 1', { exact: true }))).selectOption('p30');
@@ -133,6 +133,7 @@ test('top JSON entry is visible on a phone and examples use the static installat
   assert.ok(position.upload.top >= 0 && position.upload.bottom <= position.viewport, 'Upload should be immediately visible on a phone');
   assert.ok(position.upload.bottom < position.sources, 'Top upload precedes page selection');
   assert.equal(await page.locator('#upload-json').count(), 1, 'The lower import remains available');
+  await (await inWorkspace(page.locator('#example-script'))).selectOption('book-duet.example.json');
   await (await inWorkspace(page.locator('#load-example'))).click();
   await page.waitForFunction(() => document.querySelector('#editor-status').textContent.startsWith('Example loaded.'));
   assert.equal((await current(page)).title, script.title);

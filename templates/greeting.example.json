@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "template": "greeting",
+  "title": "Untitled scene",
+  "comics": [],
+  "scene": "studio",
+  "characters": {
+    "reader": "v12-beady",
+    "friend": "v12"
+  },
+  "endCard": {
+    "enabled": false
+  },
+  "lines": [
+    {
+      "action": "high_five",
+      "actor": "reader",
+      "target": "friend",
+      "seconds": 2.4,
+      "shot": "two-shot"
+    },
+    {
+      "speaker": "friend",
+      "text": "",
+      "gesture": "nod"
+    }
+  ]
+}

@@ -14,6 +14,12 @@ page. These are portable snapshots, not runtime links to the source checkouts.
   commit `e52576f96f9d2fdb2a0190cd825cb5081e6cdc68`. Runtime face and gesture
   controls adapt its procedural game-character approach. Two independent skeleton
   instances are used. The legacy sealed-face export is retained for compatibility.
+- Default v12 characters: unchanged `exports/ps1guy_v12.glb` and
+  `exports/ps1guy_v12_beady.glb` from the active Goosnav-3D-assets checkout at
+  `29b45e24997367929352b7a8faa412f145249cc0`, bundled as `actor-v12.glb` and
+  `actor-v12-beady.glb`. Catalog hashes pin the actual snapshots. The existing
+  JavaScript evaluator drives their authored jaw, mouth morphs and skeleton;
+  no replacement character artwork or archived exports are required.
 - Theatre clothing variants: Goosnav-3D-assets commit
   `65f9ae1f791b86b5e2ce2b235ee0d2f00908557a`, active v10 white/beady-eye characters
   with blue/rust/olive clothes,

@@ -22,7 +22,7 @@ export async function verifyAssetCatalog(input,{script,onProgress=()=>{},baseURL
  const paths=new Map(allEntries.map(e=>[e,pathURL(e.path,baseURL)]));
  let entries=allEntries,comics=catalog.comics;
  if(script!==undefined){
-  const resolved=resolveScript(script,catalog),keys=new Set(['book']);
+  const resolved=resolveScript(script,catalog),keys=new Set(resolved.book===false?[]:['book']);
   for(const {id}of resolved.cast){
    const key=catalog.variants?catalog.variants.find(v=>v.id===resolved.characters[id])?.asset:'actor';
    if(!key||!catalog.assets[key])throw Error(`Missing actor asset: ${id}`);
@@ -36,7 +36,7 @@ export async function verifyAssetCatalog(input,{script,onProgress=()=>{},baseURL
    keys.add(extra.asset);
   }
   const scene=catalog.scenes?.find(s=>s.id===resolved.scene);
-  if(scene?.asset!==undefined||!['library','fireside'].includes(resolved.scene)){
+  if(scene?.asset!==undefined||!['library','fireside','studio'].includes(resolved.scene)){
    if(!scene?.asset||!catalog.assets[scene.asset]?.path)throw Error(`Missing scene asset: ${resolved.scene}`);
    keys.add(scene.asset);
   }

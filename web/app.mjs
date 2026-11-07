@@ -122,6 +122,7 @@ $('save-version').addEventListener('click', rememberVersion);
 window.addEventListener('pagehide', rememberVersion);
 const templates = () => state.catalog?.templates ?? [];
 const templateFor = script => templates().find(item => item.id === script.template);
+const bookEnabled=()=>templateFor(state.script)?.book!==false;
 const comicFor = id => state.catalog?.comics.find(item => item.id === id);
 const characterDefaults = { reader: 'blue', friend: 'rust' };
 const endCardDefaults = { enabled: true, title: 'Goosnav Book Two', text: 'A book of comics.', url: 'www.goosnav.shop', seconds: 3 };
@@ -133,7 +134,7 @@ const shots = [
   { id: 'two-shot', label: 'Two-shot' }, { id: 'over-shoulder', label: 'Over-shoulder' },
   { id: 'book', label: 'Book' }, { id: 'source', label: 'Source' },
 ];
-const exampleFiles = new Set(['book-duet.example.json', 'fireside.example.json', 'page-tour.example.json', 'astronaut.example.json']);
+const exampleFiles = new Set(['conversation.example.json','greeting.example.json','button-demo.example.json','book-duet.example.json', 'fireside.example.json', 'page-tour.example.json', 'astronaut.example.json']);
 const uploadInputs = ['upload-json-top', 'upload-json'];
 const speechRateInput = el('input');
 speechRateInput.id = 'speech-rate'; speechRateInput.type = 'number'; speechRateInput.inputMode = 'decimal';
@@ -287,7 +288,7 @@ function structureErrors(script) {
       if (line.seconds !== undefined && (typeof line.seconds !== 'number' || !Number.isFinite(line.seconds) || line.seconds <= 0)) errors.push(`${at}seconds must be positive.`);
     } else {
       if (!['reader', 'friend'].includes(line.speaker)) errors.push(`${at}speaker must be reader or friend.`);
-      if (typeof line.text !== 'string') errors.push(`${at}text must be a string.`);
+      if (line.text!==undefined&&typeof line.text !== 'string') errors.push(`${at}text must be a string.`);
       for (const key of ['emotion', 'gesture', 'audio']) if (line[key] !== undefined && typeof line[key] !== 'string') errors.push(`${at}${key} must be text.`);
       for (const key of ['face', 'reaction']) if (line[key] !== undefined && !object(line[key])) errors.push(`${at}${key} must be a JSON object.`);
       if (line.pause !== undefined && (typeof line.pause !== 'number' || !Number.isFinite(line.pause) || line.pause < 0)) errors.push(`${at}pause must be a nonnegative number.`);
@@ -338,12 +339,12 @@ function completeErrors(script) {
   if (structural.length) return structural;
   const errors = selectionErrors(script);
   if (!script.title.trim()) errors.push('Give the film a title.');
-  if (!script.lines.length) errors.push('Add dialogue or book actions before generating.');
+
   const template = templateFor(script);
   script.lines.forEach((line, index) => {
     if (line.comic !== undefined && !script.comics.includes(line.comic)) errors.push(`Line ${index + 1} references unselected page ${line.comic}. Select that page or edit the reference.`);
     if (!line.action) {
-      if (!line.text.trim()) errors.push(`Line ${index + 1} needs spoken text.`);
+
       if (!template?.speakers.includes(line.speaker)) errors.push(`Line ${index + 1}: ${line.speaker} is not in this template. Choose ${template?.speakers.join(' or ')}.`);
     }
   });
@@ -392,6 +393,8 @@ function refreshPageChoices() {
 function renderPages() {
   $('edition').textContent = state.catalog.edition?.title ?? 'Local source catalog';
   const selectors = $('page-selectors'); selectors.replaceChildren();
+  for(const id of ['edition','page-selectors','page-previews','add-page'])$(id).hidden=!bookEnabled();
+  if(!bookEnabled()){$('page-previews').replaceChildren();return;}
   const sorted = [...state.catalog.comics].sort((a, b) => (Number.isFinite(a.pdfPage) ? a.pdfPage : Infinity) - (Number.isFinite(b.pdfPage) ? b.pdfPage : Infinity) || a.id.localeCompare(b.id));
   state.pageRows.forEach((id, index) => {
     const row = el('div', undefined, 'page-row');
@@ -450,7 +453,7 @@ function renderPages() {
 function renderSelection() {
   if (!state.script) return;
   const selected = $('selected-pages'); selected.replaceChildren();
-  if (!state.script.comics.length) selected.textContent = 'Choose a page from the dropdown or use its Random comic button.';
+  if (!state.script.comics.length) selected.textContent = bookEnabled()?'Choose a page from the dropdown or use its Random comic button.':'This scene needs no book or comic pages.';
   else {
     const list = el('ol');
     for (const id of state.script.comics) {
@@ -461,7 +464,7 @@ function renderSelection() {
   }
   const errors = selectionErrors(state.script);
   $('selection-help').textContent = errors.length ? errors.join(' ') : '';
-  const lockBox = $('source-lock'); lockBox.replaceChildren();
+  const lockBox = $('source-lock'); lockBox.replaceChildren();lockBox.hidden=!bookEnabled();
   if (state.script.sourceLock?.length) {
     const details = el('details'); details.append(el('summary', `Recorded source lock · ${state.script.sourceLock.length} page(s)`));
     for (const lock of state.script.sourceLock) details.append(el('p', `${lock.id} · PDF page ${lock.pdfPage}\nPage SHA-256: ${lock.sha256}\nPDF SHA-256: ${lock.pdfSha256}`));
@@ -476,7 +479,7 @@ function lineInput(index, key, multiline = false) {
   const input = el(multiline ? 'textarea' : 'input'); input.id = `line-${index}-${key}`;
   input.setAttribute('aria-label', `Line ${index + 1} ${key}`);
   if (multiline) input.rows = 3;
-  if (key === 'text') input.placeholder = `Write what the ${state.script.lines[index].speaker ?? 'character'} says…`;
+  if (key === 'text') input.placeholder = 'Optional dialogue — leave empty for a 2-second silent shot';
   input.value = state.script.lines[index][key] ?? '';
   input.addEventListener('input', () => {
     if (input.value || key === 'text') state.script.lines[index][key] = input.value;
@@ -487,7 +490,7 @@ function lineInput(index, key, multiline = false) {
 }
 function renderLines() {
   $('dialogue').replaceChildren();
-  if (!state.script.lines.length) $('dialogue').append(el('p', 'Start with a line of dialogue, or request an optional AI draft after choosing pages.', 'muted'));
+  if (!state.script.lines.length) $('dialogue').append(el('p', 'No rows: export a 2-second silent shot. Add dialogue or actions to extend it.', 'muted'));
   state.script.lines.forEach((line, index) => {
     const card = el('section', undefined, 'line');
     const heading = el('div', undefined, 'line-heading'); heading.append(el('h4', `Line ${index + 1}${line.action ? ' · Action' : ''}`));
@@ -505,7 +508,7 @@ function renderLines() {
     if (line.action) {
       const controls = el('div', undefined, 'field-pair');
       const action = el('select'); action.id = `line-${index}-action`;
-      choose(action, ACTIONS, line.action);
+      choose(action, bookEnabled()?ACTIONS:ACTOR_ACTIONS, line.action);
       action.addEventListener('change', () => {
         line.action = action.value; delete line.actor; delete line.target; delete line.seconds;
         changed(); renderLines();
@@ -526,7 +529,7 @@ function renderLines() {
         select.addEventListener('change', () => { if (select.value) line.comic = select.value; else delete line.comic; changed(); });
         controls.append(field('Source page', select));
       }
-      card.append(controls, el('p', 'Throw needs a held book. Place it before a character action. Slam and throw close the book; open it before more dialogue.', 'hint'));
+      card.append(controls, el('p', bookEnabled()?'Throw needs a held book. Place it before a character action. Slam and throw close the book; open it before more dialogue.':'Actions animate without spoken text.', 'hint'));
     } else {
       const pair = el('div', undefined, 'field-pair');
       const speaker = el('select'); speaker.id = `line-${index}-speaker`; speaker.setAttribute('aria-label', `Line ${index + 1} speaker`);
@@ -535,7 +538,7 @@ function renderLines() {
       const source = el('select'); source.id = `line-${index}-comic`; source.setAttribute('aria-label', `Line ${index + 1} comic`);
       choose(source, state.script.comics.map(id => ({ id, label: `${id} · printed ${comicFor(id)?.printedPage ?? '?'}` })), line.comic, 'Continue current page');
       source.addEventListener('change', () => { if (source.value) line.comic = source.value; else delete line.comic; changed(); refreshPageChoices(); });
-      pair.append(field('Speaker', speaker), field('Source page', source)); card.append(pair, lineInput(index, 'text', true));
+      pair.append(field('Speaker', speaker));if(bookEnabled())pair.append(field('Source page',source)); card.append(pair, lineInput(index, 'text', true));
       const performance = el('div', undefined, 'field-pair');
       for (const [key, choices, fallback] of [['emotion', EMOTIONS, 'neutral'], ['gesture', GESTURES, 'none']]) {
         const select = el('select'); select.id = `line-${index}-${key}`; select.setAttribute('aria-label', `Line ${index + 1} ${key}`);
@@ -549,7 +552,7 @@ function renderLines() {
       if (['face', 'reaction', 'pause', 'audio'].some(key => line[key] !== undefined)) card.append(el('p', 'Advanced fields present; edit them in JSON. Form edits preserve them.', 'hint'));
     }
     const shot = el('select'); shot.id = `line-${index}-shot`; shot.setAttribute('aria-label', `Line ${index + 1} shot`);
-    choose(shot, shots, line.shot ?? 'auto');
+    choose(shot, bookEnabled()?shots:shots.filter(s=>!['book','source'].includes(s.id)), line.shot ?? 'auto');
     shot.addEventListener('change', () => { line.shot = shot.value; changed(); });
     const direction = el('details', undefined, 'line-direction');
     direction.append(el('summary', 'Camera & gaze'), field('Shot', shot));
@@ -567,7 +570,7 @@ function renderLines() {
 function renderCharacters() {
   for (const role of ['reader', 'friend']) {
     const select = $(`${role}-clothing`);
-    choose(select, variants(), state.script.characters?.[role] ?? characterDefaults[role]);
+    choose(select, variants(), state.script.characters?.[role] ?? templateFor(state.script)?.defaultCharacters?.[role] ?? characterDefaults[role]);
     for (const item of select.options) {
       const variant = variants().find(v => v.id === item.value);
       item.disabled = !!(state.script.scene && variant?.allowedScenes && !variant.allowedScenes.includes(state.script.scene));
@@ -614,26 +617,29 @@ function renderOutput() {
 }
 function renderForm() {
   choose($('template'), templates().map(item => ({ id: item.id, label: item.label })), state.script.template);
-  choose($('scene'), state.catalog.scenes, state.script.scene, 'Template default');
+  choose($('scene'), state.catalog.scenes.filter(s=>templateFor(state.script)?.scenes.includes(s.id)), state.script.scene, 'Template default');
   $('seed').value = state.script.seed ?? '';
   $('title').value = state.script.title;
   renderCharacters(); renderExtras();
   renderOutput();
   $('product').value = state.script.product ?? 'book2';
-  const endCard = { ...endCardDefaults, ...state.script.endCard };
+  const endCard = { ...endCardDefaults,enabled:bookEnabled(), ...state.script.endCard };
   $('end-card-enabled').checked = endCard.enabled;
   for (const key of ['title', 'text', 'url', 'seconds']) $(`end-card-${key}`).value = endCard[key];
   const template = templateFor(state.script);
-  $('template-help').textContent = template ? `${template.minComics === template.maxComics ? template.minComics : `${template.minComics}–${template.maxComics}`} page(s) · cast: ${template.speakers.join(', ')}` : 'Choose a template.';
+  $('draft').hidden=!bookEnabled();
+  $('script-hint').textContent=bookEnabled()?'Choose pages for book scenes. Empty dialogue makes a 2-second silent shot.':'Dialogue is optional. Each empty row lingers on its character for 2 seconds; actions run without text.';
+  $('template-help').textContent = !bookEnabled()?'No book required · ready to export with or without dialogue':template ? `${template.minComics === template.maxComics ? template.minComics : `${template.minComics}–${template.maxComics}`} page(s) · cast: ${template.speakers.join(', ')}` : 'Choose a template.';
   renderPages(); renderSelection(); renderLines(); controls();
 }
 function install(script) {
   script = repairScript(script);
+  if(templateFor(script)?.book===false){script.comics??=[];script.lines??=[];}
   check(structureErrors(script));
   const next = clone(script);
   // Cast and timeline IDs are template/engine details. Keep sourceLock so ordinary
   // dialogue editing cannot silently rebind the source to a different asset hash.
-  delete next.cast;
+  delete next.cast; delete next.book;
   for (const line of next.lines) { delete line.id; delete line.bookState; }
   // An incoming lock belongs to the imported script, not the current selection.
   // Preserve even stale locks for backend rejection. Only explicit selection
@@ -673,7 +679,7 @@ $('new-video').addEventListener('click', () => {
   $('background-music').value = '';
   for (const id of uploadInputs) $(id).value = '';
   install(defaults.script);
-  if (draftSaved) message('Blank script ready. Choose comic pages and write dialogue.');
+  if (draftSaved) message('Blank script ready. Render it as is, or add dialogue and actions.');
   else {
     let removed = false;
     try { localStorage.removeItem(draftKey); removed = true; } catch {}
@@ -716,9 +722,15 @@ $('generate-chaos').addEventListener('click', async () => {
   } catch (error) { message(`Chaos generator: ${error.message}`, true); }
 });
 $('template').addEventListener('change', () => {
-  const blankLines = stringify(state.script.lines) === stringify(editorDefaults(state.catalog, state.script.template).script.lines);
+  const previousDefaults=editorDefaults(state.catalog,state.script.template).script;
+  const untouchedPreset=['lines','comics','characters','scene','endCard'].every(key=>stringify(state.script[key])===stringify(previousDefaults[key]));
   state.script.template = $('template').value;
-  if (blankLines) state.script.lines = editorDefaults(state.catalog, state.script.template).script.lines;
+  const defaults=editorDefaults(state.catalog,state.script.template).script;
+  delete state.script.book;
+  if(untouchedPreset){for(const key of ['lines','comics','characters','scene','endCard']){if(defaults[key]===undefined)delete state.script[key];else state.script[key]=clone(defaults[key]);}}
+  else if(!bookEnabled()){state.script.comics=[];for(const line of state.script.lines)delete line.comic;state.script.endCard={...state.script.endCard,enabled:false};}
+  if(state.script.scene&&!templateFor(state.script).scenes.includes(state.script.scene))state.script.scene=defaults.scene;
+  state.pageRows=[...state.script.comics];
   if (!state.script.comics.length) state.pageRows = Array(Math.max(1, templateFor(state.script)?.minComics ?? 1)).fill('');
   delete state.script.sourceLock; changed(); renderForm();
 });
@@ -763,7 +775,7 @@ $('dither').addEventListener('change', () => {
   changed();
 });
 $('add-action').addEventListener('click', () => {
-  state.script.lines.push({action:'read'}); changed(); renderLines();
+  state.script.lines.push({action:bookEnabled()?'read':'press_button'}); changed(); renderLines();
   $(`line-${state.script.lines.length - 1}-action`).focus();
 });
 $('add-line').addEventListener('click', () => {
@@ -932,7 +944,7 @@ async function connect() {
     if (!state.script) {
       install(editorDefaults(catalog).script);
     } else { renderForm(); }
-    $('retry').hidden = true; message('Ready. Choose source pages to begin.');
+    $('retry').hidden = true; message('Ready. Choose a scene, or click Next to render the defaults.');
   } catch (error) { state.token = null; message(`Connection failed: ${error.message} Use Retry connection.`, true); $('retry').hidden = false; }
   finally { state.connecting = false; controls(); }
 }

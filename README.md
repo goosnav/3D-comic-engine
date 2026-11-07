@@ -3,9 +3,33 @@
 **JSON → performed comic conversation → video, entirely on your device.**
 
 An independent application, extracted from Comic Theatre. No Ad Studio checkout,
-cloud container, paid API, account or AI writer is required. Write the dialogue
-yourself in JSON or the GUI. Code controls faces, gestures, book actions, camera
+cloud container, paid API, account or AI writer is required. Start with a ready-to-render scene or write dialogue
+yourself in JSON or the GUI. Code controls faces, gestures, object interactions, book actions, camera
 shots and timing. The desktop and browser share the same animation engine.
+
+## Start without a book or script
+
+Run `npm start`, then click **Next → Next → Render**. A fresh project uses the
+**Conversation** preset with the v12 beady-eyed character and the v12 regular-eyed
+character in a simple studio. Each blank dialogue row becomes a two-second shot
+of its speaker, with idle movement and any selected gesture. No text, comic page,
+voice generation or product end card is required.
+
+Choose **Greeting** for a high-five exchange or **Button demo** for a character
+pressing a physical button. These presets also export unchanged. Add words to any
+row for speech and captions; keep it blank for a silent beat. A blank row's optional
+`seconds` sets its length, and explicit pauses/listener reactions are preserved.
+An empty `lines` array becomes one two-second shot. Existing saved drafts are
+restored; use **New** and choose **Conversation** to start fresh.
+
+```sh
+node bin/theatre.mjs render templates/conversation.example.json --preview
+node bin/theatre.mjs render templates/button-demo.example.json --backend blender-cpu --preview
+```
+
+The old book presets, source checks, characters and actions remain available.
+Book presets preselect the required verified pages; review the sources before
+adding dialogue. See [the template reference](templates/README.md).
 
 ## Choose how to run
 
@@ -147,12 +171,12 @@ free dependency downloads; rendering does not contact external services.
 - Use **New** or **Open JSON**, then move through **Scene → Script → Export** with Next/Previous. Examples and **Shuffle script** are under **Scene → Examples & shuffle**. Advanced editing has its own **JSON** view.
 - **Recent** reopens up to 20 local script snapshots, saved when switching steps/views or replacing a script. Unapplied JSON is preserved. The current draft still autosaves; **Save JSON** downloads a permanent copy. History is limited to roughly 2 MB and may retain fewer large scripts. Music attachments must be reselected after reload.
 - Each selected page has its own **Random comic** button. It picks a different verified comic, keeps your words and settings, and updates that page's script references. Physical page turns limit the choices to compatible spreads.
-- **[JSON templates and complete field reference](templates/README.md)**: an editable blank duet plus four runnable examples covering a duet, a solo reading, a multi-page tour, and astronauts on the moon.
-- Three templates: book duet, solo fireside reader, and multi-page tour.
+- **[JSON templates and complete field reference](templates/README.md)**: ready-to-render conversation, greeting and button scenes, plus the existing book examples.
+- Six templates: conversation, greeting, button demo, book duet, solo fireside reader, and multi-page tour.
 - All 141 numbered Book Two pages, plus title/copyright/blank interiors, in book order.
 - Native page selectors and previews only for selected pages; random selection uses comics, not frontmatter.
 - Exact page hashes throughout. Three reviewed transcripts; other pages are explicitly not transcribed.
-- Six clothing/eye variants (blue/rust/olive; white or beady eyes).
+- Default v12 regular/beady-eye rigs with animated jaws; all older clothing and eye variants remain available.
 - Emotions, mouth motion, listening reactions and reusable book-animation rails.
 - Static cameras with close-up, medium, wide, extremely wide, and physical book shots.
 - Character-colored phrase captions, enabled by default, with top/bottom placement.
@@ -169,9 +193,10 @@ free dependency downloads; rendering does not contact external services.
 - Named loading stages and real stage progress bars; unknown-duration work stays indeterminate.
 - Browser-only optional background music from your device, quietly mixed from the track's beginning.
 
-Start with `templates/book-duet.example.json` for a fully worked input, or
-`templates/blank-book-duet.json` to write your own dialogue. The blank file is an
-authoring draft: fill its empty spoken lines before validation or rendering.
+Start with `templates/conversation.example.json` for a book-free scene,
+`templates/book-duet.example.json` for a worked reading, or
+`templates/blank-book-duet.json` for a silent reading you can add dialogue to.
+All three validate and render unchanged.
 
 ```sh
 node bin/theatre.mjs validate templates/book-duet.example.json --json

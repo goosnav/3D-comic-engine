@@ -195,6 +195,16 @@
       "path": "assets/extras/shoe-hat.glb",
       "sha256": "ae99543eda5d571201c882a735eb1cf84eea0bc187c05d4114823cc39ecf0208",
       "sourcePath": "exports/shoe_hat_creature.glb"
+    },
+    "actor-v12": {
+      "path": "assets/actor-v12.glb",
+      "sha256": "5a47af2bfca0efbf0de40524c5f2d21308439fccef4e81ef03e2b4705bd19ca7",
+      "sourcePath": "exports/ps1guy_v12.glb"
+    },
+    "actor-v12-beady": {
+      "path": "assets/actor-v12-beady.glb",
+      "sha256": "42dd42ebb79daee206a06cef98871f177307990d62c703219b15a4ee2a7d6438",
+      "sourcePath": "exports/ps1guy_v12_beady.glb"
     }
   },
   "variants": [
@@ -295,6 +305,16 @@
       "id": "gooby",
       "label": "Gooby hat guy · beady eyes",
       "asset": "actor-gooby"
+    },
+    {
+      "id": "v12",
+      "label": "v12 · regular eyes",
+      "asset": "actor-v12"
+    },
+    {
+      "id": "v12-beady",
+      "label": "v12 · beady eyes",
+      "asset": "actor-v12-beady"
     }
   ],
   "comics": [
@@ -2333,6 +2353,106 @@
   ],
   "templates": [
     {
+      "id": "conversation",
+      "label": "Conversation",
+      "minComics": 0,
+      "maxComics": 0,
+      "speakers": [
+        "reader",
+        "friend"
+      ],
+      "scenes": [
+        "studio",
+        "library",
+        "fireside"
+      ],
+      "book": false,
+      "defaultScene": "studio",
+      "defaultCharacters": {
+        "reader": "v12-beady",
+        "friend": "v12"
+      },
+      "defaultLines": [
+        {
+          "speaker": "reader",
+          "text": ""
+        },
+        {
+          "speaker": "friend",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "id": "greeting",
+      "label": "Meet and greet",
+      "minComics": 0,
+      "maxComics": 0,
+      "speakers": [
+        "reader",
+        "friend"
+      ],
+      "scenes": [
+        "studio",
+        "library",
+        "fireside"
+      ],
+      "book": false,
+      "defaultScene": "studio",
+      "defaultCharacters": {
+        "reader": "v12-beady",
+        "friend": "v12"
+      },
+      "defaultLines": [
+        {
+          "action": "high_five",
+          "actor": "reader",
+          "target": "friend",
+          "seconds": 2.4,
+          "shot": "two-shot"
+        },
+        {
+          "speaker": "friend",
+          "text": "",
+          "gesture": "nod"
+        }
+      ]
+    },
+    {
+      "id": "button-demo",
+      "label": "Press the button",
+      "minComics": 0,
+      "maxComics": 0,
+      "speakers": [
+        "reader",
+        "friend"
+      ],
+      "scenes": [
+        "studio",
+        "library",
+        "fireside"
+      ],
+      "book": false,
+      "defaultScene": "studio",
+      "defaultCharacters": {
+        "reader": "v12-beady",
+        "friend": "v12"
+      },
+      "defaultLines": [
+        {
+          "action": "press_button",
+          "actor": "reader",
+          "seconds": 2.4,
+          "shot": "two-shot"
+        },
+        {
+          "speaker": "friend",
+          "text": "",
+          "gesture": "shrug"
+        }
+      ]
+    },
+    {
       "id": "book-duet",
       "label": "One comic · two readers",
       "minComics": 1,
@@ -2463,6 +2583,13 @@
       "label": "Red Mesas — Canyon Overlook",
       "asset": "scene-red-mesas",
       "default": false
+    },
+    {
+      "id": "studio",
+      "label": "Open studio",
+      "procedural": true,
+      "default": false,
+      "backgroundColor": "#243336"
     }
   ],
   "extras": [

@@ -62,7 +62,7 @@ test('validation, creation, rendering and verification failures stay local to th
   return verified(id);
  }});
  const submitted=queue.submit({entries:[
-  {name:'invalid.json',script:script({lines:[]})},
+  {name:'invalid.json',script:script({lines:null})},
   ...['create failure','encode failure','verification failure','unsafe result','good'].map(title=>({name:title+'.json',script:script({title})}))
  ]});
  await queue.whenIdle();

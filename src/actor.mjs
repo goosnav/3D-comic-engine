@@ -34,7 +34,7 @@ export function createActor(source, id, index = 0, config = {}) {
       };
       o.material = Array.isArray(o.material) ? o.material.map(ownMaterial) : ownMaterial(o.material);
       if (o.morphTargetInfluences) o.morphTargetInfluences = o.morphTargetInfluences.map(() => 0);
-      if (['open', 'round', 'wide'].every(n => o.morphTargetDictionary?.[n] !== undefined)) mouthMeshes.push(o);
+      if (['round','wide'].every(n=>o.morphTargetDictionary?.[n]!==undefined) && (o.morphTargetDictionary.open!==undefined || o.morphTargetDictionary.jaw_fix!==undefined)) mouthMeshes.push(o);
       if (o.morphTargetDictionary?.blink !== undefined) blinkMeshes.push(o);
     }
     if (o.isMesh && o.morphTargetDictionary?.blink === undefined && ['eye_white', 'eye_black'].includes(o.material?.name)) {
@@ -62,7 +62,8 @@ export function createActor(source, id, index = 0, config = {}) {
   const shoulderRest = bones.upper_armL.getWorldPosition(new THREE.Vector3());
   const reach = { shoulder: shoulderRest.y, arm: shoulderRest.distanceTo(bones.forearmL.getWorldPosition(new THREE.Vector3())) +
     bones.forearmL.getWorldPosition(new THREE.Vector3()).distanceTo(bones.handL.getWorldPosition(new THREE.Vector3())) };
-  const faceMode = mouthMeshes.length ? 'oral-cavity' : 'legacy-overlay';
+  const puppetMouth=mouthMeshes.some(m=>m.morphTargetDictionary.jaw_fix!==undefined);
+  const faceMode = puppetMouth?'puppet-mouth':mouthMeshes.length ? 'oral-cavity' : 'legacy-overlay';
   const dark = new THREE.MeshStandardMaterial({ color: 0x372722, roughness: .95 });
   const face = new THREE.Group();
   face.name = 'head-attached-expression';
@@ -84,7 +85,7 @@ export function createActor(source, id, index = 0, config = {}) {
   root.add(face);
   root.updateMatrixWorld(true);
   bones.head.attach(face);
-  const brows = [-1, 1].map(sign => {
+  const brows = (puppetMouth?[]:[-1, 1]).map(sign => {
     const brow = new THREE.Mesh(new THREE.CapsuleGeometry(.007, .077, 4, 8), dark);
     const anchor = new THREE.Group();
     anchor.position.set(sign * .095, 1.659, .083).add(headShift);
@@ -100,11 +101,12 @@ export function createActor(source, id, index = 0, config = {}) {
   body.traverse(mesh => {
     // v10 bodies are guy_body; comic-cast bodies are <name>_body with a skin part.
     const skinPart = /_body$/.test(mesh.parent?.name) && /skin/.test(mesh.material?.name);
-    if (!mesh.isSkinnedMesh || nose || !(mesh.name==='guy_nose' || mesh.parent.name==='guy_body' || skinPart)) return;
+    if (!mesh.isSkinnedMesh || nose || !(puppetMouth || mesh.name==='guy_nose' || mesh.parent.name==='guy_body' || skinPart)) return;
     const geometry=mesh.geometry, indices=geometry.index, skin=geometry.attributes.skinIndex, weights=geometry.attributes.skinWeight;
-    const head=mesh.skeleton.bones.indexOf(bones.head);
+    const attachBone=puppetMouth?bones.nose:bones.head;
+    const head=mesh.skeleton.bones.indexOf(attachBone);
     if (!indices || head < 0) return;
-    const onHead = i => {let weight=0;for(let j=0;j<4;j++)if(skin.getComponent(i,j)===head)weight+=weights.getComponent(i,j);return weight>.99;};
+    const onHead = i => {let weight=0;for(let j=0;j<4;j++)if(skin.getComponent(i,j)===head)weight+=weights.getComponent(i,j);return weight>(puppetMouth ? .5 : .99);};
     const removed=[], kept=[];
     for(let i=0;i<indices.count;i+=3) {
       const triangle=[indices.getX(i),indices.getX(i+1),indices.getX(i+2)];
@@ -114,10 +116,10 @@ export function createActor(source, id, index = 0, config = {}) {
     const extracted=geometry.clone();extracted.setIndex(removed);
     const prop=extracted.toNonIndexed();extracted.dispose();
     prop.deleteAttribute('skinIndex');prop.deleteAttribute('skinWeight');
-    prop.applyMatrix4(bones.head.matrixWorld.clone().invert().multiply(mesh.matrixWorld));
+    prop.applyMatrix4(attachBone.matrixWorld.clone().invert().multiply(mesh.matrixWorld));
     prop.computeBoundingBox();const center=prop.boundingBox.getCenter(new THREE.Vector3());prop.translate(-center.x,-center.y,-center.z);
     nose=new THREE.Mesh(prop,mesh.material);nose.name='detachable-original-nose';nose.position.copy(center);nose.castShadow=true;
-    bones.head.add(nose);mesh.geometry=geometry.clone();mesh.geometry.setIndex(kept);
+    attachBone.add(nose);mesh.geometry=geometry.clone();mesh.geometry.setIndex(kept);
   });
   const noseRest=nose?.position.clone();
   const tears=new THREE.Group();tears.name='crying-tears';
@@ -140,7 +142,7 @@ export function createActor(source, id, index = 0, config = {}) {
     const age = line ? time - line.start : 0;
     const requested = line?.reaction;
     const reactionActive = listening && requested && (!requested.actor || requested.actor === id) &&
-      (requested.at === 'line_end' ? line.type === 'hold' : line.type === 'line') && age < (requested.duration ?? Infinity);
+      (requested.at === 'line_end' ? line.type === 'hold' && !line.silent : line.type === 'line' || line.silent) && age < (requested.duration ?? Infinity);
     const reaction = reactionActive ? requested : {};
     const emotion = (ownsLine ? line?.emotion : reaction.emotion) || 'neutral';
     const faceControl = ownsLine ? (line.face || {}) : (reaction.face || {});
@@ -213,8 +215,9 @@ export function createActor(source, id, index = 0, config = {}) {
       const wobble = (.08 + .05 * k) * (1 + frenzy);
       pose(`hat_stalk${k}`, Math.sin(phase * 2.3 * fizz - lag) * wobble, 0, Math.cos(phase * 1.7 * fizz - lag) * wobble);
     }
+    if(puppetMouth)pose('jaw',-Math.PI/5*visemes.open);
     for (const mesh of mouthMeshes) {
-      const weights = { ...visemes, smile: Math.max(0, exp.smile), frown: Math.max(0, -exp.smile) };
+      const weights = { ...visemes, ...(puppetMouth?{jaw_fix:visemes.open}:{}), smile: Math.max(0, exp.smile), frown: Math.max(0, -exp.smile) };
       for (const [name, value] of Object.entries(weights)) {
         const target = mesh.morphTargetDictionary[name];
         if (target !== undefined) mesh.morphTargetInfluences[target] = value;

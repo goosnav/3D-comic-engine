@@ -28,6 +28,7 @@ test('steps keep edits, JSON pauses forms, New and Recent recover drafts across 
   assert.equal(await page.locator('[data-view]:visible').count(), 1);
   assert.equal((await page.locator('#new-video').textContent()).trim(), '＋ New');
   await page.locator('#title').fill('Recover this reading');
+  await page.locator('#template').selectOption('book-duet');
   await page.locator('#random-page-0').click();
   await page.locator('#next-step').click();
   assert.equal(await page.locator('#editor-heading').evaluate(n => n === document.activeElement), true);
@@ -68,6 +69,7 @@ test('steps keep edits, JSON pauses forms, New and Recent recover drafts across 
 
 test('render hands off to Videos and batch stays separate; responsive keyboard navigation', async t => {
   const page = await fixture(t);
+  await page.locator('#template').selectOption('book-duet');
   await page.locator('#random-page-0').click();
   await page.locator('#next-step').click();
   await page.locator('#line-0-text').fill('A short clip.'); await page.locator('#line-1-text').fill('A reply.');
@@ -78,7 +80,7 @@ test('render hands off to Videos and batch stays separate; responsive keyboard n
   await page.locator('#view-videos').waitFor({ state: 'visible' });
   assert.equal(submitted.script.lines[0].text, 'A short clip.');
   await page.locator('#nav-batch').click(); await page.locator('#batch-add-editor').click();
-  assert.match(await page.locator('#batch-library').innerText(), /Untitled reading/);
+  assert.match(await page.locator('#batch-library').innerText(), /Untitled scene/);
   await page.locator('#nav-editor').focus(); await page.keyboard.press('Enter');
   assert.equal(await page.locator('#view-editor').isVisible(), true);
   await mkdir('.local/ui-review', { recursive: true });

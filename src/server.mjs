@@ -10,7 +10,7 @@ import {OUTPUT,listJobs,readJob,createJob,processJob} from './jobs.mjs';
 import {BATCH_BODY_LIMIT,createServerBatchQueue} from './server-batch.mjs';
 import {getExampleLibrary} from './example-library.mjs';
 const types={'.html':'text/html; charset=utf-8','.mjs':'text/javascript','.js':'text/javascript','.css':'text/css','.json':'application/json','.jpg':'image/jpeg','.png':'image/png','.glb':'model/gltf-binary','.mp4':'video/mp4','.wav':'audio/wav','.ttf':'font/ttf'};
-const scriptTemplates=new Set(['blank-book-duet.json','book-duet.example.json','fireside.example.json','page-tour.example.json','astronaut.example.json'].map(name=>'/templates/'+name));
+const scriptTemplates=new Set(['conversation.example.json','greeting.example.json','button-demo.example.json','blank-book-duet.json','book-duet.example.json','fireside.example.json','page-tour.example.json','astronaut.example.json'].map(name=>'/templates/'+name));
 async function body(req,limit=256000){
  const tooLarge=()=>Object.assign(Error('Request too large'),{statusCode:413});
  if(Number(req.headers['content-length'])>limit){req.resume();throw tooLarge();}

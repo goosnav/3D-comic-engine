@@ -29,5 +29,5 @@ export async function loadCPUScene(timeline, catalog) {
   const scene=new THREE.Scene();scene.background=new THREE.Color(catalog.scenes?.find(s=>s.id===timeline.scene)?.backgroundColor??0x192929);
   const camera=new THREE.PerspectiveCamera(38,timeline.width/timeline.height,.04,500);
   return createSceneEvaluator({timeline,catalog,scene,camera,comics,selections,actorModels,extraModels,
-    environmentRoot:environment?(await load(environment)).scene:null,bookGLTF:await load(catalog.assets.book)});
+    environmentRoot:environment?(await load(environment)).scene:null,bookGLTF:timeline.book===false?null:await load(catalog.assets.book)});
 }
