@@ -183,7 +183,8 @@ free dependency downloads; rendering does not contact external services.
 - Jerky gestures, rocket punches, explosions, flattening, nose removal, head spins, and walk-offs.
 - Garry's Mod-style stunts: T-pose glide, ragdoll, noclip, big head, prop jitter, helicopter, goose chase.
 - Comic cast: Little Billy (spinning propeller cap) and the gooby-hat guy as castable characters.
-- Background cameos: an orange-billed goose, Glove Bot, the two-legged walker and the shoe-hat creature.
+- Background cameos: an orange-billed goose, Glove Bot, the two-legged walker and the shoe-hat creature. **Script → Add cameo shot** gives any cameo a solo cutaway: stand or walk, static or following camera, 0.3–30 seconds. Background toggles remain independent.
+- **Export → Ambience** adds quiet room tone by default, with a laundromat option, level slider and Off. It softens under measured dialogue; Auto yields to attached music. These original procedural sounds work offline in both renderers.
 - Colour grading: a slightly drab `muted` look by default, plus `film` and `vivid`; page inserts stay exact.
 - Ordered dither over picture, captions and end card for a slightly crunchy digital look (`subtle`, `crunchy`, `off`).
 - Automatic chaos scripts from a seed (`chaos` command / **Shuffle script** button), no AI.
@@ -207,6 +208,8 @@ Browser MP4 requires an H.264/AAC encoder. Single and batch exports can fall
 back to correctly labeled WebM. Local exports use FFmpeg to produce actual MP4.
 Browser background music accepts supported audio up to 15 MiB and three minutes.
 Music is embedded in portable render jobs, but not ordinary script JSON.
+Cameo shots and ambience settings are saved in script JSON and portable jobs.
+Try [the awkward cameo example](examples/awkward-cameo.json) for dialogue, a static goose cutaway, a silent reaction, and a tracking shot of the walker.
 
 Creative snapshots live in assets/, with editable originals already published in
 Goosnav-3D-assets. No archived model paths or sibling checkout is required.

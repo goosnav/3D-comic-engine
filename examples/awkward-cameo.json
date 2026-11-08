@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "template": "conversation",
+  "title": "Did you see that?",
+  "seed": 42,
+  "scene": "studio",
+  "characters": {"reader": "v12-beady", "friend": "v12"},
+  "ambience": {"mode": "laundromat", "volume": 0.35},
+  "endCard": {"enabled": false},
+  "lines": [
+    {"speaker": "reader", "text": "Did you see that?", "gesture": "double_point"},
+    {"cameo": "goose", "behaviour": "stand", "camera": "static", "seconds": 2},
+    {"speaker": "friend", "text": "", "seconds": 2},
+    {"cameo": "walker", "behaviour": "walk", "camera": "follow", "seconds": 3},
+    {"speaker": "friend", "text": "Probably nothing.", "gesture": "shrug"}
+  ]
+}

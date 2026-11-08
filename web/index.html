@@ -104,7 +104,7 @@
 <div id="selected-pages" aria-live="polite">No pages selected.</div>
           <p id="selection-help" class="hint"></p>
           <div id="source-lock" class="source-lock">Validate to record a source lock.</div>
-        </details>          <div class="subheading dialogue-heading"><h3>Dialogue</h3><button id="add-line" type="button">+ Add dialogue</button><button id="add-action" type="button">+ Add action</button></div>
+        </details>          <div class="subheading dialogue-heading"><h3>Dialogue</h3><button id="add-line" type="button">+ Add dialogue</button><button id="add-action" type="button">+ Add action</button><button id="add-cameo" type="button">+ Add cameo shot</button></div>
           <div id="dialogue"></div>
           <p id="script-hint" class="hint">Dialogue is optional. Empty rows make two-second silent shots.</p>
 
@@ -124,6 +124,11 @@
         <div class="production">
           <div id="backend-control"><label for="backend">Renderer</label><select id="backend"><option value="auto">Automatic capability fallback</option><option value="chromium-gpu">Chromium GPU</option><option value="chromium-software">Chromium software</option><option value="blender-cpu">Blender CPU (offline)</option></select></div>
           <div><label for="voice">Voice</label><select id="voice"><option value="flite">On-device Flite (no model needed)</option><option value="kokoro">Local Kokoro (optional install)</option><option value="recorded">Recorded audio paths in JSON</option></select></div>
+          <div>
+            <label for="ambience-mode">Ambience</label><select id="ambience-mode"><option value="auto">Auto · room tone unless music is attached</option><option value="room">Quiet room</option><option value="laundromat">Laundromat</option><option value="off">Off</option></select>
+            <label for="ambience-volume">Ambience level</label><input id="ambience-volume" type="range" min="0" max="1" step=".05" value=".35" aria-describedby="ambience-help">
+            <p id="ambience-help" class="hint">A subtle background hum for awkward silences. Softens during dialogue. Room and Laundromat can also play under music.</p>
+          </div>
           <div id="background-music-fields" hidden>
             <label for="background-music">Background music (optional)</label>
             <input id="background-music" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg" aria-describedby="background-music-help">

@@ -282,7 +282,13 @@ function structureErrors(script) {
   else script.lines.forEach((line, index) => {
     const at = `Line ${index + 1}: `;
     if (!object(line)) { errors.push(`${at}use a dialogue or action object.`); return; }
-    if (line.action !== undefined) {
+    if (line.cameo !== undefined) {
+      if(!(state.catalog.extras??[]).some(e=>e.id===line.cameo))errors.push(`${at}choose a cameo from the catalog.`);
+      if(line.behaviour!==undefined&&!['stand','walk'].includes(line.behaviour))errors.push(`${at}cameo behaviour must be stand or walk.`);
+      if(line.camera!==undefined&&!['static','follow'].includes(line.camera))errors.push(`${at}cameo camera must be static or follow.`);
+      if(line.seconds!==undefined&&(!Number.isFinite(line.seconds)||line.seconds<.3||line.seconds>30))errors.push(`${at}cameo duration must be 0.3–30 seconds.`);
+      if(['action','speaker','text'].some(key=>line[key]!==undefined))errors.push(`${at}a cameo shot cannot also be dialogue or an action.`);
+    } else if (line.action !== undefined) {
       if (!ACTIONS.includes(line.action)) errors.push(`${at}unknown action.`);
       if (line.speaker !== undefined || line.text !== undefined) errors.push(`${at}an action cannot also be dialogue.`);
       if (line.seconds !== undefined && (typeof line.seconds !== 'number' || !Number.isFinite(line.seconds) || line.seconds <= 0)) errors.push(`${at}seconds must be positive.`);
@@ -296,6 +302,13 @@ function structureErrors(script) {
     }
     if (line.comic !== undefined && (typeof line.comic !== 'string' || !comicFor(line.comic))) errors.push(`${at}comic must be a known catalog ID.`);
   });
+  if(script.ambience!==undefined){
+    if(!object(script.ambience))errors.push('ambience must be an object.');
+    else {
+      if(script.ambience.mode!==undefined&&!['auto','off','room','laundromat'].includes(script.ambience.mode))errors.push('Choose Auto, Off, Room or Laundromat ambience.');
+      if(script.ambience.volume!==undefined&&(!Number.isFinite(script.ambience.volume)||script.ambience.volume<0||script.ambience.volume>1))errors.push('Ambience volume must be between 0 and 1.');
+    }
+  }
   if(script.captions!==undefined){
     if(!object(script.captions))errors.push('captions must be an object.');
     else {
@@ -330,7 +343,7 @@ function usedPages(script) {
   const used = new Set();
   for (const line of script.lines) {
     if (line.comic !== undefined) current = line.comic;
-    if (!line.action && current) used.add(current);
+    if (!line.action && !line.cameo && current) used.add(current);
   }
   return used;
 }
@@ -343,7 +356,7 @@ function completeErrors(script) {
   const template = templateFor(script);
   script.lines.forEach((line, index) => {
     if (line.comic !== undefined && !script.comics.includes(line.comic)) errors.push(`Line ${index + 1} references unselected page ${line.comic}. Select that page or edit the reference.`);
-    if (!line.action) {
+    if (!line.action && !line.cameo) {
 
       if (!template?.speakers.includes(line.speaker)) errors.push(`Line ${index + 1}: ${line.speaker} is not in this template. Choose ${template?.speakers.join(' or ')}.`);
     }
@@ -493,7 +506,7 @@ function renderLines() {
   if (!state.script.lines.length) $('dialogue').append(el('p', 'No rows: export a 2-second silent shot. Add dialogue or actions to extend it.', 'muted'));
   state.script.lines.forEach((line, index) => {
     const card = el('section', undefined, 'line');
-    const heading = el('div', undefined, 'line-heading'); heading.append(el('h4', `Line ${index + 1}${line.action ? ' · Action' : ''}`));
+    const heading = el('div', undefined, 'line-heading'); heading.append(el('h4', `Line ${index + 1}${line.cameo ? ' · Cameo shot' : line.action ? ' · Action' : ''}`));
     const actions = el('div', undefined, 'line-actions');
     for (const [label, delta] of [['Move up', -1], ['Move down', 1], ['Remove', 0]]) {
       const button = el('button', delta === -1 ? '↑' : delta === 1 ? '↓' : '×'); button.type = 'button'; button.title = label; button.setAttribute('aria-label', `${label} line ${index + 1}`);
@@ -505,6 +518,20 @@ function renderLines() {
       }); actions.append(button);
     }
     heading.append(actions); card.append(heading);
+    if(line.cameo){
+      const controls=el('div',undefined,'field-pair');
+      for(const [key,label,choices,fallback]of [
+        ['cameo','Cameo',state.catalog.extras??[],undefined],
+        ['behaviour','Movement',[{id:'stand',label:'Stand still'},{id:'walk',label:'Walk across'}],'stand'],
+        ['camera','Camera',[{id:'static',label:'Static shot'},{id:'follow',label:'Follow cameo'}],'static']]){
+        const select=el('select');select.id=`line-${index}-${key}`;choose(select,choices,line[key]??fallback);
+        select.addEventListener('change',()=>{line[key]=select.value;changed();});controls.append(field(label,select));
+      }
+      const seconds=el('input');seconds.id=`line-${index}-seconds`;seconds.type='number';seconds.min='.3';seconds.max='30';seconds.step='.1';seconds.value=line.seconds??3;
+      seconds.addEventListener('input',()=>{if(seconds.value==='')delete line.seconds;else line.seconds=seconds.valueAsNumber;changed();});controls.append(field('Duration (seconds)',seconds));
+      card.append(controls,el('p','A solo cutaway. Background cameo toggles are independent; dialogue resumes after this shot.','hint'));
+      $('dialogue').append(card);return;
+    }
     if (line.action) {
       const controls = el('div', undefined, 'field-pair');
       const action = el('select'); action.id = `line-${index}-action`;
@@ -581,6 +608,7 @@ function renderCharacters() {
 function renderExtras() {
   const box = $('extras-fields'), list = state.catalog?.extras ?? [];
   box.hidden = !list.length;
+  $('add-cameo').hidden=!list.length;
   box.querySelectorAll('label').forEach(node => node.remove());
   const chosen = Array.isArray(state.script.extras) ? state.script.extras : [];
   for (const extra of list) {
@@ -605,6 +633,9 @@ function renderOutput() {
     $(`captions-${id}`).value=captions.colors[id];
     $(`captions-${id}`).disabled=!templateFor(state.script)?.speakers.includes(id);
   }
+  $('ambience-mode').value=state.script.ambience?.mode??'auto';
+  $('ambience-volume').value=state.script.ambience?.volume??.35;
+  $('ambience-volume').disabled=$('ambience-mode').value==='off';
   const output = state.script.output ?? {};
   const preset = output.preset ?? (output.width === undefined && output.height === undefined ? 'instagram_reels' : 'custom');
   choose($('output-preset'), [...Object.entries(OUTPUT_PRESETS).map(([id, item]) => ({id, label:item.label})), {id:'custom',label:'Custom dimensions'}], preset);
@@ -774,6 +805,13 @@ $('dither').addEventListener('change', () => {
   if ($('dither').value === 'subtle') delete state.script.dither; else state.script.dither = $('dither').value;
   changed();
 });
+for(const key of ['mode','volume'])$(`ambience-${key}`).addEventListener('change',()=>{
+  state.script.ambience={mode:$('ambience-mode').value,volume:Number($('ambience-volume').value)};changed();renderOutput();
+});
+$('add-cameo').addEventListener('click',()=>{
+  const cameo=state.script.extras?.[0]??state.catalog.extras?.[0]?.id;if(!cameo)return;
+  state.script.lines.push({cameo,behaviour:'stand',camera:'static',seconds:3});changed();renderLines();$(`line-${state.script.lines.length-1}-cameo`).focus();
+});
 $('add-action').addEventListener('click', () => {
   state.script.lines.push({action:bookEnabled()?'read':'press_button'}); changed(); renderLines();
   $(`line-${state.script.lines.length - 1}-action`).focus();
@@ -838,7 +876,7 @@ $('draft').addEventListener('click', () => operate('AI Draft', async () => {
   check(structureErrors(script)); check(selectionErrors(script));
   // The writer endpoint resolves its input before writing. Supply placeholders
   // only in this request when starting from unwritten pages; never auto-render them.
-  for (const line of script.lines) if (!line.action && !line.text.trim()) line.text = 'Draft commentary for this selected page.';
+  for (const line of script.lines) if (!line.action && !line.cameo && !line.text?.trim()) line.text = 'Draft commentary for this selected page.';
   const used = usedPages(script);
   for (const comic of script.comics) if (!used.has(comic)) script.lines.push({ speaker: templateFor(script).speakers[0], text: 'Draft commentary for this selected page.', comic });
   check(completeErrors(script));
@@ -859,7 +897,7 @@ $('generate').addEventListener('click', () => operate('Generate video', async ()
   const music = browserMode ? $('background-music').files[0] : undefined;
   if(browserMode)$('device-canvas').hidden=false;
   const voice = $('voice').value;
-  if (voice === 'recorded' && script.lines.some(line => !line.action && (typeof line.audio !== 'string' || !line.audio.trim()))) throw new Error('Recorded mode needs an audio path on every spoken line. Add audio in JSON, or choose Local Kokoro.');
+  if (voice === 'recorded' && script.lines.some(line => !line.action && !line.cameo && !!line.text?.trim() && (typeof line.audio !== 'string' || !line.audio.trim()))) throw new Error('Recorded mode needs an audio path on every spoken line. Add audio in JSON, or choose Local Kokoro.');
   rememberVersion();
   const result = await api('/api/render', { script, voice, ...(music ? { music } : {}) });
   if (!result || typeof result.id !== 'string') throw new Error('Server did not return a job ID. Refresh jobs before trying again.');

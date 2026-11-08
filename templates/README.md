@@ -343,3 +343,23 @@ Generated and recorded speech have leading/trailing silence trimmed with a 25 ms
 See [chaotic-comedy.json](../examples/chaotic-comedy.json) for all new actions, both caption colors, and shot sizes.
 
 `cosmic_rage`, `brain_static`, and `overclocked` also drive abrupt body motion, even with gesture `none`. Free arms stretch; held-book arms keep their grip. Wild gestures use seeded 24 Hz jumps with no default fade to rest. The camera remains fixed.
+
+## Solo cameo shots and ambience
+
+Use **Script → Add cameo shot** for a cutaway showing only one cameo. Choose the character, Stand still or Walk across, Static shot or Follow cameo, and duration. You can reorder or remove it like any other row. A sequence containing only cameo rows also exports; no dialogue or book is required with the Conversation template.
+
+```json
+{
+  "template": "conversation",
+  "title": "An awkward pause",
+  "ambience": {"mode": "laundromat", "volume": 0.35},
+  "lines": [
+    {"cameo": "goose", "behaviour": "stand", "camera": "static", "seconds": 3},
+    {"cameo": "walker", "behaviour": "walk", "camera": "follow", "seconds": 3}
+  ]
+}
+```
+
+Cameo IDs: `goose`, `glove-bot`, `walker`, `shoe-hat`. Defaults are `stand`, `static`, 3 seconds; duration accepts 0.3–30 seconds. Stand uses the model's idle pose/clip, so limbs may move while its position and camera stay fixed. Follow translates with a walking cameo; static frames the whole short route. Regular actors, book, interaction props and other cameos return after the cut. The existing `extras` field controls background cameos independently.
+
+Ambience `mode`: `auto` (default), `room`, `laundromat`, `off`. `volume`: 0–1, default 0.35. Auto adds room tone when no music is attached. Explicit Room or Laundromat can accompany music. These sounds are synthesized hum/air/motor textures, not location recordings, and soften during speech with smooth fades. Off or volume 0 adds nothing. Configure them under **Export → Picture & sound**; saved scripts work in browser and local CPU/Chromium exports.

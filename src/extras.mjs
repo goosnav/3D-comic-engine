@@ -99,8 +99,50 @@ export function createExtras({ scene, timeline, catalog, models = new Map(), act
     if (!bounds.setFromObject(extra.root).expandByScalar(.3).containsPoint(camera.position)) return false;
     extra.root.visible = false; return true;
   }
-  function apply(time, action, camera) {
-    state = cast.map(extra => ({ ...place(extra, time, action), hiddenForCamera: clearCamera(extra, camera) }));
+  const background = new Set(timeline.backgroundExtras ?? ids);
+  const focusBounds = new Map();
+  function focusPose(extra, age, behaviour, travel = 0) {
+    const walking = behaviour === 'walk', root = extra.root;
+    root.visible = true; root.position.set(travel, 0, 1.6); root.rotation.set(0, walking ? Math.PI / 2 : 0, 0); root.scale.setScalar(1);
+    if (extra.goose) extra.goose.pose(walking ? {walk:age*11,stride:1} : {neck:1,look:0});
+    else {
+      const clip=extra.take(walking?extra.entry.walk:extra.entry.idle);
+      for(const action of extra.actions.values())action.enabled=action===clip;
+      clip.weight=1;clip.time=age%clip.getClip().duration;extra.mixer.update(0);
+    }
+    root.updateMatrixWorld(true);
+  }
+  function frameFocus(extra, focus, time, camera) {
+    const walking=focus.behaviour==='walk', key=`${extra.id}:${focus.behaviour}`;
+    // Sample a whole animation loop once. A fixed envelope keeps static shots
+    // stationary while framing the headgear and swinging limbs of every model.
+    if(!focusBounds.has(key)){
+      const envelope=new THREE.Box3(),clip=extra.goose?null:extra.take(walking?extra.entry.walk:extra.entry.idle);
+      const duration=clip?.getClip().duration??(2*Math.PI/11);
+      for(let i=0;i<=32;i++){focusPose(extra,duration*i/32,focus.behaviour);envelope.union(new THREE.Box3().setFromObject(extra.root,true));}
+      focusBounds.set(key,envelope.expandByScalar(.08));
+    }
+    const age=time-focus.start, x=walking?lerp(-.65,.65,clamp(age/(focus.end-focus.start))):0;
+    focusPose(extra,age,focus.behaviour,x);
+    const box=focusBounds.get(key),center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
+    if(focus.camera==='follow')center.x+=x;
+    const route=walking&&focus.camera!=='follow'?.65:0;
+    camera.up.set(0,1,0);camera.fov=38;
+    const tangent=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
+    const distance=Math.max((size.x/2+route)/(tangent*camera.aspect),size.y/(2*tangent))*1.20;
+    camera.position.set(center.x,center.y,box.max.z+distance);camera.lookAt(center);camera.updateProjectionMatrix();
+    return {id:extra.id,behaviour:focus.behaviour,focused:true,position:extra.root.position.toArray()};
+  }
+  function apply(time, action, camera, focus) {
+    state = cast.map(extra => {
+      if(focus){
+        if(extra.id===focus.cameo)return frameFocus(extra,focus,time,camera);
+        extra.root.visible=false;return {id:extra.id,visible:false};
+      }
+      const placed=place(extra,time,action);
+      if(!background.has(extra.id))extra.root.visible=false;
+      return {...placed,visible:extra.root.visible,hiddenForCamera:clearCamera(extra,camera)};
+    });
     return state;
   }
   function place(extra, time, action) {

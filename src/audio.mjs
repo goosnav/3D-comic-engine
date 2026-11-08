@@ -1,4 +1,5 @@
 import {speechBounds,resolveSpeechRate} from './speech-timing.mjs';
+import {renderAmbience,limitAmbience} from './ambience.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
@@ -84,9 +85,16 @@ export async function prepareAudio(script,{mode='flite',inputRoot=ROOT,cacheRoot
   return result;
  }finally{await fs.rm(tmp,{recursive:true,force:true});}
 }
-export async function writeMix(timeline,takes,output,{signal}={}){
+export async function writeMix(timeline,takes,output,{signal,music=false}={}){
+ signal?.throwIfAborted();
  if(timeline.duration>600)throw Error('Episode exceeds the 600-second resource safety bound; split into episodes. Prepared takes are cached.');
+ const ambience=renderAmbience(timeline,{signal,music});
  const pcm=Buffer.alloc(Math.ceil(timeline.duration*48000)*2);
- for(const e of timeline.events.filter(e=>e.type==='line')){const t=takes[e.id],bytes=await fs.readFile(t.path);if(digest(bytes)!==t.sha256)throw Error('Take changed before mixing');bytes.copy(pcm,Math.round(e.start*48000)*2);}
+ for(const e of timeline.events.filter(e=>e.type==='line')){signal?.throwIfAborted();const t=takes[e.id],bytes=await fs.readFile(t.path);if(digest(bytes)!==t.sha256)throw Error('Take changed before mixing');bytes.copy(pcm,Math.round(e.start*48000)*2);}
+ if(ambience)for(let i=0;i<ambience.length;i++){
+  if((i&4095)===0)signal?.throwIfAborted();
+  const speech=pcm.readInt16LE(i*2), bed=limitAmbience(ambience[i],speech/32768,music ? .12 : 0);
+  pcm.writeInt16LE(Math.max(-32768,Math.min(32767,Math.round(speech+bed*32768))),i*2);
+ }
  await run(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-y','-f','s16le','-ar','48000','-ac','1','-i','pipe:0','-c:a','pcm_s16le',output],{input:pcm,maxBytes:1024,signal});
 }

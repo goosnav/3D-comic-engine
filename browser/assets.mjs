@@ -1,4 +1,4 @@
-import {resolveScript} from '../src/contracts.mjs';
+import {resolveScript,requiredExtras} from '../src/contracts.mjs';
 const hash=async bytes=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
 const mime=p=>p.endsWith('.glb')?'model/gltf-binary':p.endsWith('.frames')?'application/octet-stream':p.endsWith('.mp4')?'video/mp4':p.endsWith('.ttf')?'font/ttf':'image/jpeg';
 function pathURL(p,base){
@@ -28,7 +28,7 @@ export async function verifyAssetCatalog(input,{script,onProgress=()=>{},baseURL
    if(!key||!catalog.assets[key])throw Error(`Missing actor asset: ${id}`);
    keys.add(key);
   }
-  for(const id of resolved.extras??[]){
+  for(const id of requiredExtras(resolved)){
    const extra=catalog.extras?.find(e=>e.id===id);
    if(!extra)throw Error(`Missing extra: ${id}`);
    if(extra.procedural)continue;

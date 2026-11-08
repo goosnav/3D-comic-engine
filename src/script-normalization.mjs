@@ -140,6 +140,7 @@ export function normalizePresentation(raw, vocabulary, { repair = true } = {}) {
   if (Array.isArray(script.lines) && script.lines.length <= 200) script.lines.forEach((line, index) => {
     if (!object(line)) return;
     const prefix = `lines[${index}]`;
+    if (line.cameo !== undefined) return;
     choice(line, 'shot', shots, 'auto', `${prefix}.shot`, shotAliases);
     gaze(line, prefix);
     if (line.action !== undefined) {

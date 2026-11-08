@@ -5,6 +5,7 @@ import { createPlayer } from '../src/player.mjs';
 import { prepareSpeech } from './voice.mjs';
 import { createRecorder, supportedRecordingTypes, supportedMP4RecordingTypes, isCompatibleMP4Type } from './recording.mjs';
 import { prepareMusic } from './music.mjs';
+import { renderAmbience, limitAmbience } from '../src/ambience.mjs';
 
 /** Catalog bytes must already be verified by the browser asset adapter.
  * The caller owns catalog blob URLs and any supplied AudioContext.
@@ -110,7 +111,7 @@ async function recordFilm({ canvas, script: input, catalog: inputCatalog, assetB
     const warmed = new Set();
     for (const event of timeline.events) {
       const kind = event.type === 'endcard' ? 'endcard' : event.type === 'source' ? 'source' : 'scene';
-      const key = `${kind}:${event.shot}:${event.speaker}:${event.bookState}`;
+      const key = `${kind}:${event.shot}:${event.speaker}:${event.bookState}:${event.cameo??''}:${event.behaviour??''}`;
       if (warmed.has(key)) continue;
       warmed.add(key);
       await drawFrame(Math.min(timeline.frames - 1, Math.ceil(event.start * timeline.fps)));
@@ -151,12 +152,30 @@ async function recordFilm({ canvas, script: input, catalog: inputCatalog, assetB
     });
     // Allocate every take before starting the real-time clock.
     let ended = 0;
+    let ambience = renderAmbience(timeline, { music: Boolean(musicBuffer), signal: controller.signal });
     for (const event of timeline.events.filter(event => event.type === 'line')) {
       const take = takes[event.id], buffer = context.createBuffer(1, take.samples.length, take.sampleRate);
       buffer.copyToChannel(take.samples, 0);
       const source = context.createBufferSource(); source.buffer = buffer; source.connect(destination);
       source.onended = () => { ended++; };
       sources.push({ source, start: event.start });
+      if (ambience) {
+        const offset = Math.round(event.start * 48000), length = Math.ceil(take.samples.length * 48000 / take.sampleRate);
+        for (let i = 0; i < length && offset + i < ambience.length; i++) {
+          if ((i & 4095) === 0) controller.signal.throwIfAborted();
+          const position = i * take.sampleRate / 48000, lo = Math.floor(position), hi = Math.min(lo + 1, take.samples.length - 1);
+          const speech = take.samples[lo] + (take.samples[hi] - take.samples[lo]) * (position - lo);
+          ambience[offset + i] = limitAmbience(ambience[offset + i], speech, musicBuffer ? .08 : 0);
+        }
+      }
+    }
+    if (ambience) {
+      const buffer = context.createBuffer(1, ambience.length, 48000);
+      buffer.copyToChannel(ambience, 0);
+      ambience = null; // The AudioBuffer owns its copy throughout recording.
+      const source = context.createBufferSource(); source.buffer = buffer; source.connect(destination);
+      source.onended = () => { ended++; };
+      sources.push({ source, start: 0 });
     }
     if (musicBuffer) {
       const source = context.createBufferSource(); source.buffer = musicBuffer; source.connect(destination);

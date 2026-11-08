@@ -95,7 +95,7 @@ export function repairScript(raw,options){
 }
 export function resolveScript(raw,catalog,options){
  raw=repairScript(raw,options);
- keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard','captions','extras','grade','dither','warnings','speechRate','book'], 'script');
+ keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard','captions','extras','grade','dither','warnings','speechRate','book','ambience'], 'script');
  if((raw.version??1)!==1)fail('version must be 1');
  if(typeof raw.title!=='string'||!raw.title.trim()||raw.title.length>160)fail('title must contain 1–160 characters');
  const {t,selected}=selection(raw.template,raw.comics??[],catalog);
@@ -108,6 +108,8 @@ export function resolveScript(raw,catalog,options){
  choice(captions.position,['top','bottom'],'captions.position');
  if(raw.captions?.colors!==undefined)keys(raw.captions.colors,['reader','friend'],'captions.colors');
  for(const [id,color] of Object.entries(captions.colors))if(typeof color!=='string'||!/^#[0-9a-f]{6}$/i.test(color))fail(`captions.colors.${id} must be a six-digit hex color`);
+ let ambience;
+ if(raw.ambience!==undefined){keys(raw.ambience,['mode','volume'],'ambience');ambience={mode:choice(raw.ambience.mode??'auto',['auto','off','room','laundromat'],'ambience.mode'),volume:number(raw.ambience.volume??.35,0,1,'ambience.volume')};}
  const speechRate=resolveSpeechRate(raw.speechRate);
  const product=choice(raw.product??'book2',['book2'],'product');
  const variants=catalog.variants?.map(v=>v.id)??['blue','rust','olive'];
@@ -129,6 +131,10 @@ export function resolveScript(raw,catalog,options){
  const used=new Set();
  const lines=raw.lines.map((line,i)=>{
   const label=`lines[${i}]`;object(line,label);
+  if(line.cameo!==undefined){
+   keys(line,['cameo','behaviour','camera','seconds','id'],label);
+   return {cameo:choice(line.cameo,catalog.extras?.map(e=>e.id)??[],label+'.cameo'),behaviour:choice(line.behaviour??'stand',['stand','walk'],label+'.behaviour'),camera:choice(line.camera??'static',['static','follow'],label+'.camera'),seconds:number(line.seconds??3,.3,30,label+'.seconds'),id:`beat-${i}`};
+  }
   if(!book&&(BOOK_ACTIONS.includes(line.action)||['book','source'].includes(line.shot)||line.comic!==undefined))fail(`${label}: book actions, book/source shots and comic references need a book template`);
   if(line.action!==undefined){
    keys(line,['action','comic','seconds','id','bookState','actor','target','gaze','shot'],label);choice(line.action,ACTIONS,label+'.action');
@@ -171,7 +177,7 @@ export function resolveScript(raw,catalog,options){
  if(raw.grade!==undefined)choice(raw.grade,GRADES,'grade');
  if(raw.dither!==undefined)choice(raw.dither,DITHERS,'dither');
  const warnings=scriptWarnings(raw);
- return {...(warnings.length?{warnings}:{}),version:1,template:t.id,...(!book?{book:false}:{}),title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,captions,speechRate,...(extras.length?{extras}:{}),...(raw.grade!==undefined?{grade:raw.grade}:{}),...(raw.dither!==undefined?{dither:raw.dither}:{}),cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
+ return {...(warnings.length?{warnings}:{}),version:1,template:t.id,...(!book?{book:false}:{}),title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,captions,speechRate,...(ambience?{ambience}:{}),...(extras.length?{extras}:{}),...(raw.grade!==undefined?{grade:raw.grade}:{}),...(raw.dither!==undefined?{dither:raw.dither}:{}),cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
 }
 export function selectScript(template,seed=randomInt(0,2147483647),catalog){
  const t=catalog.templates.find(t=>t.id===template);if(!t)fail('Unknown template');number(seed,0,4294967295,'seed');const rand=seeded(seed);
@@ -180,3 +186,5 @@ export function selectScript(template,seed=randomInt(0,2147483647),catalog){
  const comics=pool.slice(0,t.minComics).map(c=>c.id);
  return resolveScript({template,title:t.book===false?'New scene':'New comic conversation',comics,seed,lines:t.defaultLines??comics.map(comic=>({speaker:'reader',comic,text:'Write your commentary here.'}))},catalog);
 }
+
+export function requiredExtras(script){return [...new Set([...(script.extras??[]),...(script.lines??[]).map(line=>line.cameo).filter(Boolean)])];}

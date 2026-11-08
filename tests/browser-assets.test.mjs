@@ -66,3 +66,10 @@ test('browser source checker rejects changed pages and cross-origin paths',async
  catalog.assets.book.path='https://elsewhere.test/book.glb';
  await assert.rejects(verifyAssetCatalog(catalog,{baseURL:'https://local.test/',fetchImpl:async()=>{throw Error('must validate paths first');}}),/path|origin/i);
 });
+
+test('focus-only cameo verifies its GLB without opting into background cameos or fetching a book',async()=>{
+ const catalog=await loadCatalog(),script={template:'conversation',title:'Solo cameo',lines:[{cameo:'walker'}]};
+ const {snapshot,fetched}=await snapshotFor(catalog,{script});
+ try{const extra=catalog.extras.find(e=>e.id==='walker');assert.ok(fetched.includes(catalog.assets[extra.asset].path));assert.ok(!fetched.includes(catalog.assets.book.path));assert.equal(resolveScript(script,catalog).extras,undefined);}
+ finally{snapshot.dispose();}
+});

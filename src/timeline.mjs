@@ -1,5 +1,5 @@
 import {captionCues} from './speech-timing.mjs';
-import {seeded} from './contracts.mjs';
+import {seeded,requiredExtras} from './contracts.mjs';
 const RATE=48000;
 const ticks=s=>Math.round(s*RATE);
 export function compileTimeline(script,takes){
@@ -15,6 +15,7 @@ export function compileTimeline(script,takes){
  };
  const add=(event,duration)=>{const start=cursor;cursor+=ticks(duration);events.push({...event,start:start/RATE,end:cursor/RATE});};
  for(const line of script.lines){
+  if(line.cameo){finishCoverage();add({...line,type:'cameo'},line.seconds);continue;}
   if(line.action){finishCoverage();add({...line,type:'action',rail:line.action},line.seconds);continue;}
   if(!line.text?.trim()&&!line.audio){
    finishCoverage();
@@ -41,5 +42,6 @@ export function compileTimeline(script,takes){
  // An explicit first shot may cancel a zero-length automatic reveal.
  for(let i=events.length-1;i>=0;i--)if(events[i].end<=events[i].start)events.splice(i,1);
  if(script.endCard?.enabled)add({...script.endCard,id:'end-card',type:'endcard'},script.endCard.seconds);
- return {version:1,...script.output,...(script.book===false?{book:false}:{}),duration:cursor/RATE,frames:Math.ceil(cursor/RATE*script.output.fps),seed:script.seed,scene:script.scene,template:script.template,cast:script.cast.map(c=>c.id),characters:script.characters,captions:script.captions,product:script.product,endCard:script.endCard,...(script.extras?.length?{extras:script.extras}:{}),...(script.grade?{grade:script.grade}:{}),...(script.dither?{dither:script.dither}:{}),sources:script.comics,events};
+ const extras=requiredExtras(script);
+ return {version:1,...script.output,...(script.book===false?{book:false}:{}),duration:cursor/RATE,frames:Math.ceil(cursor/RATE*script.output.fps),seed:script.seed,scene:script.scene,template:script.template,cast:script.cast.map(c=>c.id),characters:script.characters,captions:script.captions,product:script.product,endCard:script.endCard,...(extras.length?{extras}:{}),...(script.lines.some(l=>l.cameo)?{backgroundExtras:script.extras??[]}:{}),...(script.ambience?{ambience:script.ambience}:{}),...(script.grade?{grade:script.grade}:{}),...(script.dither?{dither:script.dither}:{}),sources:script.comics,events};
 }

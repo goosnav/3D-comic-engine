@@ -249,7 +249,8 @@ export function validate(timeline, catalog) {
     if (!selected.has(id)) throw new Error(`Source is not selected in timeline: ${id}`);
   }
   for (const e of timeline.events) {
-    if (!['line', 'source', 'action', 'hold', 'endcard'].includes(e.type) || !Number.isFinite(e.start) || !Number.isFinite(e.end) || e.start < 0 || e.end <= e.start) throw new Error('Invalid timeline event');
+    if (!['line', 'source', 'action', 'hold', 'endcard', 'cameo'].includes(e.type) || !Number.isFinite(e.start) || !Number.isFinite(e.end) || e.start < 0 || e.end <= e.start) throw new Error('Invalid timeline event');
+    if(e.type==='cameo'&&(!(timeline.extras??[]).includes(e.cameo)||!['stand','walk'].includes(e.behaviour)||!['static','follow'].includes(e.camera)))throw new Error('Invalid cameo focus event');
     if (e.speaker && !timeline.cast.includes(e.speaker)) throw new Error(`Unknown speaker: ${e.speaker}`);
     if (e.type === 'source' && !e.comic) throw new Error('Source events need a catalog comic');
     let prev = -Infinity;
@@ -273,6 +274,7 @@ export function createSceneEvaluator({timeline, catalog, scene, camera, environm
     if (environmentRoot) scene.add(environmentRoot);
     else if(timeline.scene==='studio')buildStudio(scene);
     else buildSet(scene, timeline.scene);
+    const supports=[];
     const actors = timeline.cast.map((id, i) => {
       const actor = createActor(actorModels.get(selections[i].asset.path), id, i);
       actor.variant = selections[i].variant;
@@ -286,7 +288,7 @@ export function createSceneEvaluator({timeline, catalog, scene, camera, environm
         const height = .45, crate = new THREE.Mesh(new THREE.BoxGeometry(.5, height, .42), material(0x8a6239));
         crate.name = `${id}-crate`; crate.castShadow = crate.receiveShadow = true;
         crate.position.set(actor.root.position.x, height / 2, actor.root.position.z); crate.rotation.y = actor.root.rotation.y;
-        scene.add(crate); actor.root.position.y = height;
+        scene.add(crate); supports.push(crate); actor.root.position.y = height;
       }
       scene.add(actor.root); return actor;
     });
@@ -300,6 +302,7 @@ export function createSceneEvaluator({timeline, catalog, scene, camera, environm
       const time = frame / timeline.fps;
     const current = timeline.events.filter(e => e.start <= time && time < e.end);
     const endEvent = current.find(e => e.type === 'endcard' && endCardFields(timeline, e).enabled);
+    const cameo=current.find(e=>e.type==='cameo');
     const active = current.find(e => e.type === 'line' || e.type === 'hold') || null;
     const sourceEvent = current.find(e => e.type === 'source') || (active?.shot === 'source' ? active : null);
     const source = sourceEvent ? comics.get(sourceEvent.comic) : null;
@@ -325,8 +328,13 @@ export function createSceneEvaluator({timeline, catalog, scene, camera, environm
       seed: timeline.seed || 0 }));
     if(action?.rail!=='press_button')stunts.apply(action, time);
     button?.apply(action,time);
-    extras.apply(time, action, camera);
+    extras.apply(time, action, camera, cameo);
     book.apply(time, reader);
+    for(const actor of actors)actor.root.visible=!cameo;
+    book.root.visible=!cameo;
+    for(const support of supports)support.visible=!cameo;
+    for(const name of ['button-pedestal','interaction-button']){const prop=scene.getObjectByName(name);if(prop)prop.visible=!cameo;}
+    if(cameo)shot=`cameo-${cameo.camera}`;
     scene.updateMatrixWorld(true);
       camera.updateMatrixWorld(true);
       return {time, active, source, shot, endEvent};
