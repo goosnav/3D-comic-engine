@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import {renderSettings} from './render-settings.mjs';
 import path from 'node:path';
 import {chromium} from 'playwright';
 import {digest} from './library.mjs';
@@ -12,6 +13,7 @@ export async function probeVideo(file){return JSON.parse((await run(process.env.
 const GPU_ARGS=['--use-angle=vulkan','--enable-features=Vulkan','--ignore-gpu-blocklist','--disable-dev-shm-usage'];
 const SOFTWARE_ARGS=['--enable-unsafe-swiftshader','--disable-dev-shm-usage'];
 export async function captureVideo({dir,id,timeline,catalog,inputKey,backend,allowFallback=true,signal,progress=()=>{}}){
+ const quality=renderSettings(timeline);
  const encodeRun=(command,args,options={})=>run(command,args,{...options,signal}).catch(e=>{throw Object.assign(e,{stage:'encoding'});});
  const server=await startServer({outputRoot:path.dirname(dir),renderCatalog:catalog}).catch(e=>{throw Object.assign(e,{stage:/EACCES|EPERM/.test(e.code)?'permissions':'renderer startup'});});let browser,page,cdp,useGPU=backend?backend==='chromium-gpu':process.env.THEATRE_GPU!=='0';
  const closeBrowser=async()=>{if(browser){const previous=browser;browser=null;await withDeadline(previous.close(),5000,'Browser shutdown').catch(()=>{});}};
@@ -55,7 +57,7 @@ export async function captureVideo({dir,id,timeline,catalog,inputKey,backend,all
        await capture(path.join(framesDir,`frame-${String(f-start).padStart(6,'0')}.png`));
        if((f-start)%timeline.fps===0)await progress(`Rendering frame ${f+1}/${timeline.frames} · segment ${index+1}/${ranges.length}`);
       }
-      await encodeRun(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-y','-framerate',String(timeline.fps),'-i',path.join(framesDir,'frame-%06d.png'),'-frames:v',String(end-start),'-c:v','libx264','-preset','veryfast','-crf','19','-pix_fmt','yuv420p','-threads','2','-an',mp4]);
+      await encodeRun(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-y','-framerate',String(timeline.fps),'-i',path.join(framesDir,'frame-%06d.png'),'-frames:v',String(end-start),'-c:v','libx264','-preset',quality.preset,'-crf',String(quality.crf),'-pix_fmt','yuv420p','-threads','2','-an',mp4]);
       const p=await probeVideo(mp4),v=p.streams.find(s=>s.codec_type==='video');if(Number(v?.nb_read_frames)!==end-start)throw Error('Segment frame count mismatch');
       await atomicJSON(receipt,{inputKey,start,end,sha256:digest(await fs.readFile(mp4))});await fs.rm(framesDir,{recursive:true});error=null;break;
      }catch(e){error=e;if(signal?.aborted||/ffmpeg|encoding|permission|Operation not permitted/i.test(e.message))throw e;if(e.stage==='encoding')throw e;}
@@ -70,6 +72,6 @@ export async function captureVideo({dir,id,timeline,catalog,inputKey,backend,all
   const p=await probeVideo(partial),v=p.streams.find(s=>s.codec_type==='video'),a=p.streams.find(s=>s.codec_type==='audio');
   if(!a||v?.width!==timeline.width||v?.height!==timeline.height||Number(v?.nb_read_frames)!==timeline.frames||Math.abs(Number(p.format.duration)-timeline.frames/timeline.fps)>.1)throw Error('Final audio/video verification failed');
   await encodeRun(process.env.FFMPEG??'ffmpeg',['-nostdin','-v','error','-i',partial,'-f','null','-'],{timeout:120000});
-  signal?.throwIfAborted();await fs.rename(partial,dest);return {backend:useGPU?'chromium-gpu':'chromium-software',format:'mp4',path:dest,sha256:digest(await fs.readFile(dest)),frames:timeline.frames,duration:Number(p.format.duration),width:v.width,height:v.height,sources:timeline.sources,sourceLock:catalog.comics.filter(c=>timeline.sources.includes(c.id)).map(c=>({id:c.id,sha256:c.sha256})),delivery:'local-only'};
+  signal?.throwIfAborted();await fs.rename(partial,dest);return {renderQuality:quality.quality,backend:useGPU?'chromium-gpu':'chromium-software',format:'mp4',path:dest,sha256:digest(await fs.readFile(dest)),frames:timeline.frames,duration:Number(p.format.duration),width:v.width,height:v.height,sources:timeline.sources,sourceLock:catalog.comics.filter(c=>timeline.sources.includes(c.id)).map(c=>({id:c.id,sha256:c.sha256})),delivery:'local-only'};
  }finally{await closeBrowser();await server.close();}
 }

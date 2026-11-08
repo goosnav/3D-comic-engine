@@ -1,3 +1,4 @@
+import {renderSettings} from '../src/render-settings.mjs';
 import {invalidateBrowserCapabilities} from './capabilities.mjs';
 import { resolveScript } from '../src/contracts.mjs';
 import { compileTimeline } from '../src/timeline.mjs';
@@ -134,7 +135,7 @@ async function recordFilm({ canvas, script: input, catalog: inputCatalog, assetB
     let bytes = 0, resolveStart, resolveStop;
     const started = new Promise(resolve => { resolveStart = resolve; });
     stopped = new Promise(resolve => { resolveStop = resolve; });
-    try { recorder = createRecorder(stream, MediaRecorder, [requestedMime]); }
+    try { recorder = createRecorder(stream, MediaRecorder, [requestedMime],renderSettings(timeline)); }
     catch (error) { throw new RecorderStartupError(error.message, { cause: error }); }
     let recorderStarted = false;
     listen(recorder, 'start', () => { recorderStarted = true; resolveStart(); });
@@ -206,7 +207,7 @@ async function recordFilm({ canvas, script: input, catalog: inputCatalog, assetB
       const frame = async () => {
         try {
           if (failure || finished) return;
-          const elapsed = Math.max(0, context.currentTime - origin);
+          let elapsed = Math.max(0, context.currentTime - origin);
           const index = Math.min(timeline.frames - 1, Math.floor(elapsed * timeline.fps));
           if (index !== lastFrame) {
             // Backpressure: finish this draw before submitting another. Slow
@@ -216,6 +217,9 @@ async function recordFilm({ canvas, script: input, catalog: inputCatalog, assetB
             video.getVideoTracks()[0].requestFrame?.();
           }
           if (failure || finished) return;
+          // A slow draw can cross the audio deadline. Rechecking here avoids
+          // scheduling another expensive frame using a stale pre-draw clock.
+          elapsed = Math.max(0, context.currentTime - origin);
           if (performance.now() - lastProgress >= 250) {
             lastProgress = performance.now();
             report('recording', Math.min(1, elapsed / duration), `Recording ${Math.min(100, Math.round(elapsed / duration * 100))}% — keep this tab visible`);

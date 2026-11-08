@@ -116,6 +116,19 @@
             <div><label for="output-width">Width (pixels)</label><input id="output-width" type="number" min="128" max="1920" step="2"></div>
             <div><label for="output-height">Height (pixels)</label><input id="output-height" type="number" min="128" max="1920" step="2"></div>
           </div>
+          <label for="render-quality">Render quality</label>
+          <select id="render-quality" aria-describedby="render-quality-help"><option value="standard">Standard · quickest</option><option value="high">High · smoother, slower</option><option value="ultra">Ultra · cleanest, much slower</option></select>
+          <p id="render-quality-help" class="hint"></p>
+          <label class="check-label" for="cartoon-enabled"><input id="cartoon-enabled" type="checkbox">Digital cartoon look</label>
+          <p class="hint">Pixelated edges, dark outlines and flatter shading. Captions stay readable. Toggle off for the original look.</p>
+          <div id="cartoon-controls" hidden>
+            <div class="field-pair">
+              <div><label for="cartoon-pixelSize">Pixel size</label><input id="cartoon-pixelSize" type="number" min="1" max="12" step="1" value="4" aria-describedby="cartoon-pixel-help"></div>
+              <div><label for="cartoon-outline">Outline strength</label><input id="cartoon-outline" type="number" min="0" max="2" step=".1" value="1"></div>
+            </div>
+            <label for="cartoon-shades">Shading levels</label><select id="cartoon-shades"><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>8</option><option>12</option></select>
+            <p id="cartoon-pixel-help" class="hint">Larger pixels and fewer shading levels make the picture more graphic. Pixel size scales with output resolution; 0 outline removes the edge ink.</p>
+          </div>
           <details class="output-options"><summary>Frame rate &amp; look</summary>
           <label for="output-fps">Frames per second</label><select id="output-fps"><option>12</option><option>24</option><option>30</option></select>
           <label for="grade">Color grade</label><select id="grade"><option value="muted">Muted · slightly drab (default)</option><option value="film">Film · dusty, faded, grainy</option><option value="vivid">Vivid · original bright colours</option></select>

@@ -23,10 +23,11 @@ export function isCompatibleMP4Type(type) {
   return values.length === 2 && values.some(codec => /^avc1(?:\.[a-f0-9]+)?$/.test(codec)) && values.includes('mp4a.40.2');
 }
 
-export function createRecorder(stream, Recorder = globalThis.MediaRecorder, types = supportedRecordingTypes(Recorder)) {
+export function createRecorder(stream, Recorder = globalThis.MediaRecorder, types = supportedRecordingTypes(Recorder), {bitrateScale=1} = {}) {
+  if(!Number.isFinite(bitrateScale)||bitrateScale<1||bitrateScale>2)throw Error('Invalid recording quality');
   const failures = [];
   for (const mimeType of types) {
-    try { return new Recorder(stream, { mimeType, videoBitsPerSecond: 2500000, audioBitsPerSecond: 128000 }); }
+    try { return new Recorder(stream, { mimeType, videoBitsPerSecond: Math.round(2500000*bitrateScale), audioBitsPerSecond: 128000 }); }
     catch (error) { failures.push(`${mimeType}: ${error.message}`); }
   }
   throw new Error(`No supported audio/video recording codec could start. Try a current browser or desktop export.${failures.length ? ' ' + failures.join('; ') : ''}`);

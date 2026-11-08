@@ -9,8 +9,21 @@ with open(os.path.join(job_dir, 'scene.json')) as f: job=json.load(f)
 if job['version'] != 1 or job['kind'] != 'goosnav-evaluated-scene': raise ValueError('Unsupported CPU job version')
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene=bpy.context.scene
-scene.render.engine='CYCLES'; scene.cycles.device='CPU'; scene.cycles.samples=int(os.environ.get('THEATRE_CPU_SAMPLES','8'))
+settings=job.get('renderSettings',{})
+override=os.environ.get('THEATRE_CPU_SAMPLES')
+try:
+    samples=int(override) if override is not None else settings.get('cpuSamples',8)
+except (ValueError, TypeError):
+    raise ValueError('THEATRE_CPU_SAMPLES must be an integer from 1 to 4096')
+if not isinstance(samples,int) or isinstance(samples,bool) or not 1 <= samples <= 4096:
+    raise ValueError('THEATRE_CPU_SAMPLES must be an integer from 1 to 4096')
+scene.render.engine='CYCLES'; scene.cycles.device='CPU'; scene.cycles.samples=samples
+# Standard keeps Blender's original 12-bounce budget; quality raises samples.
+scene.cycles.max_bounces=settings.get('bounces',12)
 scene.cycles.use_denoising=False
+render_info={'quality':settings.get('quality','standard'),'cpuSamples':scene.cycles.samples,'bounces':scene.cycles.max_bounces,'cpuSamplesOverridden':override is not None}
+with open(os.path.join(job_dir,'render-info.json'),'w') as f:json.dump(render_info,f)
+print('CPU_SETTINGS '+json.dumps(render_info),flush=True)
 scene.render.threads_mode='FIXED'; scene.render.threads=int(os.environ.get('THEATRE_CPU_THREADS','4'))
 scene.render.resolution_x=job['timeline']['width']; scene.render.resolution_y=job['timeline']['height']; scene.render.resolution_percentage=100
 scene.render.image_settings.file_format='PNG'; scene.render.film_transparent=False
@@ -57,7 +70,7 @@ for f,frame in enumerate(job['frames']):
     if os.path.exists(target) and os.path.exists(receipt):
         with open(receipt) as r: old=json.load(r)
         with open(target,'rb') as r: digest=hashlib.sha256(r.read()).hexdigest()
-        if old.get('inputKey')==job['inputKey'] and old.get('sha256')==digest:continue
+        if old.get('inputKey')==job['inputKey'] and old.get('sha256')==digest and old.get('renderSettings')==render_info:continue
     with open(os.path.join(job_dir,'vertices-%06d.bin'%f),'rb') as r: raw=r.read()
     if hashlib.sha256(raw).hexdigest()!=frame['sha256']:raise ValueError('CPU frame integrity failure')
     offset=0
@@ -70,5 +83,5 @@ for f,frame in enumerate(job['frames']):
     scene.render.filepath=target+'.partial.png';bpy.ops.render.render(write_still=True)
     os.replace(scene.render.filepath,target)
     with open(target,'rb') as r:digest=hashlib.sha256(r.read()).hexdigest()
-    with open(receipt,'w') as r:json.dump({'inputKey':job['inputKey'],'sha256':digest},r)
+    with open(receipt,'w') as r:json.dump({'inputKey':job['inputKey'],'sha256':digest,'renderSettings':render_info},r)
     print('CPU_FRAME',f,flush=True)

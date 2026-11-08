@@ -185,6 +185,8 @@ free dependency downloads; rendering does not contact external services.
 - Comic cast: Little Billy (spinning propeller cap) and the gooby-hat guy as castable characters.
 - Background cameos: an orange-billed goose, Glove Bot, the two-legged walker and the shoe-hat creature. **Script → Add cameo shot** gives any cameo a solo cutaway: stand or walk, static or following camera, 0.3–30 seconds. Background toggles remain independent.
 - **Export → Ambience** adds quiet room tone by default, with a laundromat option, level slider and Off. It softens under measured dialogue; Auto yields to attached music. These original procedural sounds work offline in both renderers.
+- **Export → Picture & sound → Digital cartoon look** adds optional pixelation, outlines and flatter shading; pixel size, outline strength and shading levels are adjustable. Off retains the original look.
+- **Render quality: Standard / High / Ultra** increases actual rendering and encoding work. Browser/Chromium uses larger scene buffers and sharper shadows; local Blender CPU uses 8 / 64 / 256 samples per frame. For long offline renders, select **Blender CPU (offline)** in the local GUI, or download a **Local render job** from the hosted site.
 - Colour grading: a slightly drab `muted` look by default, plus `film` and `vivid`; page inserts stay exact.
 - Ordered dither over picture, captions and end card for a slightly crunchy digital look (`subtle`, `crunchy`, `off`).
 - Automatic chaos scripts from a seed (`chaos` command / **Shuffle script** button), no AI.

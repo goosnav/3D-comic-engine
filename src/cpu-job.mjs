@@ -8,6 +8,7 @@ import {createCaptions} from './captions.mjs';
 import {createEndcard,endCardFields} from './endcard.mjs';
 import {parseFramePack} from './endcard-frames.mjs';
 import {atomicJSON} from './jobs.mjs';
+import {renderSettings} from './render-settings.mjs';
 export const CPU_WARNINGS = ['Scene lights are approximated by three area lights and ambient illumination; per-scene practical lights are not reproduced.', 'PBR base color, texture, opacity, roughness and metalness are transferred; normal, occlusion, emissive textures, transmission, clearcoat and custom shaders are not reproduced.','Cycles CPU lighting and material response differ from Three.js; stage grade, grain and ordered dither are not reproduced.', 'Rig, morphs, procedural props and stunts are evaluated in JavaScript and baked to mesh samples; Blender does not reimplement their animation.', 'Endcard uses the bundled 540px frame pack; captions use native canvas font rasterization.'];
 const matrix=o=>o.matrixWorld.toArray();
 export async function writeCPUJob({dir,timeline,catalog,inputKey,progress=()=>{},signal}) {
@@ -44,7 +45,7 @@ export async function writeCPUJob({dir,timeline,catalog,inputKey,progress=()=>{}
     const g=o.geometry,positions=Array.from(g.attributes.position.array),indices=g.index?Array.from(g.index.array):Array.from({length:positions.length/3},(_,i)=>i);
     definitions.push({name:o.name,positions,indices,uv:g.attributes.uv?Array.from(g.attributes.uv.array):null,material:await mat(o.material),dynamic:!!o.isSkinnedMesh||!!o.morphTargetInfluences||o.material.name==='eye_white'||o.material.name==='eye_black'});
   }
-  const job={version:1,kind:'goosnav-evaluated-scene',coordinates:'right-handed Y-up meters; column-major matrices; camera -Z, +Y up',inputKey,timeline,materials,meshes:definitions,warnings:CPU_WARNINGS,frames:[]};
+  const job={version:1,kind:'goosnav-evaluated-scene',coordinates:'right-handed Y-up meters; column-major matrices; camera -Z, +Y up',inputKey,timeline,renderSettings:renderSettings(timeline),materials,meshes:definitions,warnings:CPU_WARNINGS,frames:[]};
   const vector=new THREE.Vector3();
   for(let f=0;f<timeline.frames;f++){
     signal?.throwIfAborted();const state=stage.evaluate(f),name=String(f).padStart(6,'0');

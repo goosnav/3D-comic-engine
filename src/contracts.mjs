@@ -95,7 +95,7 @@ export function repairScript(raw,options){
 }
 export function resolveScript(raw,catalog,options){
  raw=repairScript(raw,options);
- keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard','captions','extras','grade','dither','warnings','speechRate','book','ambience'], 'script');
+ keys(raw,['version','template','title','comics','seed','scene','lines','output','sourceLock','cast','characters','product','endCard','captions','extras','grade','dither','warnings','speechRate','book','ambience','cartoon','renderQuality'], 'script');
  if((raw.version??1)!==1)fail('version must be 1');
  if(typeof raw.title!=='string'||!raw.title.trim()||raw.title.length>160)fail('title must contain 1–160 characters');
  const {t,selected}=selection(raw.template,raw.comics??[],catalog);
@@ -108,6 +108,13 @@ export function resolveScript(raw,catalog,options){
  choice(captions.position,['top','bottom'],'captions.position');
  if(raw.captions?.colors!==undefined)keys(raw.captions.colors,['reader','friend'],'captions.colors');
  for(const [id,color] of Object.entries(captions.colors))if(typeof color!=='string'||!/^#[0-9a-f]{6}$/i.test(color))fail(`captions.colors.${id} must be a six-digit hex color`);
+ let cartoon;
+ if(raw.cartoon!==undefined){
+  keys(raw.cartoon,['enabled','pixelSize','outline','shades'],'cartoon');
+  cartoon={enabled:raw.cartoon.enabled??false,pixelSize:number(raw.cartoon.pixelSize??4,1,12,'cartoon.pixelSize'),outline:number(raw.cartoon.outline??1,0,2,'cartoon.outline'),shades:number(raw.cartoon.shades??5,2,12,'cartoon.shades')};
+  if(typeof cartoon.enabled!=='boolean'||!Number.isInteger(cartoon.pixelSize)||!Number.isInteger(cartoon.shades))fail('cartoon needs boolean enabled and integer pixelSize/shades');
+ }
+ if(raw.renderQuality!==undefined)choice(raw.renderQuality,['standard','high','ultra'],'renderQuality');
  let ambience;
  if(raw.ambience!==undefined){keys(raw.ambience,['mode','volume'],'ambience');ambience={mode:choice(raw.ambience.mode??'auto',['auto','off','room','laundromat'],'ambience.mode'),volume:number(raw.ambience.volume??.35,0,1,'ambience.volume')};}
  const speechRate=resolveSpeechRate(raw.speechRate);
@@ -177,7 +184,7 @@ export function resolveScript(raw,catalog,options){
  if(raw.grade!==undefined)choice(raw.grade,GRADES,'grade');
  if(raw.dither!==undefined)choice(raw.dither,DITHERS,'dither');
  const warnings=scriptWarnings(raw);
- return {...(warnings.length?{warnings}:{}),version:1,template:t.id,...(!book?{book:false}:{}),title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,captions,speechRate,...(ambience?{ambience}:{}),...(extras.length?{extras}:{}),...(raw.grade!==undefined?{grade:raw.grade}:{}),...(raw.dither!==undefined?{dither:raw.dither}:{}),cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
+ return {...(warnings.length?{warnings}:{}),version:1,template:t.id,...(!book?{book:false}:{}),title:raw.title.trim(),comics:[...raw.comics],seed,scene,lines,output,sourceLock,characters,product,endCard,captions,speechRate,...(ambience?{ambience}:{}),...(cartoon?{cartoon}:{}),...(raw.renderQuality?{renderQuality:raw.renderQuality}:{}),...(extras.length?{extras}:{}),...(raw.grade!==undefined?{grade:raw.grade}:{}),...(raw.dither!==undefined?{dither:raw.dither}:{}),cast:t.speakers.map(id=>({id,voice:id==='reader'?'am_onyx':'am_puck'}))};
 }
 export function selectScript(template,seed=randomInt(0,2147483647),catalog){
  const t=catalog.templates.find(t=>t.id===template);if(!t)fail('Unknown template');number(seed,0,4294967295,'seed');const rand=seeded(seed);

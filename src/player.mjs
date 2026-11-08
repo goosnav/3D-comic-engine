@@ -1,6 +1,8 @@
 import {createSceneEvaluator, sceneAsset, actorAsset, validate} from './scene-evaluator.mjs';
 export {frameCamera, headgearFraming} from './scene-evaluator.mjs';
 import * as THREE from 'three';
+import {renderSettings} from './render-settings.mjs';
+import {cartoonSettings} from './digital-look.mjs';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createCaptions } from './captions.mjs';
 import { createGrade, createFlatDitherMaterial, DEFAULT_GRADE, DEFAULT_DITHER } from './grade.mjs';
@@ -114,9 +116,11 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    grade = createGrade(renderer, timeline.width, timeline.height, { grade: timeline.grade ?? DEFAULT_GRADE, dither: timeline.dither ?? DEFAULT_DITHER });
+    grade = createGrade(renderer, timeline.width, timeline.height, { grade: timeline.grade ?? DEFAULT_GRADE, dither: timeline.dither ?? DEFAULT_DITHER,cartoon:timeline.cartoon,renderQuality:timeline.renderQuality });
     evaluator = createSceneEvaluator({timeline, catalog, scene, camera, environmentRoot, actorModels, selections, extraModels, bookGLTF, comics});
     ({actors, extras, stunts, book} = evaluator);
+    const quality=renderSettings(timeline);
+    if(quality.quality!=='standard')scene.traverse(o=>{if(o.isLight&&o.shadow)o.shadow.mapSize.set(quality.shadowSize,quality.shadowSize);});
     captions = createCaptions(timeline.width, timeline.height, timeline.captions, timeline.dither ?? DEFAULT_DITHER);
     sourcePlane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ toneMapped: false }));
     insertScene.background = new THREE.Color(0xeee9df); insertScene.add(sourcePlane);
@@ -173,6 +177,7 @@ export async function createPlayer(canvas, { timeline: input, catalog, assetBase
 
   function diagnostics() {
     return structuredClone({ frame, time: frame === null ? null : frame / timeline.fps,
+      rendering:{...renderSettings(timeline),cartoon:cartoonSettings(timeline.cartoon,timeline.width,timeline.height)},
       scene: timeline.scene, grade: grade.id, dither: grade.dither, shot, activeEvent: active?.id || null,
       source: source ? { id: source.id, path: source.path, sha256: source.sha256, pdfPage: source.pdfPage, fit: shot === 'source' ? 'contain' : 'physical-page' } : null,
       endCard: endcard?.diagnostics() || null,

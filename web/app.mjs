@@ -302,6 +302,14 @@ function structureErrors(script) {
     }
     if (line.comic !== undefined && (typeof line.comic !== 'string' || !comicFor(line.comic))) errors.push(`${at}comic must be a known catalog ID.`);
   });
+  if(script.renderQuality!==undefined&&!['standard','high','ultra'].includes(script.renderQuality))errors.push('Render quality must be Standard, High or Ultra.');
+  if(script.cartoon!==undefined){
+    if(!object(script.cartoon))errors.push('cartoon must be an object.');
+    else {
+      if(script.cartoon.enabled!==undefined&&typeof script.cartoon.enabled!=='boolean')errors.push('cartoon.enabled must be true or false.');
+      for(const [key,min,max,integer]of [['pixelSize',1,12,true],['outline',0,2,false],['shades',2,12,true]]){const n=script.cartoon[key];if(n!==undefined&&(!Number.isFinite(n)||n<min||n>max||(integer&&!Number.isInteger(n))))errors.push(`cartoon.${key} must be ${min}–${max}${integer?' (whole number)':''}.`);}
+    }
+  }
   if(script.ambience!==undefined){
     if(!object(script.ambience))errors.push('ambience must be an object.');
     else {
@@ -633,6 +641,15 @@ function renderOutput() {
     $(`captions-${id}`).value=captions.colors[id];
     $(`captions-${id}`).disabled=!templateFor(state.script)?.speakers.includes(id);
   }
+  $('render-quality').value=state.script.renderQuality??'standard';
+  const quality=state.script.renderQuality??'standard',samples={standard:8,high:64,ultra:256}[quality];
+  $('render-quality-help').textContent=browserMode
+    ? `Browser exports use ${quality==='standard'?'normal':quality==='high'?'1.5×':'2×'} scene sampling and remain real-time. For much slower, cleaner renders, save a Local render job and render with Blender CPU (${samples} samples per frame). Higher quality needs more memory. Output size and timing stay the same.`
+    : `WebGL uses ${quality==='standard'?'normal':quality==='high'?'1.5×':'2×'} scene sampling. For long offline renders choose Blender CPU below: ${samples} samples per frame. High and Ultra reduce noise at a substantial time cost. Output size and timing stay the same.`;
+  const cartoon={enabled:false,pixelSize:4,outline:1,shades:5,...state.script.cartoon};
+  $('cartoon-enabled').checked=cartoon.enabled;$('cartoon-controls').hidden=!cartoon.enabled;
+  for(const key of ['pixelSize','outline'])$(`cartoon-${key}`).value=cartoon[key];
+  choose($('cartoon-shades'),Array.from({length:11},(_,i)=>String(i+2)),String(cartoon.shades));
   $('ambience-mode').value=state.script.ambience?.mode??'auto';
   $('ambience-volume').value=state.script.ambience?.volume??.35;
   $('ambience-volume').disabled=$('ambience-mode').value==='off';
@@ -797,6 +814,9 @@ $('output-preset').addEventListener('change', () => {
 for (const key of ['width','height','fps']) $(`output-${key}`).addEventListener('change', () => {
   state.script.output = {...state.script.output, [key]:Number($(`output-${key}`).value)}; changed();
 });
+$('render-quality').addEventListener('change',()=>{state.script.renderQuality=$('render-quality').value;changed();renderOutput();});
+$('cartoon-enabled').addEventListener('change',()=>{state.script.cartoon={pixelSize:4,outline:1,shades:5,...state.script.cartoon,enabled:$('cartoon-enabled').checked};changed();renderOutput();});
+for(const key of ['pixelSize','outline','shades'])$(`cartoon-${key}`).addEventListener('change',()=>{state.script.cartoon={...state.script.cartoon,[key]:Number($(`cartoon-${key}`).value)};changed();});
 $('grade').addEventListener('change', () => {
   if ($('grade').value === 'muted') delete state.script.grade; else state.script.grade = $('grade').value;
   changed();
@@ -833,7 +853,7 @@ $('download-render-job').addEventListener('click', async () => {
     const job=await makeRenderJob(state.script,state.catalog,{music:$('background-music').files[0]});
     const url=URL.createObjectURL(new Blob([JSON.stringify(job)],{type:'application/json'}));
     const link=el('a');link.href=url;link.download='comic.render-job.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-    message('Render job saved. In a matching local checkout: node bin/theatre.mjs render comic.render-job.json --backend auto');
+    message(`Render job saved. In a matching local checkout: node bin/theatre.mjs render comic.render-job.json --backend ${state.script.renderQuality&&state.script.renderQuality!=='standard'?'blender-cpu':'auto'}`);
   } catch(error){message(error.message,true);}
 });
 $('download-json').addEventListener('click', () => {

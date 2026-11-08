@@ -74,7 +74,7 @@ test('strict MP4 export retries both H.264 profiles and rejects without recordin
       return { error: error.message, attempts, state: context.state, tracks: tracks.map(track => track.readyState) };
     } finally { window.MediaRecorder = NativeRecorder; canvas.captureStream = capture; await context.close(); }
   }, { script: shortScript, catalog });
-  assert.equal(result.attempts.length, 2);
+  assert.equal(result.attempts.length, 2, result.error);
   assert.ok(result.attempts.every(type => type.startsWith('video/mp4;codecs=avc1')));
   assert.match(result.error, /H\.264\/AAC MP4.*desktop/i);
   assert.equal(result.state, 'running', 'retries preserve the batch-owned audio context');
@@ -259,6 +259,26 @@ test('mid-record cancellation, hidden tab, and audio suspension reject and stop 
     assert.deepEqual(result.tracks, ['ended']);
     assert.notEqual(result.context, 'closed', 'caller context is not closed on failure');
   }
+});
+
+test('a slow frame crossing the audio deadline does not schedule another expensive draw', { timeout: 60000 }, async t => {
+  const {page,catalog}=await browserFixture(t,entries);
+  const result=await page.evaluate(async({script,catalog})=>{
+    const {exportFilm}=await import('/browser/export.mjs');
+    const canvas=document.querySelector('canvas'),original=canvas.toBlob.bind(canvas);
+    let recording=false,draws=0;
+    canvas.toBlob=(callback,...args)=>original(blob=>{
+      if(!recording)return callback(blob);
+      draws++;setTimeout(()=>callback(blob),3000);
+    },...args);
+    try {
+      const result=await exportFilm({canvas,script,catalog,onProgress:(_,p)=>{if(p.phase==='recording')recording=true;}});
+      return {draws,bytes:result.blob.size,duration:result.timeline.duration};
+    }finally{canvas.toBlob=original;}
+  },{script:{...shortScript,output:{width:128,height:128,fps:12}},catalog});
+  assert.ok(result.duration<3,'readback delay must cross the timeline deadline');
+  assert.equal(result.draws,1,'completion must use the post-draw audio clock');
+  assert.ok(result.bytes>10000);
 });
 
 test('a busy main thread may drop frames without failing when the audio clock keeps advancing', { timeout: 60000 }, async t => {

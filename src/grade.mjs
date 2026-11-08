@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import {renderSettings} from './render-settings.mjs';
+import {cartoonSettings,DIGITAL_GLSL} from './digital-look.mjs';
 
 // Final look of the video, in one fullscreen pass:
 //   1. tone mapping (3D stage only),
@@ -80,12 +82,15 @@ export function createFlatDitherMaterial(map, width, height, id = DEFAULT_DITHER
   });
 }
 
-const fragmentShader = `
+// Compile the optional treatment out entirely when Off, preserving the old
+// fragment workload on software/mobile GPUs as well as the original picture.
+const fragmentShader = cartoon => `
 uniform sampler2D tScene;
 uniform float saturation, contrast, vignette, grain, frame, applyLook, levels, ditherScale;
 uniform vec3 black, white, tint, shadowTint;
 uniform vec2 resolution;
 varying vec2 vUv;
+${cartoon ? DIGITAL_GLSL : ''}
 float hash(vec2 p) { p = fract(p * vec2(443.897, 441.423)); p += dot(p, p.yx + 19.19); return fract((p.x + p.y) * p.x); }
 float bayer(vec2 p) {
   int i = int(mod(p.y, 4.0)) * 4 + int(mod(p.x, 4.0));
@@ -93,7 +98,7 @@ float bayer(vec2 p) {
   return 0.0;
 }
 void main() {
-  vec3 c = texture2D(tScene, vUv).rgb;
+  ${cartoon ? 'vec2 sampleUV=(floor(vUv*resolution/cartoonPixels)+.5)*cartoonPixels/resolution;\n  vec3 c = texture2D(tScene, sampleUV).rgb;' : 'vec3 c = texture2D(tScene, vUv).rgb;'}
   #ifdef TONE_MAPPING
   if (applyLook > .5) c = toneMapping(c);
   #endif
@@ -108,23 +113,27 @@ void main() {
     c *= 1.0 - vignette * smoothstep(.35, 1.05, length(d) * 1.3);
     c += (hash(vUv * resolution + frame * 17.0) - .5) * grain;
   }
-  if (levels > 0.0) {
+  ${cartoon ? 'if(applyLook>.5)c=digitalCartoon(c,sampleUV);' : ''}
+  if (levels > 0.0${cartoon ? ' && applyLook<.5' : ''}) {
     float t = (bayer(floor(gl_FragCoord.xy / ditherScale)) + .5) / 16.0 - .5;
     c = floor(clamp(c, 0.0, 1.0) * levels + t + .5) / levels;
   }
   gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
 }`;
 
-export function createGrade(renderer, width, height, { grade: id = DEFAULT_GRADE, dither = DEFAULT_DITHER } = {}) {
+export function createGrade(renderer, width, height, { grade: id = DEFAULT_GRADE, dither = DEFAULT_DITHER, cartoon, renderQuality } = {}) {
   if (!GRADE_IDS.includes(id)) throw new Error(`Unknown grade: ${id}`);
   if (!DITHER_IDS.includes(dither)) throw new Error(`Unknown dither: ${dither}`);
-  const preset = GRADES[id], pattern = DITHERS[dither];
+  const preset = GRADES[id], pattern = DITHERS[dither],quality=renderSettings({renderQuality}),style=cartoonSettings(cartoon,width,height);
   // Original bright look with no dither: draw directly, exactly as before.
-  if (id === 'vivid' && !pattern) return { id, dither, render: (scene, camera) => renderer.render(scene, camera), dispose() {} };
+  if (id === 'vivid' && !pattern && !style.enabled && quality.scale===1) return { id, dither, render: (scene, camera) => renderer.render(scene, camera), dispose() {} };
   const gl = renderer.getContext();
   // HDR buffer keeps highlights for tone mapping; multisampled to keep edges smooth.
   const halfFloat = renderer.capabilities.isWebGL2 && (renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float'));
-  const target = new THREE.WebGLRenderTarget(width, height, {
+  const renderWidth=Math.ceil(width*quality.scale),renderHeight=Math.ceil(height*quality.scale);
+  const limit=Math.min(renderer.capabilities.maxTextureSize,gl.getParameter(gl.MAX_RENDERBUFFER_SIZE));
+  if(Math.max(renderWidth,renderHeight,quality.shadowSize)>limit)throw Error(`Render quality ${quality.quality} exceeds this GPU's ${limit}px buffer limit. Choose a lower quality or use local Blender CPU.`);
+  const target = new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
     type: halfFloat ? THREE.HalfFloatType : THREE.UnsignedByteType,
     samples: Math.min(4, gl.getParameter?.(gl.MAX_SAMPLES) ?? 4),
     colorSpace: THREE.LinearSRGBColorSpace,
@@ -133,11 +142,12 @@ export function createGrade(renderer, width, height, { grade: id = DEFAULT_GRADE
     name: `grade-${id}-${dither}`,
     uniforms: {
       tScene: { value: target.texture }, frame: { value: 0 }, resolution: { value: new THREE.Vector2(width, height) },
+      cartoonEnabled:{value:style.enabled?1:0},cartoonPixels:{value:style.pixels},cartoonOutline:{value:style.outline},cartoonShades:{value:style.shades},
       applyLook: { value: 1 }, levels: { value: pattern?.levels ?? 0 }, ditherScale: { value: ditherScale(width, height) },
-      ...Object.fromEntries(Object.entries(preset).map(([k, v]) => [k, { value: Array.isArray(v) ? new THREE.Vector3(...v) : v }])),
+      ...Object.fromEntries(Object.entries(preset).map(([k, v]) => [k, { value: k==='grain'&&style.enabled?0:Array.isArray(v) ? new THREE.Vector3(...v) : v }])),
     },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
-    fragmentShader, depthTest: false, depthWrite: false, toneMapped: true,
+    fragmentShader:fragmentShader(style.enabled), depthTest: false, depthWrite: false, toneMapped: true,
   });
   const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
   quad.frustumCulled = false;
@@ -145,10 +155,28 @@ export function createGrade(renderer, width, height, { grade: id = DEFAULT_GRADE
   // only Scene rendered per frame for anything observing scene renders.
   const passCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   // look=false (end card): no tone mapping or grade, only the dither.
+  let allocationChecked=false;
+  const allocationError=()=>new Error(`Cannot allocate ${quality.quality} render buffers on this GPU. Choose a lower quality or use local Blender CPU.`);
   function render(scene, camera, frame = 0, { look = true } = {}) {
     const previous = renderer.getRenderTarget();
-    renderer.setRenderTarget(target); renderer.clear(); renderer.render(scene, camera);
-    renderer.setRenderTarget(previous);
+    // A canvas can be reused after encoder fallback. Errors from the disposed
+    // renderer are sticky; bound this probe to the new allocation/render work.
+    if(!allocationChecked)for(let i=0;i<16;i++){
+      const error=gl.getError();
+      if(error===gl.NO_ERROR)break;
+      if(error===gl.CONTEXT_LOST_WEBGL)throw Error('WebGL context lost before frame rendering');
+    }
+    try {
+      renderer.setRenderTarget(target);
+      if(!allocationChecked&&gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE)throw allocationError();
+      renderer.clear(); renderer.render(scene, camera);
+      if(!allocationChecked){
+        const error=gl.getError();
+        if(error===gl.OUT_OF_MEMORY)throw allocationError();
+        if(error!==gl.NO_ERROR)throw Error(`WebGL frame rendering failed (0x${error.toString(16)}). Try local Blender CPU.`);
+        allocationChecked=true;
+      }
+    } finally {renderer.setRenderTarget(previous);}
     material.uniforms.frame.value = frame % 997;
     material.uniforms.applyLook.value = look ? 1 : 0;
     renderer.render(quad, passCamera);

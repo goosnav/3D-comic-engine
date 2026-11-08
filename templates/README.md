@@ -363,3 +363,28 @@ Use **Script → Add cameo shot** for a cutaway showing only one cameo. Choose t
 Cameo IDs: `goose`, `glove-bot`, `walker`, `shoe-hat`. Defaults are `stand`, `static`, 3 seconds; duration accepts 0.3–30 seconds. Stand uses the model's idle pose/clip, so limbs may move while its position and camera stay fixed. Follow translates with a walking cameo; static frames the whole short route. Regular actors, book, interaction props and other cameos return after the cut. The existing `extras` field controls background cameos independently.
 
 Ambience `mode`: `auto` (default), `room`, `laundromat`, `off`. `volume`: 0–1, default 0.35. Auto adds room tone when no music is attached. Explicit Room or Laundromat can accompany music. These sounds are synthesized hum/air/motor textures, not location recordings, and soften during speech with smooth fades. Off or volume 0 adds nothing. Configure them under **Export → Picture & sound**; saved scripts work in browser and local CPU/Chromium exports.
+
+## Digital cartoon and render quality
+
+Both controls are under **Export → Picture & sound**, beside Format. Digital cartoon is optional; it reuses the existing models and animation. It adds image-based outlines and limited shading, and scales its pixel grid with the output resolution. Source inserts and endcards bypass the effect; captions are composited afterward. It approximates the reference's visual treatment, not its separately drawn faces or animation style.
+
+```json
+"renderQuality": "high",
+"cartoon": {"enabled": true, "pixelSize": 4, "outline": 1, "shades": 5}
+```
+
+`renderQuality`: `standard` (default), `high`, `ultra`. Omitted cartoon defaults to Off. Pixel size accepts whole numbers 1–12 (pixels at a 1080px short edge, minimum one pixel in smaller previews). Outline strength accepts 0–2; zero removes edge ink. Shading levels accept whole numbers 2–12. Toggle Off without losing the stored tuning. Example: [`digital-cartoon.json`](../examples/digital-cartoon.json).
+
+| Quality | Browser/Chromium scene sampling | Shadow map | Blender CPU samples | Local MP4 encoding |
+| --- | --- | --- | --- | --- |
+| Standard | 1× dimensions | 1024 | 8 | CRF 19, veryfast |
+| High | 1.5× dimensions | 2048 | 64 | CRF 16, slow |
+| Ultra | 2× dimensions | 4096 | 256 | CRF 14, slow |
+
+High and Ultra retain supported multisample antialiasing and increase browser recording bitrate. Final dimensions, fps, animation timing and audio stay unchanged. Larger buffers require more GPU memory; allocation failure is reported with a lower-quality/local-CPU alternative. Browser MediaRecorder remains real-time and can drop frames if overloaded. For deliberate frame-by-frame rendering that may take minutes or hours, use the local GUI's Blender CPU renderer or:
+
+```sh
+node bin/theatre.mjs render comic.render-job.json --backend blender-cpu
+```
+
+The hosted website cannot run Blender itself. Quality and cartoon settings travel with its downloaded render job. Blender's higher sample counts reduce noise; they do not add model detail or change its documented lighting/material limitations. No denoiser is required. `THEATRE_CPU_SAMPLES` is still an explicit override (1–4096); actual samples and override status appear in progress and CLI verification. Leave it unset to use the selected preset. The cartoon treatment deliberately keeps pixel edges; choose cartoon Off and dither Off for the smoothest look.

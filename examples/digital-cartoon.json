@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "template": "conversation",
+  "title": "A different look",
+  "seed": 42,
+  "renderQuality": "high",
+  "cartoon": {"enabled": true, "pixelSize": 4, "outline": 1, "shades": 5},
+  "endCard": {"enabled": false},
+  "lines": [
+    {"speaker": "reader", "text": "This feels different.", "gesture": "shrug"},
+    {"speaker": "friend", "text": "Same people. More pixels.", "gesture": "nod"}
+  ]
+}
